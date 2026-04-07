@@ -143,6 +143,12 @@
     .refresh-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #1a1a2e; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
     .refresh-btn:hover { background: #2c3e50; }
 
+    .config-toggle { position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px; border-radius: 50%; background: #7f8c8d; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .config-toggle:hover { background: #95a5a6; }
+    .config-panel.connected { background: #d5f5e3; border-bottom-color: #27ae60; }
+    .config-panel .status-line { font-size: 0.75rem; margin-top: 6px; color: #27ae60; }
+    .config-panel .status-line.disconnected { color: #e74c3c; }
+
     @media (max-width: 600px) {
       .header h1 { font-size: 1.15rem; }
       .card-info { padding-left: 14px; }
@@ -173,6 +179,7 @@
   <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/...../exec">
   <br>
   <button class="btn btn-primary btn-sm" onclick="saveConfig()" style="margin-top:8px;">Guardar y Conectar</button>
+  <div id="configStatus"></div>
 </div>
 
 <!-- ========== SECTION: PEDIDOS Y RETIROS ========== -->
@@ -288,6 +295,7 @@
 </div>
 
 <!-- FLOATING REFRESH -->
+<button class="config-toggle" onclick="toggleConfig()" title="Configuración">⚙</button>
 <button class="refresh-btn" onclick="loadFromSheets()" title="Recargar datos">↻</button>
 
 <div class="toast" id="toast"></div>
@@ -361,7 +369,30 @@ function switchFilter(filter) {
 
 // ============ CONFIG ============
 function checkConfig() {
-  document.getElementById('configPanel').style.display = SCRIPT_URL ? 'none' : 'block';
+  const panel = document.getElementById('configPanel');
+  const urlInput = document.getElementById('scriptUrl');
+  const statusDiv = document.getElementById('configStatus');
+
+  if (SCRIPT_URL) {
+    // Show as connected but keep panel hidden (user can open with gear button)
+    urlInput.value = SCRIPT_URL;
+    panel.classList.add('connected');
+    statusDiv.innerHTML = '<div class="status-line">Conectado a Google Sheets</div>';
+  } else {
+    // No URL: show panel automatically
+    panel.style.display = 'block';
+    panel.classList.remove('connected');
+    statusDiv.innerHTML = '<div class="status-line disconnected">No conectado. Pegá la URL del Apps Script.</div>';
+  }
+}
+
+function toggleConfig() {
+  const panel = document.getElementById('configPanel');
+  const isVisible = panel.style.display === 'block';
+  panel.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) {
+    document.getElementById('scriptUrl').value = SCRIPT_URL || '';
+  }
 }
 
 function saveConfig() {
@@ -370,6 +401,7 @@ function saveConfig() {
   SCRIPT_URL = url;
   localStorage.setItem('gasUrl', url);
   checkConfig();
+  document.getElementById('configPanel').style.display = 'none';
   loadFromSheets();
   showToast('Conectado correctamente');
 }
