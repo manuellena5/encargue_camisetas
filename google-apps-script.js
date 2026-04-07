@@ -30,8 +30,8 @@ function getRetirosSheet() {
   let sheet = ss.getSheetByName(SHEET_RETIROS);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_RETIROS);
-    sheet.appendRow(['ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro']);
-    sheet.getRange(1, 1, 1, 11).setFontWeight('bold');
+    sheet.appendRow(['ID', 'Nombre', 'Tipo', 'Talle', 'Seña', 'Total', 'Resta', 'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro']);
+    sheet.getRange(1, 1, 1, 12).setFontWeight('bold');
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -133,20 +133,21 @@ function registrarRetiro(data) {
 
   if (data.retirado) {
     const row = [
-      data.id,
-      data.nombre,
-      data.tipo,
-      data.talle,       // talle original del pedido
-      data.talleRetiro || data.talle || '', // talle efectivamente retirado
-      data.seña,
-      data.total,
-      data.pagoRetiro,
-      data.medioPago,
-      data.observacion,
-      data.fecha
+      data.id,                              // ID
+      data.nombre,                          // Nombre
+      data.tipo,                            // Tipo
+      data.talleRetiro || data.talle || '', // Talle (el retirado efectivamente)
+      data.seña,                            // Seña
+      data.total,                           // Total
+      data.resta,                           // Resta
+      1,                                    // Retirado
+      data.pagoRetiro,                      // Pago al Retirar
+      data.medioPago,                       // Medio de Pago
+      data.observacion,                     // Observación
+      data.fecha                            // Fecha Retiro
     ];
     if (rowIndex > 0) {
-      retirosSheet.getRange(rowIndex, 1, 1, 11).setValues([row]);
+      retirosSheet.getRange(rowIndex, 1, 1, 12).setValues([row]);
     } else {
       retirosSheet.appendRow(row);
     }

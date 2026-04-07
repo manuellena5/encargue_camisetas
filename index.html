@@ -507,6 +507,8 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, 
     });
     // Update local
     pedido['Retirado'] = retirado ? 1 : 0;
+    pedido['_talleRetiro'] = retirado ? (talleRetiro || pedido['Talle'] || '') : '';
+    pedido['_observacionRetiro'] = retirado ? observacion : '';
     if (talleRetiro && talleRetiro !== pedido['Talle']) {
       pedido['_talleRetiro'] = talleRetiro;
     }
@@ -729,10 +731,11 @@ function renderList() {
     const bloqueado = isBloqueado(p);
     const is2da = tanda === 'SEGUNDA';
     const tallePedido = p['Talle'] || '—';
+    const talleRetiroActual = p['_talleRetiro'] || p['Talle Retiro'] || tallePedido;
 
     // Build talle options for the select
     const talleOptions = TALLES_ORDER.map(t =>
-      `<option value="${t}" ${t === tallePedido.toUpperCase() ? 'selected' : ''}>${t}</option>`
+      `<option value="${t}" ${t === talleRetiroActual.toUpperCase() ? 'selected' : ''}>${t}</option>`
     ).join('');
 
     return `
@@ -750,8 +753,10 @@ function renderList() {
           <span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
           <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
           <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
+          ${ret && talleRetiroActual && talleRetiroActual !== tallePedido ? `<span>Talle retiro: <span class="val">${talleRetiroActual}</span></span>` : ''}
         </div>
         ${p['Notas'] ? `<div class="notas-excel">📝 ${p['Notas']}</div>` : ''}
+        ${ret && (p['_observacionRetiro'] || p['Observacion Retiro']) ? `<div class="notas-excel">📢 ${p['_observacionRetiro'] || p['Observacion Retiro']}</div>` : ''}
         <div class="card-body">
           <div class="form-row">
             <div class="form-group">
@@ -776,7 +781,7 @@ function renderList() {
             </div>
             <div class="form-group">
               <label>Observación</label>
-              <textarea id="obs-${id}" placeholder="Notas sobre el retiro..."></textarea>
+              <textarea id="obs-${id}" placeholder="Notas sobre el retiro...">${p['_observacionRetiro'] || ''}</textarea>
             </div>
           </div>
           <div class="actions">
