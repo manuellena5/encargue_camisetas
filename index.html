@@ -38,14 +38,15 @@
     .stock-table h4.blanca-title { background: #95a5a6; }
     .stock-table h4.azul-title { background: #3498db; }
     .stock-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
-    .stock-cell { text-align: center; padding: 4px 2px; border-radius: 6px; background: #f8f9fa; border: 1px solid #eee; }
-    .stock-cell .talle-label { font-size: 0.6rem; color: #888; font-weight: 600; }
+    .stock-cell { text-align: center; padding: 6px 4px; border-radius: 6px; background: #f8f9fa; border: 1px solid #eee; }
+    .stock-cell .talle-label { font-size: 0.6rem; color: #888; font-weight: 600; margin-bottom: 2px; }
     .stock-cell .stock-num { font-size: 0.95rem; font-weight: 700; }
+    .stock-cell .stock-num-label { font-size: 0.55rem; color: #aaa; }
     .stock-cell.ok .stock-num { color: #27ae60; }
     .stock-cell.low .stock-num { color: #e67e22; }
     .stock-cell.out .stock-num { color: #e74c3c; }
     .stock-cell.out { background: #fdf0f0; border-color: #f5c6cb; }
-    .stock-cell .stock-detail { font-size: 0.55rem; color: #999; }
+    .stock-cell .stock-detail { font-size: 0.55rem; color: #999; margin-top: 2px; line-height: 1.4; }
 
     /* MAIN TABS */
     .main-tabs { display: flex; background: #1a1a2e; }
@@ -619,20 +620,23 @@ function hasStockForPedido(p) {
 }
 
 function renderStock() {
-  const { remaining, pedidas } = calcStock();
+  const { remaining, pedidas, entregadas } = calcStock();
   ['blanca', 'azul'].forEach(tipo => {
     const container = document.getElementById(tipo === 'blanca' ? 'stockBlanca' : 'stockAzul');
     container.innerHTML = TALLES_ORDER.map(t => {
       const r = remaining[tipo][t];
       const stk = STOCK_INICIAL[tipo][t];
       const ped = pedidas[tipo][t] || 0;
+      const ret = entregadas[tipo][t] || 0;
       let cls = 'ok';
       if (r <= 0) cls = 'out';
       else if (r <= 2) cls = 'low';
       return `<div class="stock-cell ${cls}">
         <div class="talle-label">${t}</div>
         <div class="stock-num">${r}</div>
-        <div class="stock-detail">${stk} stk / ${ped} ped</div>
+        <div class="stock-num-label">Stk actual</div>
+        <div class="stock-detail">Orig: ${stk}</div>
+        <div class="stock-detail">${ret}/${ped} ret/ped</div>
       </div>`;
     }).join('');
   });
