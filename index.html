@@ -12,15 +12,19 @@
     .header h1 { font-size: 1.4rem; font-weight: 700; }
     .header .subtitle { font-size: 0.8rem; opacity: 0.7; margin-top: 3px; }
 
-    /* STATUS BAR */
-    .status-bar { display: flex; justify-content: center; gap: 12px; padding: 10px 12px; background: white; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
-    .status-item { text-align: center; min-width: 60px; }
-    .status-item .num { font-size: 1.2rem; font-weight: 700; }
-    .status-item .label { font-size: 0.65rem; color: #666; }
-    .status-item.retirados .num { color: #27ae60; }
-    .status-item.pendientes .num { color: #e67e22; }
-    .status-item.efectivo .num { color: #8e44ad; }
-    .status-item.transf .num { color: #2980b9; }
+    /* KPI PANELS */
+    .kpi-section { background: white; border-bottom: 1px solid #e0e0e0; padding: 10px 12px; }
+    .kpi-section h4 { font-size: 0.7rem; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; text-align: center; }
+    .kpi-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .kpi-item { text-align: center; min-width: 55px; }
+    .kpi-item .num { font-size: 1.1rem; font-weight: 700; }
+    .kpi-item .label { font-size: 0.6rem; color: #666; }
+    .kpi-item.green .num { color: #27ae60; }
+    .kpi-item.orange .num { color: #e67e22; }
+    .kpi-item.purple .num { color: #8e44ad; }
+    .kpi-item.blue .num { color: #2980b9; }
+    .kpi-item.red .num { color: #e74c3c; }
+    .kpi-divider { width: 1px; background: #e0e0e0; margin: 0 4px; }
 
     /* STOCK PANEL */
     .stock-panel { background: white; border-bottom: 1px solid #e0e0e0; padding: 10px 16px; }
@@ -43,13 +47,13 @@
     .stock-cell.out { background: #fdf0f0; border-color: #f5c6cb; }
     .stock-cell .stock-detail { font-size: 0.55rem; color: #999; }
 
-    /* MAIN TABS (sections) */
+    /* MAIN TABS */
     .main-tabs { display: flex; background: #1a1a2e; }
     .main-tab { flex: 1; padding: 10px 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: rgba(255,255,255,0.5); transition: all 0.2s; border-bottom: 3px solid transparent; }
     .main-tab:hover { color: rgba(255,255,255,0.8); }
     .main-tab.active { color: white; border-bottom-color: #f39c12; }
 
-    /* SUB TABS (product filter) */
+    /* SUB TABS */
     .sub-tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; overflow-x: auto; }
     .sub-tab { padding: 10px 12px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.8rem; border-bottom: 3px solid transparent; transition: all 0.2s; color: #888; white-space: nowrap; flex-shrink: 0; }
     .sub-tab:hover { background: #f8f9fa; }
@@ -61,7 +65,6 @@
     .search-bar input { width: 100%; padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; }
     .search-bar input:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.1); }
 
-    /* SECTION CONTAINERS */
     .section { display: none; }
     .section.active { display: block; }
 
@@ -73,7 +76,7 @@
     .card.sin-stock .card-header { background: #fef3e2; }
     .card.sin-stock.retirado .card-header { background: #d5f5e3; }
     .card-header { display: flex; align-items: center; padding: 12px 14px; gap: 10px; cursor: pointer; }
-    .card-header .check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; font-size: 0.75rem; }
+    .card-header .check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem; }
     .card.retirado .card-header .check { background: #27ae60; border-color: #27ae60; color: white; }
     .card-header .name { font-weight: 600; font-size: 0.95rem; flex: 1; }
     .card-header .talle { background: #eee; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
@@ -83,6 +86,9 @@
     .tipo-badge.chomba { background: #e67e22; }
     .tipo-badge.short { background: #27ae60; }
     .tanda-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; background: #f39c12; color: white; letter-spacing: 0.5px; }
+    .card-header .arrow { color: #aaa; transition: transform 0.2s; font-size: 0.75rem; }
+    .card.expanded .card-header .arrow { transform: rotate(180deg); }
+    .sin-stock-badge { background: #e74c3c; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
 
     /* BLOCKED 2da tanda */
     .card.bloqueado { position: relative; }
@@ -90,7 +96,6 @@
     .card.bloqueado .card-info { opacity: 0.5; }
     .card.bloqueado .name { color: #999; }
     .card.bloqueado .card-body { display: none !important; }
-    .bloqueado-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 
     /* MODAL */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1100; }
@@ -100,14 +105,10 @@
     .modal .modal-name { font-weight: 700; color: #f39c12; }
     .modal-buttons { display: flex; gap: 10px; justify-content: center; }
     .modal-buttons .btn { min-width: 100px; }
-    .card-header .arrow { color: #aaa; transition: transform 0.2s; font-size: 0.75rem; }
-    .card.expanded .card-header .arrow { transform: rotate(180deg); }
-    .sin-stock-badge { background: #e74c3c; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
 
     .card-info { display: flex; gap: 12px; padding: 0 14px 8px 48px; font-size: 0.8rem; color: #666; flex-wrap: wrap; }
     .card-info span { white-space: nowrap; }
     .card-info .val { font-weight: 600; color: #333; }
-
     .card-body { display: none; padding: 0 14px 14px 14px; border-top: 1px solid #f0f0f0; }
     .card.expanded .card-body { display: block; }
 
@@ -116,6 +117,7 @@
     .form-group label { display: block; font-size: 0.7rem; color: #666; margin-bottom: 3px; font-weight: 600; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
     .form-group textarea { resize: vertical; min-height: 38px; }
+    .talle-original { font-size: 0.7rem; color: #999; margin-top: 2px; }
 
     .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
     .btn-primary { background: #27ae60; color: white; }
@@ -124,9 +126,11 @@
     .btn-danger:hover { background: #c0392b; }
     .btn-blue { background: #3498db; color: white; }
     .btn-blue:hover { background: #2980b9; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-warning:hover { background: #e67e22; }
     .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     .notas-excel { font-size: 0.75rem; color: #e67e22; font-style: italic; padding-left: 48px; padding-bottom: 6px; }
 
     /* NEW ORDER FORM */
@@ -145,34 +149,29 @@
     .loading-overlay .spinner { background: white; padding: 24px 32px; border-radius: 12px; text-align: center; font-weight: 600; }
     .loading-overlay .dots::after { content: ''; animation: dots 1.5s infinite; }
     @keyframes dots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
-
     .config-panel { padding: 16px; background: #fff3cd; border-bottom: 1px solid #ffc107; text-align: center; }
     .config-panel input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 80%; max-width: 450px; font-size: 0.85rem; }
     .config-panel p { font-size: 0.85rem; margin-bottom: 8px; }
-
-    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1001; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
-    .toast.show { opacity: 1; }
-
-    .empty-state { text-align: center; padding: 40px 20px; color: #999; }
-    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
-    .empty-state p { font-size: 0.9rem; }
-
-    .refresh-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #1a1a2e; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
-    .refresh-btn:hover { background: #2c3e50; }
-
-    .config-toggle { position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px; border-radius: 50%; background: #7f8c8d; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
-    .config-toggle:hover { background: #95a5a6; }
     .config-panel.connected { background: #d5f5e3; border-bottom-color: #27ae60; }
     .config-panel .status-line { font-size: 0.75rem; margin-top: 6px; color: #27ae60; }
     .config-panel .status-line.disconnected { color: #e74c3c; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1001; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
+    .toast.show { opacity: 1; }
+    .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty-state p { font-size: 0.9rem; }
+    .refresh-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #1a1a2e; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .refresh-btn:hover { background: #2c3e50; }
+    .config-toggle { position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px; border-radius: 50%; background: #7f8c8d; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .config-toggle:hover { background: #95a5a6; }
 
     @media (max-width: 600px) {
       .header h1 { font-size: 1.15rem; }
       .card-info { padding-left: 14px; }
       .notas-excel { padding-left: 14px; }
-      .status-bar { gap: 6px; padding: 8px 6px; }
-      .status-item { min-width: 48px; }
-      .status-item .num { font-size: 1rem; }
+      .kpi-row { gap: 6px; }
+      .kpi-item { min-width: 45px; }
+      .kpi-item .num { font-size: 0.95rem; }
       .stock-grid { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
@@ -184,13 +183,11 @@
   <div class="subtitle">Pedidos, retiros y stock</div>
 </div>
 
-<!-- MAIN NAVIGATION -->
 <div class="main-tabs">
   <div class="main-tab active" onclick="switchSection('pedidos')">Pedidos y Retiros</div>
   <div class="main-tab" onclick="switchSection('nuevo')">Nuevo Pedido</div>
 </div>
 
-<!-- CONFIG -->
 <div id="configPanel" class="config-panel" style="display:none;">
   <p><strong>Configuración:</strong> Pegá la URL de tu Google Apps Script Web App</p>
   <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/...../exec">
@@ -202,13 +199,37 @@
 <!-- ========== SECTION: PEDIDOS Y RETIROS ========== -->
 <div class="section active" id="sectionPedidos">
 
-  <div class="status-bar" id="statusBar">
-    <div class="status-item"><div class="num" id="totalPedidos">0</div><div class="label">Pedidos</div></div>
-    <div class="status-item retirados"><div class="num" id="totalRetirados">0</div><div class="label">Retirados</div></div>
-    <div class="status-item pendientes"><div class="num" id="totalPendientes">0</div><div class="label">Pendientes</div></div>
-    <div class="status-item"><div class="num" id="totalRecaudado">$0</div><div class="label">Recaudado</div></div>
-    <div class="status-item efectivo"><div class="num" id="totalEfectivo">$0</div><div class="label">Efectivo</div></div>
-    <div class="status-item transf"><div class="num" id="totalTransf">$0</div><div class="label">Transferencia</div></div>
+  <!-- KPI: GENERAL -->
+  <div class="kpi-section">
+    <h4>General</h4>
+    <div class="kpi-row">
+      <div class="kpi-item"><div class="num" id="kTotalPedidos">0</div><div class="label">Pedidos</div></div>
+      <div class="kpi-item green"><div class="num" id="kRetirados">0</div><div class="label">Retirados</div></div>
+      <div class="kpi-item orange"><div class="num" id="kPendientes">0</div><div class="label">Pendientes</div></div>
+      <div class="kpi-divider"></div>
+      <div class="kpi-item green"><div class="num" id="kRecaudado">$0</div><div class="label">Recaudado</div></div>
+      <div class="kpi-item purple"><div class="num" id="kEfectivo">$0</div><div class="label">Efectivo</div></div>
+      <div class="kpi-item blue"><div class="num" id="kTransf">$0</div><div class="label">Transferencia</div></div>
+      <div class="kpi-item red"><div class="num" id="kPorCobrar">$0</div><div class="label">Por cobrar</div></div>
+    </div>
+  </div>
+
+  <!-- KPI: POR TANDA -->
+  <div class="kpi-section" style="border-bottom: 2px solid #e0e0e0;">
+    <h4>1era Tanda</h4>
+    <div class="kpi-row">
+      <div class="kpi-item"><div class="num" id="k1Pedidos">0</div><div class="label">Pedidos</div></div>
+      <div class="kpi-item green"><div class="num" id="k1Retirados">0</div><div class="label">Retirados</div></div>
+      <div class="kpi-item green"><div class="num" id="k1Recaudado">$0</div><div class="label">Recaudado</div></div>
+      <div class="kpi-item red"><div class="num" id="k1PorCobrar">$0</div><div class="label">Por cobrar</div></div>
+    </div>
+    <h4 style="margin-top:8px;">2da Tanda</h4>
+    <div class="kpi-row">
+      <div class="kpi-item"><div class="num" id="k2Pedidos">0</div><div class="label">Pedidos</div></div>
+      <div class="kpi-item green"><div class="num" id="k2Retirados">0</div><div class="label">Retirados</div></div>
+      <div class="kpi-item green"><div class="num" id="k2Recaudado">$0</div><div class="label">Recaudado</div></div>
+      <div class="kpi-item red"><div class="num" id="k2PorCobrar">$0</div><div class="label">Por cobrar</div></div>
+    </div>
   </div>
 
   <div class="stock-panel" id="stockPanel">
@@ -246,12 +267,10 @@
 <div class="section" id="sectionNuevo">
   <div class="new-order-form">
     <h2>Registrar Nuevo Pedido</h2>
-
     <div class="form-group">
       <label>Nombre</label>
       <input type="text" id="np_nombre" placeholder="Nombre completo">
     </div>
-
     <div class="form-group">
       <label>Tipo de prenda</label>
       <select id="np_tipo">
@@ -262,7 +281,6 @@
         <option value="Short">Short</option>
       </select>
     </div>
-
     <div class="form-group">
       <label>Talle</label>
       <select id="np_talle">
@@ -276,7 +294,6 @@
         <option value="Talle unico">Talle único</option>
       </select>
     </div>
-
     <div class="form-row">
       <div class="form-group">
         <label>Seña</label>
@@ -287,7 +304,6 @@
         <input type="number" id="np_total" placeholder="0">
       </div>
     </div>
-
     <div class="form-group">
       <label>Modo de pago</label>
       <select id="np_modoPago">
@@ -295,23 +311,19 @@
         <option value="Transferencia">Transferencia</option>
       </select>
     </div>
-
     <div class="form-group">
       <label>Nota</label>
       <textarea id="np_nota" placeholder="Observaciones..."></textarea>
     </div>
-
     <div class="form-group">
       <label>Tanda</label>
       <input type="text" id="np_tanda" value="SEGUNDA" readonly style="background:#f0f0f0;">
     </div>
-
     <button class="btn btn-blue" id="btnNuevoPedido" onclick="submitNuevoPedido()">Registrar Pedido</button>
     <div class="success-msg" id="successMsg">Pedido registrado correctamente</div>
   </div>
 </div>
 
-<!-- FLOATING REFRESH -->
 <button class="config-toggle" onclick="toggleConfig()" title="Configuración">⚙</button>
 <button class="refresh-btn" onclick="loadFromSheets()" title="Recargar datos">↻</button>
 
@@ -333,7 +345,7 @@
 </div>
 
 <script>
-// ============ STOCK INICIAL (solo camisetas) ============
+// ============ STOCK INICIAL ============
 const STOCK_INICIAL = {
   blanca: { XS: 2, S: 6, M: 6, L: 6, XL: 6, XXL: 2 },
   azul:   { XS: 2, S: 4, M: 4, L: 4, XL: 4, XXL: 2 }
@@ -341,11 +353,11 @@ const STOCK_INICIAL = {
 const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 // ============ STATE ============
-let PEDIDOS = []; // Loaded from Google Sheet
+let PEDIDOS = [];
 let currentSection = 'pedidos';
 let currentFilter = 'todos';
 let SCRIPT_URL = localStorage.getItem('gasUrl') || '';
-let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}'); // { _id: true }
+let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}');
 let pendingUnlockId = null;
 
 // ============ HELPERS ============
@@ -368,6 +380,10 @@ function isRetirado(p) {
   return Number(p['Retirado']) === 1 || p['Retirado'] === true || p['Retirado'] === 'TRUE';
 }
 
+function getTanda(p) {
+  return (p['Tanda'] || '').toUpperCase();
+}
+
 function showLoading(show) {
   document.getElementById('loading').style.display = show ? 'flex' : 'none';
 }
@@ -379,7 +395,7 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ============ SECTION NAVIGATION ============
+// ============ SECTION NAV ============
 function switchSection(section) {
   currentSection = section;
   document.querySelectorAll('.main-tab').forEach((t, i) => {
@@ -395,7 +411,7 @@ function switchFilter(filter) {
     t.classList.toggle('active', t.dataset.filter === filter);
   });
   renderList();
-  updateStatus();
+  updateKPIs();
 }
 
 // ============ CONFIG ============
@@ -403,14 +419,11 @@ function checkConfig() {
   const panel = document.getElementById('configPanel');
   const urlInput = document.getElementById('scriptUrl');
   const statusDiv = document.getElementById('configStatus');
-
   if (SCRIPT_URL) {
-    // Show as connected but keep panel hidden (user can open with gear button)
     urlInput.value = SCRIPT_URL;
     panel.classList.add('connected');
     statusDiv.innerHTML = '<div class="status-line">Conectado a Google Sheets</div>';
   } else {
-    // No URL: show panel automatically
     panel.style.display = 'block';
     panel.classList.remove('connected');
     statusDiv.innerHTML = '<div class="status-line disconnected">No conectado. Pegá la URL del Apps Script.</div>';
@@ -421,9 +434,7 @@ function toggleConfig() {
   const panel = document.getElementById('configPanel');
   const isVisible = panel.style.display === 'block';
   panel.style.display = isVisible ? 'none' : 'block';
-  if (!isVisible) {
-    document.getElementById('scriptUrl').value = SCRIPT_URL || '';
-  }
+  if (!isVisible) document.getElementById('scriptUrl').value = SCRIPT_URL || '';
 }
 
 function saveConfig() {
@@ -445,11 +456,10 @@ async function loadFromSheets() {
     const res = await fetch(SCRIPT_URL + '?action=getAll');
     const data = await res.json();
     if (data.status === 'ok') {
-      // Map pedidos from sheet, assign an internal id based on row
       PEDIDOS = (data.pedidos || []).map((p, i) => ({
         ...p,
-        _id: i + 1, // internal id
-        _sheetRow: p._row // actual row number in sheet
+        _id: i + 1,
+        _sheetRow: p._row
       }));
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
@@ -457,11 +467,8 @@ async function loadFromSheets() {
     }
   } catch (e) {
     console.error('Error loading:', e);
-    // Try local backup
     const backup = localStorage.getItem('pedidos_backup');
-    if (backup) {
-      try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(ex) {}
-    }
+    if (backup) { try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(ex) {} }
     showToast('Error al conectar. Usando datos locales.');
   } finally {
     showLoading(false);
@@ -469,7 +476,7 @@ async function loadFromSheets() {
 }
 
 // ============ GOOGLE SHEETS: SAVE RETIRO ============
-async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion) {
+async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, talleRetiro) {
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
   try {
     showLoading(true);
@@ -480,11 +487,12 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion) 
       sheetRow: pedido._sheetRow,
       nombre: pedido['Nombre'] || '',
       talle: pedido['Talle'] || '',
+      talleRetiro: talleRetiro || pedido['Talle'] || '',
       tipo: getTipoLabel(tipo),
-      retirado: retirado,
-      pagoRetiro: pagoRetiro,
-      medioPago: medioPago,
-      observacion: observacion,
+      retirado,
+      pagoRetiro,
+      medioPago,
+      observacion,
       fecha: new Date().toLocaleDateString('es-AR') + ' ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
       seña: pedido['Seña'],
       total: pedido['Total'],
@@ -496,8 +504,11 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion) 
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload)
     });
-    // Update local state
+    // Update local
     pedido['Retirado'] = retirado ? 1 : 0;
+    if (talleRetiro && talleRetiro !== pedido['Talle']) {
+      pedido['_talleRetiro'] = talleRetiro;
+    }
     if (pagoRetiro && Number(pagoRetiro) > 0) {
       const pago = Number(pagoRetiro);
       pedido['Seña'] = (Number(pedido['Seña']) || 0) + pago;
@@ -519,7 +530,7 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion) 
   }
 }
 
-// ============ GOOGLE SHEETS: NUEVO PEDIDO ============
+// ============ NUEVO PEDIDO ============
 async function submitNuevoPedido() {
   const nombre = document.getElementById('np_nombre').value.trim();
   const tipo = document.getElementById('np_tipo').value;
@@ -529,44 +540,29 @@ async function submitNuevoPedido() {
   const modoPago = document.getElementById('np_modoPago').value;
   const nota = document.getElementById('np_nota').value.trim();
   const tanda = document.getElementById('np_tanda').value;
-
   if (!nombre) { showToast('Ingresá el nombre'); return; }
   if (!tipo) { showToast('Seleccioná el tipo de prenda'); return; }
   if (!talle) { showToast('Seleccioná el talle'); return; }
-
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
-
   const btn = document.getElementById('btnNuevoPedido');
   btn.disabled = true;
   btn.textContent = 'Registrando...';
-
   try {
     showLoading(true);
-    const payload = {
-      action: 'nuevoPedido',
-      nombre, tipo, talle, seña, total, modoPago, notas: nota, tanda
-    };
     await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
+      method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ action: 'nuevoPedido', nombre, tipo, talle, seña, total, modoPago, notas: nota, tanda })
     });
-
     document.getElementById('successMsg').style.display = 'block';
     setTimeout(() => { document.getElementById('successMsg').style.display = 'none'; }, 3000);
-
-    // Clear form
     document.getElementById('np_nombre').value = '';
     document.getElementById('np_tipo').value = '';
     document.getElementById('np_talle').value = '';
     document.getElementById('np_seña').value = '';
     document.getElementById('np_total').value = '';
     document.getElementById('np_nota').value = '';
-
     showToast('Pedido registrado en Google Sheets');
-
-    // Reload data
     setTimeout(() => loadFromSheets(), 1500);
   } catch (e) {
     console.error('Error:', e);
@@ -590,7 +586,11 @@ function calcStock() {
     if (!TALLES_ORDER.includes(t)) return;
     pedidas[tipo][t] = (pedidas[tipo][t] || 0) + 1;
     if (isRetirado(p)) {
-      entregadas[tipo][t] = (entregadas[tipo][t] || 0) + 1;
+      // Use talleRetiro if a different talle was picked up
+      const tr = (p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
+      if (TALLES_ORDER.includes(tr)) {
+        entregadas[tipo][tr] = (entregadas[tipo][tr] || 0) + 1;
+      }
     }
   });
 
@@ -600,13 +600,12 @@ function calcStock() {
       remaining[tipo][t] = (STOCK_INICIAL[tipo][t] || 0) - (entregadas[tipo][t] || 0);
     });
   });
-
   return { remaining, pedidas, entregadas };
 }
 
 function hasStockForPedido(p) {
   const tipo = getTipo(p);
-  if (tipo !== 'blanca' && tipo !== 'azul') return true; // no stock control for chomba/short
+  if (tipo !== 'blanca' && tipo !== 'azul') return true;
   const { remaining } = calcStock();
   const t = (p['Talle'] || '').toUpperCase();
   return (remaining[tipo][t] || 0) > 0;
@@ -618,7 +617,7 @@ function renderStock() {
     const container = document.getElementById(tipo === 'blanca' ? 'stockBlanca' : 'stockAzul');
     container.innerHTML = TALLES_ORDER.map(t => {
       const r = remaining[tipo][t];
-      const ini = STOCK_INICIAL[tipo][t];
+      const stk = STOCK_INICIAL[tipo][t];
       const ped = pedidas[tipo][t] || 0;
       let cls = 'ok';
       if (r <= 0) cls = 'out';
@@ -626,7 +625,7 @@ function renderStock() {
       return `<div class="stock-cell ${cls}">
         <div class="talle-label">${t}</div>
         <div class="stock-num">${r}</div>
-        <div class="stock-detail">${ini} ini / ${ped} ped</div>
+        <div class="stock-detail">${stk} stk / ${ped} ped</div>
       </div>`;
     }).join('');
   });
@@ -636,150 +635,16 @@ function toggleStock() {
   document.getElementById('stockPanel').classList.toggle('collapsed');
 }
 
-// ============ RENDER ============
-function getFiltered() {
-  const search = document.getElementById('searchInput').value.toLowerCase();
-  return PEDIDOS.filter(p => {
-    const tipo = getTipo(p);
-    if (currentFilter !== 'todos' && tipo !== currentFilter) return false;
-    if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
-    return true;
-  });
-}
-
-function renderAll() {
-  renderList();
-  renderStock();
-  updateStatus();
-  updateBadges();
-}
-
-function updateBadges() {
-  document.getElementById('badgeTodos').textContent = PEDIDOS.length;
-  document.getElementById('badgeBlanca').textContent = PEDIDOS.filter(p => getTipo(p) === 'blanca').length;
-  document.getElementById('badgeAzul').textContent = PEDIDOS.filter(p => getTipo(p) === 'azul').length;
-  document.getElementById('badgeChomba').textContent = PEDIDOS.filter(p => getTipo(p) === 'chomba').length;
-  document.getElementById('badgeShort').textContent = PEDIDOS.filter(p => getTipo(p) === 'short').length;
-}
-
-function renderList() {
-  const items = getFiltered();
-  const container = document.getElementById('listContainer');
-
-  if (items.length === 0) {
-    container.innerHTML = `<div class="empty-state">
-      <div class="icon">📋</div>
-      <p>${PEDIDOS.length === 0 ? 'Conectá tu Google Sheet para ver los pedidos' : 'No hay pedidos en esta categoría'}</p>
-    </div>`;
-    updateStatus();
-    return;
-  }
-
-  container.innerHTML = items.map((p, idx) => {
-    const id = p._id;
-    const ret = isRetirado(p);
-    const tipo = getTipo(p);
-    const sinStock = !ret && !hasStockForPedido(p);
-    const tanda = (p['Tanda'] || '').toUpperCase();
-    const bloqueado = isBloqueado(p);
-
-    return `
-      <div class="card ${ret ? 'retirado' : ''} ${sinStock ? 'sin-stock' : ''} ${bloqueado ? 'bloqueado' : ''}" id="card-${id}">
-        <div class="card-header" onclick="toggleCard(${id})">
-          <div class="check">${ret ? '✓' : ''}</div>
-          <span class="name">${p['Nombre'] || '—'}</span>
-          ${sinStock ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
-          ${currentFilter === 'todos' ? `<span class="tipo-badge ${tipo}">${getTipoLabel(tipo)}</span>` : ''}
-          ${tanda === 'SEGUNDA' ? '<span class="tanda-badge">2da TANDA</span>' : ''}
-          <span class="talle">${p['Talle'] || '—'}</span>
-          <span class="arrow">${bloqueado ? '🔒' : '▼'}</span>
-        </div>
-        <div class="card-info">
-          <span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
-          <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
-          <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
-        </div>
-        ${p['Notas'] ? `<div class="notas-excel">📝 ${p['Notas']}</div>` : ''}
-        <div class="card-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Monto pagado al retirar</label>
-              <input type="number" id="pago-${id}" placeholder="0">
-            </div>
-            <div class="form-group">
-              <label>Medio de pago</label>
-              <select id="medio-${id}">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="flex:2;">
-              <label>Observación</label>
-              <textarea id="obs-${id}" placeholder="Notas sobre el retiro..."></textarea>
-            </div>
-          </div>
-          <div class="actions">
-            ${ret
-              ? `<button class="btn btn-danger btn-sm" onclick="marcarRetiro(${id}, false)">Desmarcar retiro</button>`
-              : `<button class="btn btn-primary btn-sm" onclick="marcarRetiro(${id}, true)">Marcar como retirado ✓</button>`
-            }
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  updateStatus();
-}
-
-function toggleCard(id) {
-  const pedido = PEDIDOS.find(p => p._id === id);
-  if (pedido && isBloqueado(pedido)) {
-    openModalDesbloqueo(id);
-    return;
-  }
-  document.getElementById('card-' + id).classList.toggle('expanded');
-}
-
-async function marcarRetiro(id, retirado) {
-  const pago = Number(document.getElementById('pago-' + id)?.value) || 0;
-  const medio = document.getElementById('medio-' + id)?.value || 'efectivo';
-  const obs = document.getElementById('obs-' + id)?.value || '';
-
-  const pedido = PEDIDOS.find(p => p._id === id);
-  if (!pedido) return;
-
-  await saveRetiro(pedido, retirado, pago, medio, obs);
-}
-
-function updateStatus() {
-  const filtered = currentFilter === 'todos' ? PEDIDOS :
-    PEDIDOS.filter(p => getTipo(p) === currentFilter);
-
-  const total = filtered.length;
-  const retiradosCount = filtered.filter(p => isRetirado(p)).length;
-
-  let recEfectivo = 0;
-  let recTransf = 0;
-  filtered.forEach(p => {
-    recEfectivo += Number(p['Total Efectivo']) || 0;
-    recTransf += Number(p['Total Transferencia']) || 0;
-  });
-
-  document.getElementById('totalPedidos').textContent = total;
-  document.getElementById('totalRetirados').textContent = retiradosCount;
-  document.getElementById('totalPendientes').textContent = total - retiradosCount;
-  document.getElementById('totalRecaudado').textContent = fmt(recEfectivo + recTransf);
-  document.getElementById('totalEfectivo').textContent = fmt(recEfectivo);
-  document.getElementById('totalTransf').textContent = fmt(recTransf);
-}
-
-// ============ MODAL DESBLOQUEO 2DA TANDA ============
+// ============ BLOQUEO 2DA TANDA ============
 function isBloqueado(p) {
-  const tanda = (p['Tanda'] || '').toUpperCase();
-  return tanda === 'SEGUNDA' && !desbloqueados[p._id] && !isRetirado(p);
+  return getTanda(p) === 'SEGUNDA' && !desbloqueados[p._id] && !isRetirado(p);
+}
+
+function bloquearPedido(id) {
+  delete desbloqueados[id];
+  localStorage.setItem('desbloqueados', JSON.stringify(desbloqueados));
+  renderAll();
+  showToast('Pedido bloqueado');
 }
 
 function openModalDesbloqueo(id) {
@@ -807,7 +672,6 @@ function confirmarDesbloqueo() {
     localStorage.setItem('desbloqueados', JSON.stringify(desbloqueados));
     renderAll();
     showToast('Pedido desbloqueado');
-    // Open the card automatically
     setTimeout(() => {
       const card = document.getElementById('card-' + pendingUnlockId);
       if (card && !card.classList.contains('expanded')) card.classList.add('expanded');
@@ -816,19 +680,197 @@ function confirmarDesbloqueo() {
   }
 }
 
+// ============ RENDER ============
+function getFiltered() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  return PEDIDOS.filter(p => {
+    const tipo = getTipo(p);
+    if (currentFilter !== 'todos' && tipo !== currentFilter) return false;
+    if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function renderAll() {
+  renderList();
+  renderStock();
+  updateKPIs();
+  updateBadges();
+}
+
+function updateBadges() {
+  document.getElementById('badgeTodos').textContent = PEDIDOS.length;
+  document.getElementById('badgeBlanca').textContent = PEDIDOS.filter(p => getTipo(p) === 'blanca').length;
+  document.getElementById('badgeAzul').textContent = PEDIDOS.filter(p => getTipo(p) === 'azul').length;
+  document.getElementById('badgeChomba').textContent = PEDIDOS.filter(p => getTipo(p) === 'chomba').length;
+  document.getElementById('badgeShort').textContent = PEDIDOS.filter(p => getTipo(p) === 'short').length;
+}
+
+function renderList() {
+  const items = getFiltered();
+  const container = document.getElementById('listContainer');
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="icon">📋</div>
+      <p>${PEDIDOS.length === 0 ? 'Conectá tu Google Sheet para ver los pedidos' : 'No hay pedidos en esta categoría'}</p>
+    </div>`;
+    updateKPIs();
+    return;
+  }
+
+  container.innerHTML = items.map(p => {
+    const id = p._id;
+    const ret = isRetirado(p);
+    const tipo = getTipo(p);
+    const sinStock = !ret && !hasStockForPedido(p);
+    const tanda = getTanda(p);
+    const bloqueado = isBloqueado(p);
+    const is2da = tanda === 'SEGUNDA';
+    const tallePedido = p['Talle'] || '—';
+
+    // Build talle options for the select
+    const talleOptions = TALLES_ORDER.map(t =>
+      `<option value="${t}" ${t === tallePedido.toUpperCase() ? 'selected' : ''}>${t}</option>`
+    ).join('');
+
+    return `
+      <div class="card ${ret ? 'retirado' : ''} ${sinStock ? 'sin-stock' : ''} ${bloqueado ? 'bloqueado' : ''}" id="card-${id}">
+        <div class="card-header" onclick="toggleCard(${id})">
+          <div class="check">${ret ? '✓' : ''}</div>
+          <span class="name">${p['Nombre'] || '—'}</span>
+          ${sinStock ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
+          ${currentFilter === 'todos' ? `<span class="tipo-badge ${tipo}">${getTipoLabel(tipo)}</span>` : ''}
+          ${is2da ? '<span class="tanda-badge">2da TANDA</span>' : ''}
+          <span class="talle">${tallePedido}</span>
+          <span class="arrow">${bloqueado ? '🔒' : '▼'}</span>
+        </div>
+        <div class="card-info">
+          <span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
+          <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
+          <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
+        </div>
+        ${p['Notas'] ? `<div class="notas-excel">📝 ${p['Notas']}</div>` : ''}
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Talle que retira</label>
+              <select id="talleRetiro-${id}">
+                ${talleOptions}
+              </select>
+              <div class="talle-original">Pedido original: ${tallePedido}</div>
+            </div>
+            <div class="form-group">
+              <label>Monto pagado al retirar</label>
+              <input type="number" id="pago-${id}" placeholder="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Medio de pago</label>
+              <select id="medio-${id}">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Observación</label>
+              <textarea id="obs-${id}" placeholder="Notas sobre el retiro..."></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            ${ret
+              ? `<button class="btn btn-danger btn-sm" onclick="marcarRetiro(${id}, false)">Desmarcar retiro</button>`
+              : `<button class="btn btn-primary btn-sm" onclick="marcarRetiro(${id}, true)">Marcar como retirado ✓</button>`
+            }
+            ${is2da && !bloqueado && !ret ? `<button class="btn btn-warning btn-sm" onclick="bloquearPedido(${id})">🔒 Bloquear</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  updateKPIs();
+}
+
+function toggleCard(id) {
+  const pedido = PEDIDOS.find(p => p._id === id);
+  if (pedido && isBloqueado(pedido)) {
+    openModalDesbloqueo(id);
+    return;
+  }
+  document.getElementById('card-' + id).classList.toggle('expanded');
+}
+
+async function marcarRetiro(id, retirado) {
+  const pago = Number(document.getElementById('pago-' + id)?.value) || 0;
+  const medio = document.getElementById('medio-' + id)?.value || 'efectivo';
+  const obs = document.getElementById('obs-' + id)?.value || '';
+  const talleRetiro = document.getElementById('talleRetiro-' + id)?.value || '';
+
+  const pedido = PEDIDOS.find(p => p._id === id);
+  if (!pedido) return;
+
+  await saveRetiro(pedido, retirado, pago, medio, obs, talleRetiro);
+}
+
+// ============ KPIs ============
+function updateKPIs() {
+  const filtered = currentFilter === 'todos' ? PEDIDOS :
+    PEDIDOS.filter(p => getTipo(p) === currentFilter);
+
+  const total = filtered.length;
+  const retiradosCount = filtered.filter(p => isRetirado(p)).length;
+
+  let recEfectivo = 0, recTransf = 0, porCobrar = 0;
+  filtered.forEach(p => {
+    recEfectivo += Number(p['Total Efectivo']) || 0;
+    recTransf += Number(p['Total Transferencia']) || 0;
+    porCobrar += Number(p['Resta']) || 0;
+  });
+
+  document.getElementById('kTotalPedidos').textContent = total;
+  document.getElementById('kRetirados').textContent = retiradosCount;
+  document.getElementById('kPendientes').textContent = total - retiradosCount;
+  document.getElementById('kRecaudado').textContent = fmt(recEfectivo + recTransf);
+  document.getElementById('kEfectivo').textContent = fmt(recEfectivo);
+  document.getElementById('kTransf').textContent = fmt(recTransf);
+  document.getElementById('kPorCobrar').textContent = fmt(porCobrar);
+
+  // Per-tanda KPIs (always on full PEDIDOS, not filtered)
+  const t1 = PEDIDOS.filter(p => getTanda(p) !== 'SEGUNDA');
+  const t2 = PEDIDOS.filter(p => getTanda(p) === 'SEGUNDA');
+
+  function tandaStats(arr) {
+    const ped = arr.length;
+    const ret = arr.filter(p => isRetirado(p)).length;
+    let rec = 0, pc = 0;
+    arr.forEach(p => {
+      rec += (Number(p['Total Efectivo']) || 0) + (Number(p['Total Transferencia']) || 0);
+      pc += Number(p['Resta']) || 0;
+    });
+    return { ped, ret, rec, pc };
+  }
+
+  const s1 = tandaStats(t1);
+  const s2 = tandaStats(t2);
+
+  document.getElementById('k1Pedidos').textContent = s1.ped;
+  document.getElementById('k1Retirados').textContent = s1.ret;
+  document.getElementById('k1Recaudado').textContent = fmt(s1.rec);
+  document.getElementById('k1PorCobrar').textContent = fmt(s1.pc);
+
+  document.getElementById('k2Pedidos').textContent = s2.ped;
+  document.getElementById('k2Retirados').textContent = s2.ret;
+  document.getElementById('k2Recaudado').textContent = fmt(s2.rec);
+  document.getElementById('k2PorCobrar').textContent = fmt(s2.pc);
+}
+
 // ============ INIT ============
 checkConfig();
-
-// Load backup first for instant display
 const backup = localStorage.getItem('pedidos_backup');
-if (backup) {
-  try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {}
-}
-
-// Then load fresh from Sheets
-if (SCRIPT_URL) {
-  loadFromSheets();
-}
+if (backup) { try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
+if (SCRIPT_URL) { loadFromSheets(); }
 </script>
 </body>
 </html>
