@@ -460,7 +460,9 @@ async function loadFromSheets() {
         ...p,
         _id: i + 1,
         _sheetRow: p._row,
-        _talleRetiro: p['Talle Retiro'] || ''
+        _talleRetiro: p['Talle Retiro'] || '',
+        _medioPago: p['Medio de Pago Retiro'] || '',
+        _montoRetiro: p['Monto Retiro'] || ''
       }));
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
@@ -509,6 +511,8 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, 
     pedido['Retirado'] = retirado ? 1 : 0;
     pedido['_talleRetiro'] = retirado ? (talleRetiro || pedido['Talle'] || '') : '';
     pedido['_observacionRetiro'] = retirado ? observacion : '';
+    pedido['_medioPago'] = retirado ? medioPago : '';
+    pedido['_montoRetiro'] = retirado ? (Number(pagoRetiro) || 0) : '';
     if (talleRetiro && talleRetiro !== pedido['Talle']) {
       pedido['_talleRetiro'] = talleRetiro;
     }
@@ -768,15 +772,15 @@ function renderList() {
             </div>
             <div class="form-group">
               <label>Monto pagado al retirar</label>
-              <input type="number" id="pago-${id}" placeholder="0">
+              <input type="number" id="pago-${id}" placeholder="0" value="${p['_montoRetiro'] || ''}">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Medio de pago</label>
               <select id="medio-${id}">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
+                <option value="efectivo" ${(p['_medioPago'] || 'efectivo') === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+                <option value="transferencia" ${p['_medioPago'] === 'transferencia' ? 'selected' : ''}>Transferencia</option>
               </select>
             </div>
             <div class="form-group">

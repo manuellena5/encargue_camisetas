@@ -108,14 +108,25 @@ function registrarRetiro(data) {
     const headers = pedidosSheet.getRange(1, 1, 1, pedidosSheet.getLastColumn()).getValues()[0];
     const retiradoCol = headers.indexOf('Retirado') + 1;
     const talleRetiroCol = headers.indexOf('Talle Retiro') + 1;
+    const medioPagoRetiroCol = headers.indexOf('Medio de Pago Retiro') + 1;
+    const montoRetiroCol = headers.indexOf('Monto Retiro') + 1;
 
     if (retiradoCol > 0) {
       pedidosSheet.getRange(data.sheetRow, retiradoCol).setValue(data.retirado ? 1 : 0);
     }
     if (talleRetiroCol > 0) {
-      // Guardar el talle realmente retirado; vaciar si se desmarca
       pedidosSheet.getRange(data.sheetRow, talleRetiroCol).setValue(
         data.retirado ? (data.talleRetiro || data.talle || '') : ''
+      );
+    }
+    if (medioPagoRetiroCol > 0) {
+      pedidosSheet.getRange(data.sheetRow, medioPagoRetiroCol).setValue(
+        data.retirado ? (data.medioPago || '') : ''
+      );
+    }
+    if (montoRetiroCol > 0) {
+      pedidosSheet.getRange(data.sheetRow, montoRetiroCol).setValue(
+        data.retirado ? (Number(data.pagoRetiro) || 0) : ''
       );
     }
   }
