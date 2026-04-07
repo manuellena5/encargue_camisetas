@@ -110,6 +110,7 @@ function registrarRetiro(data) {
     const talleRetiroCol = headers.indexOf('Talle Retiro') + 1;
     const medioPagoRetiroCol = headers.indexOf('Medio de Pago Retiro') + 1;
     const montoRetiroCol = headers.indexOf('Monto Retiro') + 1;
+    const notasRetiroCol = headers.indexOf('Notas Retiro') + 1;
 
     if (retiradoCol > 0) {
       pedidosSheet.getRange(data.sheetRow, retiradoCol).setValue(data.retirado ? 1 : 0);
@@ -127,6 +128,11 @@ function registrarRetiro(data) {
     if (montoRetiroCol > 0) {
       pedidosSheet.getRange(data.sheetRow, montoRetiroCol).setValue(
         data.retirado ? (Number(data.pagoRetiro) || 0) : ''
+      );
+    }
+    if (notasRetiroCol > 0) {
+      pedidosSheet.getRange(data.sheetRow, notasRetiroCol).setValue(
+        data.retirado ? (data.observacion || '') : ''
       );
     }
   }

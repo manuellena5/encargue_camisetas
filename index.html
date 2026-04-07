@@ -483,7 +483,8 @@ async function loadFromSheets() {
         _sheetRow: p._row,
         _talleRetiro: p['Talle Retiro'] || '',
         _medioPago: p['Medio de Pago Retiro'] || '',
-        _montoRetiro: p['Monto Retiro'] || ''
+        _montoRetiro: p['Monto Retiro'] || '',
+        _observacionRetiro: p['Notas Retiro'] || ''
       }));
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
