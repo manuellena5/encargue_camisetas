@@ -65,6 +65,9 @@
     .search-bar { padding: 10px 16px; background: white; border-bottom: 1px solid #eee; }
     .search-bar input { width: 100%; padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; }
     .search-bar input:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.1); }
+    .filter-row { display: flex; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #eee; }
+    .filter-row select { flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; outline: none; background: #f8f9fa; cursor: pointer; }
+    .filter-row select:focus { border-color: #3498db; background: white; }
 
     .section { display: none; }
     .section.active { display: block; }
@@ -259,6 +262,23 @@
 
   <div class="search-bar">
     <input type="text" id="searchInput" placeholder="Buscar por nombre..." oninput="renderList()">
+  </div>
+  <div class="filter-row">
+    <select id="filterTalle" onchange="renderList()">
+      <option value="">Todos los talles</option>
+      <option value="XS">XS</option>
+      <option value="S">S</option>
+      <option value="M">M</option>
+      <option value="L">L</option>
+      <option value="XL">XL</option>
+      <option value="XXL">XXL</option>
+      <option value="Talle unico">Talle único</option>
+    </select>
+    <select id="filterEstado" onchange="renderList()">
+      <option value="todos">Todos los estados</option>
+      <option value="pendientes">Pendientes</option>
+      <option value="retirados">Retirados</option>
+    </select>
   </div>
 
   <div class="list" id="listContainer"></div>
@@ -694,10 +714,19 @@ function confirmarDesbloqueo() {
 // ============ RENDER ============
 function getFiltered() {
   const search = document.getElementById('searchInput').value.toLowerCase();
+  const filterTalle = document.getElementById('filterTalle').value;
+  const filterEstado = document.getElementById('filterEstado').value;
   return PEDIDOS.filter(p => {
     const tipo = getTipo(p);
     if (currentFilter !== 'todos' && tipo !== currentFilter) return false;
     if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
+    if (filterTalle) {
+      const tallePedido = (p['Talle'] || '').toUpperCase();
+      const talleRetiro = (p['_talleRetiro'] || p['Talle Retiro'] || '').toUpperCase();
+      if (tallePedido !== filterTalle.toUpperCase() && talleRetiro !== filterTalle.toUpperCase()) return false;
+    }
+    if (filterEstado === 'retirados' && !isRetirado(p)) return false;
+    if (filterEstado === 'pendientes' && isRetirado(p)) return false;
     return true;
   });
 }
