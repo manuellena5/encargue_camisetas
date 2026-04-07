@@ -653,6 +653,7 @@ function renderStock() {
       const ret = entregadas[tipo][t] || 0;
       let cls = 'ok';
       if (r <= 0) cls = 'out';
+      else if (r < pend) cls = 'out';
       else if (r <= 2) cls = 'low';
       return `<div class="stock-cell ${cls}">
         <div class="talle-label">${t}</div>
