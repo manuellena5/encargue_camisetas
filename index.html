@@ -721,13 +721,20 @@ function getFiltered() {
     const tipo = getTipo(p);
     if (currentFilter !== 'todos' && tipo !== currentFilter) return false;
     if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
-    if (filterTalle) {
-      const tallePedido = (p['Talle'] || '').toUpperCase();
-      const talleRetiro = (p['_talleRetiro'] || p['Talle Retiro'] || '').toUpperCase();
-      if (tallePedido !== filterTalle.toUpperCase() && talleRetiro !== filterTalle.toUpperCase()) return false;
-    }
     if (filterEstado === 'retirados' && !isRetirado(p)) return false;
     if (filterEstado === 'pendientes' && isRetirado(p)) return false;
+    if (filterTalle) {
+      const t = filterTalle.toUpperCase();
+      const tallePedido = (p['Talle'] || '').toUpperCase();
+      const talleRetiro = (p['_talleRetiro'] || p['Talle Retiro'] || '').toUpperCase();
+      if (filterEstado === 'retirados') {
+        if (talleRetiro !== t) return false;
+      } else if (filterEstado === 'pendientes') {
+        if (tallePedido !== t) return false;
+      } else {
+        if (tallePedido !== t && talleRetiro !== t) return false;
+      }
+    }
     return true;
   });
 }
