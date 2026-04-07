@@ -82,7 +82,24 @@
     .tipo-badge.azul { background: #3498db; }
     .tipo-badge.chomba { background: #e67e22; }
     .tipo-badge.short { background: #27ae60; }
-    .tanda-badge { padding: 1px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700; background: #f39c12; color: white; }
+    .tanda-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; background: #f39c12; color: white; letter-spacing: 0.5px; }
+
+    /* BLOCKED 2da tanda */
+    .card.bloqueado { position: relative; }
+    .card.bloqueado .card-header { background: #f5f5f5; }
+    .card.bloqueado .card-info { opacity: 0.5; }
+    .card.bloqueado .name { color: #999; }
+    .card.bloqueado .card-body { display: none !important; }
+    .bloqueado-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1100; }
+    .modal { background: white; border-radius: 16px; padding: 24px; max-width: 340px; width: 90%; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+    .modal h3 { font-size: 1.1rem; margin-bottom: 8px; color: #1a1a2e; }
+    .modal p { font-size: 0.9rem; color: #666; margin-bottom: 20px; }
+    .modal .modal-name { font-weight: 700; color: #f39c12; }
+    .modal-buttons { display: flex; gap: 10px; justify-content: center; }
+    .modal-buttons .btn { min-width: 100px; }
     .card-header .arrow { color: #aaa; transition: transform 0.2s; font-size: 0.75rem; }
     .card.expanded .card-header .arrow { transform: rotate(180deg); }
     .sin-stock-badge { background: #e74c3c; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
@@ -298,6 +315,18 @@
 <button class="config-toggle" onclick="toggleConfig()" title="Configuración">⚙</button>
 <button class="refresh-btn" onclick="loadFromSheets()" title="Recargar datos">↻</button>
 
+<div class="modal-overlay" id="modalDesbloqueo" style="display:none;" onclick="cerrarModal(event)">
+  <div class="modal">
+    <h3>Desbloquear 2da Tanda?</h3>
+    <p>Pedido de <span class="modal-name" id="modalNombre"></span></p>
+    <p style="font-size:0.8rem; color:#999; margin-top:-12px;" id="modalDetalle"></p>
+    <div class="modal-buttons">
+      <button class="btn btn-danger btn-sm" onclick="closeModal()">No</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmarDesbloqueo()">Sí, desbloquear</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="loading-overlay" id="loading" style="display:none;">
   <div class="spinner">Sincronizando<span class="dots"></span></div>
@@ -316,6 +345,8 @@ let PEDIDOS = []; // Loaded from Google Sheet
 let currentSection = 'pedidos';
 let currentFilter = 'todos';
 let SCRIPT_URL = localStorage.getItem('gasUrl') || '';
+let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}'); // { _id: true }
+let pendingUnlockId = null;
 
 // ============ HELPERS ============
 function fmt(n) { return '$' + Number(n).toLocaleString('es-AR'); }
@@ -649,18 +680,19 @@ function renderList() {
     const ret = isRetirado(p);
     const tipo = getTipo(p);
     const sinStock = !ret && !hasStockForPedido(p);
-    const tanda = p['Tanda'] || '';
+    const tanda = (p['Tanda'] || '').toUpperCase();
+    const bloqueado = isBloqueado(p);
 
     return `
-      <div class="card ${ret ? 'retirado' : ''} ${sinStock ? 'sin-stock' : ''}" id="card-${id}">
+      <div class="card ${ret ? 'retirado' : ''} ${sinStock ? 'sin-stock' : ''} ${bloqueado ? 'bloqueado' : ''}" id="card-${id}">
         <div class="card-header" onclick="toggleCard(${id})">
           <div class="check">${ret ? '✓' : ''}</div>
           <span class="name">${p['Nombre'] || '—'}</span>
           ${sinStock ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
           ${currentFilter === 'todos' ? `<span class="tipo-badge ${tipo}">${getTipoLabel(tipo)}</span>` : ''}
-          ${tanda === 'SEGUNDA' ? '<span class="tanda-badge">2da</span>' : ''}
+          ${tanda === 'SEGUNDA' ? '<span class="tanda-badge">2da TANDA</span>' : ''}
           <span class="talle">${p['Talle'] || '—'}</span>
-          <span class="arrow">▼</span>
+          <span class="arrow">${bloqueado ? '🔒' : '▼'}</span>
         </div>
         <div class="card-info">
           <span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
@@ -703,6 +735,11 @@ function renderList() {
 }
 
 function toggleCard(id) {
+  const pedido = PEDIDOS.find(p => p._id === id);
+  if (pedido && isBloqueado(pedido)) {
+    openModalDesbloqueo(id);
+    return;
+  }
   document.getElementById('card-' + id).classList.toggle('expanded');
 }
 
@@ -737,6 +774,46 @@ function updateStatus() {
   document.getElementById('totalRecaudado').textContent = fmt(recEfectivo + recTransf);
   document.getElementById('totalEfectivo').textContent = fmt(recEfectivo);
   document.getElementById('totalTransf').textContent = fmt(recTransf);
+}
+
+// ============ MODAL DESBLOQUEO 2DA TANDA ============
+function isBloqueado(p) {
+  const tanda = (p['Tanda'] || '').toUpperCase();
+  return tanda === 'SEGUNDA' && !desbloqueados[p._id] && !isRetirado(p);
+}
+
+function openModalDesbloqueo(id) {
+  const p = PEDIDOS.find(x => x._id === id);
+  if (!p) return;
+  pendingUnlockId = id;
+  document.getElementById('modalNombre').textContent = p['Nombre'] || '—';
+  document.getElementById('modalDetalle').textContent =
+    `${getTipoLabel(getTipo(p))} - Talle ${p['Talle'] || '—'} - Resta ${fmt(p['Resta'] || 0)}`;
+  document.getElementById('modalDesbloqueo').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modalDesbloqueo').style.display = 'none';
+  pendingUnlockId = null;
+}
+
+function cerrarModal(e) {
+  if (e.target === document.getElementById('modalDesbloqueo')) closeModal();
+}
+
+function confirmarDesbloqueo() {
+  if (pendingUnlockId) {
+    desbloqueados[pendingUnlockId] = true;
+    localStorage.setItem('desbloqueados', JSON.stringify(desbloqueados));
+    renderAll();
+    showToast('Pedido desbloqueado');
+    // Open the card automatically
+    setTimeout(() => {
+      const card = document.getElementById('card-' + pendingUnlockId);
+      if (card && !card.classList.contains('expanded')) card.classList.add('expanded');
+      closeModal();
+    }, 100);
+  }
 }
 
 // ============ INIT ============
