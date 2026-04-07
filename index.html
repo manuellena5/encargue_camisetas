@@ -606,20 +606,22 @@ async function submitNuevoPedido() {
 // ============ STOCK ============
 function calcStock() {
   const entregadas = { blanca: {}, azul: {} };
-  const pedidas = { blanca: {}, azul: {} };
+  const pendientes = { blanca: {}, azul: {} };
 
   PEDIDOS.forEach(p => {
     const tipo = getTipo(p);
     if (tipo !== 'blanca' && tipo !== 'azul') return;
     const t = (p['Talle'] || '').toUpperCase();
     if (!TALLES_ORDER.includes(t)) return;
-    pedidas[tipo][t] = (pedidas[tipo][t] || 0) + 1;
     if (isRetirado(p)) {
-      // Use talleRetiro if a different talle was picked up
+      // cuenta por talle efectivamente retirado
       const tr = (p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
       if (TALLES_ORDER.includes(tr)) {
         entregadas[tipo][tr] = (entregadas[tipo][tr] || 0) + 1;
       }
+    } else {
+      // pendiente: cuenta por talle pedido
+      pendientes[tipo][t] = (pendientes[tipo][t] || 0) + 1;
     }
   });
 
@@ -629,7 +631,7 @@ function calcStock() {
       remaining[tipo][t] = (STOCK_INICIAL[tipo][t] || 0) - (entregadas[tipo][t] || 0);
     });
   });
-  return { remaining, pedidas, entregadas };
+  return { remaining, pendientes, entregadas };
 }
 
 function hasStockForPedido(p) {
@@ -641,15 +643,14 @@ function hasStockForPedido(p) {
 }
 
 function renderStock() {
-  const { remaining, pedidas, entregadas } = calcStock();
+  const { remaining, pendientes, entregadas } = calcStock();
   ['blanca', 'azul'].forEach(tipo => {
     const container = document.getElementById(tipo === 'blanca' ? 'stockBlanca' : 'stockAzul');
     container.innerHTML = TALLES_ORDER.map(t => {
       const r = remaining[tipo][t];
       const stk = STOCK_INICIAL[tipo][t];
-      const ped = pedidas[tipo][t] || 0;
+      const pend = pendientes[tipo][t] || 0;
       const ret = entregadas[tipo][t] || 0;
-      const pend = ped - ret;
       let cls = 'ok';
       if (r <= 0) cls = 'out';
       else if (r <= 2) cls = 'low';
@@ -658,7 +659,7 @@ function renderStock() {
         <div class="stock-num">${r}</div>
         <div class="stock-num-label">Stk actual</div>
         <div class="stock-detail">Orig: ${stk}</div>
-        <div class="stock-detail">Retiros ${ret}/${pend} Pend.</div>
+        <div class="stock-detail">Retiros ${ret} / ${pend} Pend.</div>
       </div>`;
     }).join('');
   });
