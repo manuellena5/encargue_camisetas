@@ -459,7 +459,8 @@ async function loadFromSheets() {
       PEDIDOS = (data.pedidos || []).map((p, i) => ({
         ...p,
         _id: i + 1,
-        _sheetRow: p._row
+        _sheetRow: p._row,
+        _talleRetiro: p['Talle Retiro'] || ''
       }));
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
