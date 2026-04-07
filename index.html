@@ -6,57 +6,64 @@
   <title>Gestión Camisetas - Club</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #1a1a2e; padding-bottom: 80px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #1a1a2e; padding-bottom: 100px; }
 
-    .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px 24px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-    .header h1 { font-size: 1.5rem; font-weight: 700; }
-    .header .subtitle { font-size: 0.85rem; opacity: 0.7; margin-top: 4px; }
+    .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 18px 24px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .header h1 { font-size: 1.4rem; font-weight: 700; }
+    .header .subtitle { font-size: 0.8rem; opacity: 0.7; margin-top: 3px; }
 
     /* STATUS BAR */
-    .status-bar { display: flex; justify-content: center; gap: 16px; padding: 12px 16px; background: white; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
-    .status-item { text-align: center; min-width: 70px; }
-    .status-item .num { font-size: 1.3rem; font-weight: 700; }
-    .status-item .label { font-size: 0.7rem; color: #666; }
+    .status-bar { display: flex; justify-content: center; gap: 12px; padding: 10px 12px; background: white; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+    .status-item { text-align: center; min-width: 60px; }
+    .status-item .num { font-size: 1.2rem; font-weight: 700; }
+    .status-item .label { font-size: 0.65rem; color: #666; }
     .status-item.retirados .num { color: #27ae60; }
     .status-item.pendientes .num { color: #e67e22; }
     .status-item.efectivo .num { color: #8e44ad; }
     .status-item.transf .num { color: #2980b9; }
 
     /* STOCK PANEL */
-    .stock-panel { background: white; border-bottom: 1px solid #e0e0e0; padding: 12px 16px; }
-    .stock-panel h3 { font-size: 0.85rem; margin-bottom: 8px; color: #333; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .stock-panel { background: white; border-bottom: 1px solid #e0e0e0; padding: 10px 16px; }
+    .stock-panel h3 { font-size: 0.85rem; margin-bottom: 8px; color: #333; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; }
     .stock-panel h3 .arrow { font-size: 0.7rem; transition: transform 0.2s; }
     .stock-panel.collapsed .stock-content { display: none; }
     .stock-panel.collapsed h3 .arrow { transform: rotate(-90deg); }
-    .stock-tables { display: flex; gap: 16px; flex-wrap: wrap; }
-    .stock-table { flex: 1; min-width: 250px; }
-    .stock-table h4 { font-size: 0.8rem; margin-bottom: 6px; padding: 4px 8px; border-radius: 4px; color: white; }
+    .stock-tables { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stock-table { flex: 1; min-width: 220px; }
+    .stock-table h4 { font-size: 0.75rem; margin-bottom: 4px; padding: 3px 8px; border-radius: 4px; color: white; }
     .stock-table h4.blanca-title { background: #95a5a6; }
     .stock-table h4.azul-title { background: #3498db; }
-    .stock-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-    .stock-cell { text-align: center; padding: 6px 4px; border-radius: 6px; background: #f8f9fa; border: 1px solid #eee; }
-    .stock-cell .talle-label { font-size: 0.65rem; color: #888; font-weight: 600; }
-    .stock-cell .stock-num { font-size: 1rem; font-weight: 700; }
+    .stock-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+    .stock-cell { text-align: center; padding: 4px 2px; border-radius: 6px; background: #f8f9fa; border: 1px solid #eee; }
+    .stock-cell .talle-label { font-size: 0.6rem; color: #888; font-weight: 600; }
+    .stock-cell .stock-num { font-size: 0.95rem; font-weight: 700; }
     .stock-cell.ok .stock-num { color: #27ae60; }
     .stock-cell.low .stock-num { color: #e67e22; }
     .stock-cell.out .stock-num { color: #e74c3c; }
     .stock-cell.out { background: #fdf0f0; border-color: #f5c6cb; }
-    .stock-cell .stock-detail { font-size: 0.6rem; color: #999; }
+    .stock-cell .stock-detail { font-size: 0.55rem; color: #999; }
 
-    /* TABS */
-    .tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; position: sticky; top: 68px; z-index: 99; }
-    .tab { flex: 1; padding: 14px 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.9rem; border-bottom: 3px solid transparent; transition: all 0.2s; color: #666; }
-    .tab:hover { background: #f8f9fa; }
-    .tab.active { color: #1a1a2e; border-bottom-color: #3498db; }
-    .tab.blanca.active { border-bottom-color: #95a5a6; }
-    .tab.azul.active { border-bottom-color: #3498db; }
-    .tab.todos.active { border-bottom-color: #9b59b6; }
-    .tab .badge { display: inline-block; background: #e0e0e0; color: #555; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-left: 4px; }
+    /* MAIN TABS (sections) */
+    .main-tabs { display: flex; background: #1a1a2e; }
+    .main-tab { flex: 1; padding: 10px 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: rgba(255,255,255,0.5); transition: all 0.2s; border-bottom: 3px solid transparent; }
+    .main-tab:hover { color: rgba(255,255,255,0.8); }
+    .main-tab.active { color: white; border-bottom-color: #f39c12; }
+
+    /* SUB TABS (product filter) */
+    .sub-tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; overflow-x: auto; }
+    .sub-tab { padding: 10px 12px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.8rem; border-bottom: 3px solid transparent; transition: all 0.2s; color: #888; white-space: nowrap; flex-shrink: 0; }
+    .sub-tab:hover { background: #f8f9fa; }
+    .sub-tab.active { color: #1a1a2e; border-bottom-color: #3498db; }
+    .sub-tab .badge { display: inline-block; background: #e0e0e0; color: #555; font-size: 0.65rem; padding: 1px 6px; border-radius: 10px; margin-left: 3px; }
 
     /* SEARCH */
-    .search-bar { padding: 12px 16px; background: white; border-bottom: 1px solid #eee; }
-    .search-bar input { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; outline: none; }
+    .search-bar { padding: 10px 16px; background: white; border-bottom: 1px solid #eee; }
+    .search-bar input { width: 100%; padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; }
     .search-bar input:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.1); }
+
+    /* SECTION CONTAINERS */
+    .section { display: none; }
+    .section.active { display: block; }
 
     /* CARDS */
     .list { padding: 8px; }
@@ -65,66 +72,84 @@
     .card.retirado .card-header { background: #d5f5e3; }
     .card.sin-stock .card-header { background: #fef3e2; }
     .card.sin-stock.retirado .card-header { background: #d5f5e3; }
-
-    .card-header { display: flex; align-items: center; padding: 14px 16px; gap: 12px; cursor: pointer; }
-    .card-header .check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; font-size: 0.8rem; }
+    .card-header { display: flex; align-items: center; padding: 12px 14px; gap: 10px; cursor: pointer; }
+    .card-header .check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; font-size: 0.75rem; }
     .card.retirado .card-header .check { background: #27ae60; border-color: #27ae60; color: white; }
-    .card-header .name { font-weight: 600; font-size: 1rem; flex: 1; }
-    .card-header .talle { background: #eee; padding: 2px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
-    .card-header .tipo-badge { padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; color: white; }
+    .card-header .name { font-weight: 600; font-size: 0.95rem; flex: 1; }
+    .card-header .talle { background: #eee; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    .tipo-badge { padding: 2px 7px; border-radius: 6px; font-size: 0.65rem; font-weight: 700; color: white; }
     .tipo-badge.blanca { background: #95a5a6; }
     .tipo-badge.azul { background: #3498db; }
-    .card-header .arrow { color: #aaa; transition: transform 0.2s; font-size: 0.8rem; }
+    .tipo-badge.chomba { background: #e67e22; }
+    .tipo-badge.short { background: #27ae60; }
+    .tanda-badge { padding: 1px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700; background: #f39c12; color: white; }
+    .card-header .arrow { color: #aaa; transition: transform 0.2s; font-size: 0.75rem; }
     .card.expanded .card-header .arrow { transform: rotate(180deg); }
+    .sin-stock-badge { background: #e74c3c; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
 
-    .sin-stock-badge { background: #e74c3c; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
-
-    .card-info { display: flex; gap: 16px; padding: 0 16px 10px 52px; font-size: 0.85rem; color: #666; flex-wrap: wrap; }
+    .card-info { display: flex; gap: 12px; padding: 0 14px 8px 48px; font-size: 0.8rem; color: #666; flex-wrap: wrap; }
     .card-info span { white-space: nowrap; }
     .card-info .val { font-weight: 600; color: #333; }
 
-    .card-body { display: none; padding: 0 16px 16px 16px; border-top: 1px solid #f0f0f0; }
+    .card-body { display: none; padding: 0 14px 14px 14px; border-top: 1px solid #f0f0f0; }
     .card.expanded .card-body { display: block; }
 
-    .form-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: end; }
-    .form-group { flex: 1; min-width: 120px; }
-    .form-group label { display: block; font-size: 0.75rem; color: #666; margin-bottom: 4px; font-weight: 600; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
-    .form-group textarea { resize: vertical; min-height: 40px; }
+    .form-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; align-items: end; }
+    .form-group { flex: 1; min-width: 110px; }
+    .form-group label { display: block; font-size: 0.7rem; color: #666; margin-bottom: 3px; font-weight: 600; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
+    .form-group textarea { resize: vertical; min-height: 38px; }
 
-    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
     .btn-primary { background: #27ae60; color: white; }
     .btn-primary:hover { background: #219a52; }
     .btn-danger { background: #e74c3c; color: white; }
     .btn-danger:hover { background: #c0392b; }
+    .btn-blue { background: #3498db; color: white; }
+    .btn-blue:hover { background: #2980b9; }
     .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .notas-excel { font-size: 0.75rem; color: #e67e22; font-style: italic; padding-left: 48px; padding-bottom: 6px; }
 
-    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    /* NEW ORDER FORM */
+    .new-order-form { padding: 16px; max-width: 500px; margin: 0 auto; }
+    .new-order-form h2 { font-size: 1.1rem; margin-bottom: 16px; color: #1a1a2e; }
+    .new-order-form .form-group { margin-bottom: 14px; min-width: 100%; }
+    .new-order-form .form-group label { font-size: 0.8rem; }
+    .new-order-form .form-group input,
+    .new-order-form .form-group select,
+    .new-order-form .form-group textarea { font-size: 0.95rem; padding: 10px 12px; }
+    .new-order-form .btn { width: 100%; padding: 14px; font-size: 1rem; margin-top: 8px; }
+    .success-msg { background: #d5f5e3; color: #27ae60; padding: 12px 16px; border-radius: 8px; text-align: center; font-weight: 600; margin-top: 12px; display: none; }
 
-    .notas-excel { font-size: 0.8rem; color: #e67e22; font-style: italic; margin-top: 2px; padding-left: 52px; padding-bottom: 8px; }
-
-    /* LOADING & TOAST */
+    /* LOADING & TOAST & CONFIG */
     .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .loading-overlay .spinner { background: white; padding: 24px 32px; border-radius: 12px; text-align: center; font-weight: 600; }
     .loading-overlay .dots::after { content: ''; animation: dots 1.5s infinite; }
     @keyframes dots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
 
     .config-panel { padding: 16px; background: #fff3cd; border-bottom: 1px solid #ffc107; text-align: center; }
-    .config-panel input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 70%; max-width: 400px; font-size: 0.85rem; }
-    .config-panel .btn { margin-top: 8px; }
+    .config-panel input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 80%; max-width: 450px; font-size: 0.85rem; }
     .config-panel p { font-size: 0.85rem; margin-bottom: 8px; }
 
-    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; z-index: 1001; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1001; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
     .toast.show { opacity: 1; }
 
+    .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty-state p { font-size: 0.9rem; }
+
+    .refresh-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #1a1a2e; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .refresh-btn:hover { background: #2c3e50; }
+
     @media (max-width: 600px) {
-      .tabs { position: static; }
-      .header h1 { font-size: 1.2rem; }
-      .card-info { padding-left: 16px; }
-      .notas-excel { padding-left: 16px; }
-      .status-bar { gap: 8px; padding: 10px 8px; }
-      .status-item { min-width: 55px; }
-      .status-item .num { font-size: 1.1rem; }
+      .header h1 { font-size: 1.15rem; }
+      .card-info { padding-left: 14px; }
+      .notas-excel { padding-left: 14px; }
+      .status-bar { gap: 6px; padding: 8px 6px; }
+      .status-item { min-width: 48px; }
+      .status-item .num { font-size: 1rem; }
       .stock-grid { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
@@ -132,35 +157,17 @@
 <body>
 
 <div class="header">
-  <h1>Gestión Camisetas del Club</h1>
-  <div class="subtitle">Control de pedidos, retiros y stock</div>
+  <h1>Gestión Prendas del Club</h1>
+  <div class="subtitle">Pedidos, retiros y stock</div>
 </div>
 
-<div class="status-bar" id="statusBar">
-  <div class="status-item"><div class="num" id="totalPedidos">0</div><div class="label">Pedidos</div></div>
-  <div class="status-item retirados"><div class="num" id="totalRetirados">0</div><div class="label">Retirados</div></div>
-  <div class="status-item pendientes"><div class="num" id="totalPendientes">0</div><div class="label">Pendientes</div></div>
-  <div class="status-item"><div class="num" id="totalRecaudado">$0</div><div class="label">Recaudado</div></div>
-  <div class="status-item efectivo"><div class="num" id="totalEfectivo">$0</div><div class="label">Efectivo</div></div>
-  <div class="status-item transf"><div class="num" id="totalTransf">$0</div><div class="label">Transferencia</div></div>
+<!-- MAIN NAVIGATION -->
+<div class="main-tabs">
+  <div class="main-tab active" onclick="switchSection('pedidos')">Pedidos y Retiros</div>
+  <div class="main-tab" onclick="switchSection('nuevo')">Nuevo Pedido</div>
 </div>
 
-<div class="stock-panel" id="stockPanel">
-  <h3 onclick="toggleStock()"><span class="arrow">▼</span> Stock de Camisetas</h3>
-  <div class="stock-content">
-    <div class="stock-tables">
-      <div class="stock-table">
-        <h4 class="blanca-title">CAMISETA BLANCA</h4>
-        <div class="stock-grid" id="stockBlanca"></div>
-      </div>
-      <div class="stock-table">
-        <h4 class="azul-title">CAMISETA AZUL</h4>
-        <div class="stock-grid" id="stockAzul"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
+<!-- CONFIG -->
 <div id="configPanel" class="config-panel" style="display:none;">
   <p><strong>Configuración:</strong> Pegá la URL de tu Google Apps Script Web App</p>
   <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/...../exec">
@@ -168,139 +175,188 @@
   <button class="btn btn-primary btn-sm" onclick="saveConfig()" style="margin-top:8px;">Guardar y Conectar</button>
 </div>
 
-<div class="tabs">
-  <div class="tab blanca active" onclick="switchTab('blanca')">BLANCA <span class="badge" id="badgeBlanca">0</span></div>
-  <div class="tab azul" onclick="switchTab('azul')">AZUL <span class="badge" id="badgeAzul">0</span></div>
-  <div class="tab todos" onclick="switchTab('todos')">TODOS <span class="badge" id="badgeTodos">0</span></div>
+<!-- ========== SECTION: PEDIDOS Y RETIROS ========== -->
+<div class="section active" id="sectionPedidos">
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-item"><div class="num" id="totalPedidos">0</div><div class="label">Pedidos</div></div>
+    <div class="status-item retirados"><div class="num" id="totalRetirados">0</div><div class="label">Retirados</div></div>
+    <div class="status-item pendientes"><div class="num" id="totalPendientes">0</div><div class="label">Pendientes</div></div>
+    <div class="status-item"><div class="num" id="totalRecaudado">$0</div><div class="label">Recaudado</div></div>
+    <div class="status-item efectivo"><div class="num" id="totalEfectivo">$0</div><div class="label">Efectivo</div></div>
+    <div class="status-item transf"><div class="num" id="totalTransf">$0</div><div class="label">Transferencia</div></div>
+  </div>
+
+  <div class="stock-panel" id="stockPanel">
+    <h3 onclick="toggleStock()"><span class="arrow">▼</span> Stock de Camisetas</h3>
+    <div class="stock-content">
+      <div class="stock-tables">
+        <div class="stock-table">
+          <h4 class="blanca-title">CAMISETA BLANCA</h4>
+          <div class="stock-grid" id="stockBlanca"></div>
+        </div>
+        <div class="stock-table">
+          <h4 class="azul-title">CAMISETA AZUL</h4>
+          <div class="stock-grid" id="stockAzul"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-tabs" id="subTabs">
+    <div class="sub-tab active" data-filter="todos" onclick="switchFilter('todos')">TODOS <span class="badge" id="badgeTodos">0</span></div>
+    <div class="sub-tab" data-filter="blanca" onclick="switchFilter('blanca')">BLANCA <span class="badge" id="badgeBlanca">0</span></div>
+    <div class="sub-tab" data-filter="azul" onclick="switchFilter('azul')">AZUL <span class="badge" id="badgeAzul">0</span></div>
+    <div class="sub-tab" data-filter="chomba" onclick="switchFilter('chomba')">CHOMBA <span class="badge" id="badgeChomba">0</span></div>
+    <div class="sub-tab" data-filter="short" onclick="switchFilter('short')">SHORT <span class="badge" id="badgeShort">0</span></div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Buscar por nombre..." oninput="renderList()">
+  </div>
+
+  <div class="list" id="listContainer"></div>
 </div>
 
-<div class="search-bar">
-  <input type="text" id="searchInput" placeholder="Buscar por nombre..." oninput="renderList()">
+<!-- ========== SECTION: NUEVO PEDIDO ========== -->
+<div class="section" id="sectionNuevo">
+  <div class="new-order-form">
+    <h2>Registrar Nuevo Pedido</h2>
+
+    <div class="form-group">
+      <label>Nombre</label>
+      <input type="text" id="np_nombre" placeholder="Nombre completo">
+    </div>
+
+    <div class="form-group">
+      <label>Tipo de prenda</label>
+      <select id="np_tipo">
+        <option value="">Seleccionar...</option>
+        <option value="Camiseta Blanca">Camiseta Blanca</option>
+        <option value="Camiseta Azul">Camiseta Azul</option>
+        <option value="Chomba">Chomba</option>
+        <option value="Short">Short</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Talle</label>
+      <select id="np_talle">
+        <option value="">Seleccionar...</option>
+        <option value="XS">XS</option>
+        <option value="S">S</option>
+        <option value="M">M</option>
+        <option value="L">L</option>
+        <option value="XL">XL</option>
+        <option value="XXL">XXL</option>
+        <option value="Talle unico">Talle único</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Seña</label>
+        <input type="number" id="np_seña" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Total</label>
+        <input type="number" id="np_total" placeholder="0">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Modo de pago</label>
+      <select id="np_modoPago">
+        <option value="Efectivo">Efectivo</option>
+        <option value="Transferencia">Transferencia</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Nota</label>
+      <textarea id="np_nota" placeholder="Observaciones..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Tanda</label>
+      <input type="text" id="np_tanda" value="SEGUNDA" readonly style="background:#f0f0f0;">
+    </div>
+
+    <button class="btn btn-blue" id="btnNuevoPedido" onclick="submitNuevoPedido()">Registrar Pedido</button>
+    <div class="success-msg" id="successMsg">Pedido registrado correctamente</div>
+  </div>
 </div>
 
-<div class="list" id="listContainer"></div>
+<!-- FLOATING REFRESH -->
+<button class="refresh-btn" onclick="loadFromSheets()" title="Recargar datos">↻</button>
 
 <div class="toast" id="toast"></div>
-
 <div class="loading-overlay" id="loading" style="display:none;">
   <div class="spinner">Sincronizando<span class="dots"></span></div>
 </div>
 
 <script>
-// ============ STOCK INICIAL ============
+// ============ STOCK INICIAL (solo camisetas) ============
 const STOCK_INICIAL = {
   blanca: { XS: 2, S: 6, M: 6, L: 6, XL: 6, XXL: 2 },
   azul:   { XS: 2, S: 4, M: 4, L: 4, XL: 4, XXL: 2 }
 };
 const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
-// ============ DATA FROM EXCEL ============
-const PEDIDOS = [
-  { id: 1, nombre: "Martinez Pollo", blanca: 1, azul: 0, talle: "M", seña: 70000, total: 70000, resta: 0, notas: "" },
-  { id: 2, nombre: "Casas Jonatan", blanca: 0, azul: 1, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 3, nombre: "Nicolas Pezzi", blanca: 0, azul: 1, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 4, nombre: "Nicolas Pezzi", blanca: 0, azul: 1, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 5, nombre: "Nicolas Pezzi", blanca: 0, azul: 1, talle: "XXL", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 6, nombre: "Nicolas Pezzi", blanca: 0, azul: 1, talle: "XL", seña: 35000, total: 70000, resta: 35000, notas: "mujer" },
-  { id: 7, nombre: "Nicolas Pezzi", blanca: 0, azul: 1, talle: "S", seña: 35000, total: 70000, resta: 35000, notas: "mujer" },
-  { id: 8, nombre: "Calandra Francisco", blanca: 1, azul: 0, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 9, nombre: "Gamarino Emi", blanca: 1, azul: 0, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 10, nombre: "Calandra Juan Cruz", blanca: 1, azul: 0, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 11, nombre: "Matias Michelin", blanca: 1, azul: 0, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 12, nombre: "Matias Michelin", blanca: 0, azul: 1, talle: "M", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 13, nombre: "Nacho Lovera", blanca: 1, azul: 0, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 14, nombre: "Benzel Gustavo", blanca: 0, azul: 1, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 15, nombre: "Malandra Camila", blanca: 1, azul: 0, talle: "M", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 16, nombre: "Vijarra Fede", blanca: 1, azul: 0, talle: "L", seña: 60000, total: 60000, resta: 0, notas: "" },
-  { id: 17, nombre: "Franco Dario", blanca: 0, azul: 1, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 18, nombre: "Balde Giuliana", blanca: 0, azul: 1, talle: "M", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 19, nombre: "Gribaudo Pablo", blanca: 1, azul: 0, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 20, nombre: "Gribaudo Pablo", blanca: 1, azul: 0, talle: "XL", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 21, nombre: "Lopez Roman", blanca: 0, azul: 1, talle: "M", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 22, nombre: "Fossarelli Antonio", blanca: 0, azul: 1, talle: "L", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 23, nombre: "Martinez Nahuel", blanca: 1, azul: 0, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 24, nombre: "Retamosa Jose", blanca: 1, azul: 0, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 25, nombre: "Gerlero Matias", blanca: 1, azul: 0, talle: "M", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 26, nombre: "Depetris Nicolas", blanca: 0, azul: 1, talle: "XXL", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 27, nombre: "Villarruel Daniel", blanca: 0, azul: 1, talle: "S", seña: 30000, total: 60000, resta: 30000, notas: "" },
-  { id: 28, nombre: "Del Valle Jona", blanca: 0, azul: 1, talle: "M", seña: 35000, total: 0, resta: 0, notas: "A descontar" },
-  { id: 29, nombre: "Baresco Omar", blanca: 1, azul: 0, talle: "XXL", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 30, nombre: "Michelin Max", blanca: 1, azul: 0, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 31, nombre: "Michelin Max", blanca: 1, azul: 0, talle: "XL", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 32, nombre: "Lazzo Nicolas", blanca: 0, azul: 1, talle: "XL", seña: 0, total: 0, resta: 0, notas: "" },
-  { id: 33, nombre: "Ariel Figueroa", blanca: 1, azul: 0, talle: "XL", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 34, nombre: "Emi Peralta", blanca: 0, azul: 1, talle: "XL", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 35, nombre: "Yamil Granero", blanca: 1, azul: 0, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 36, nombre: "Hugo Mena", blanca: 1, azul: 0, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 37, nombre: "Paco Balde", blanca: 0, azul: 1, talle: "M", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 38, nombre: "Mariscotti Andres", blanca: 0, azul: 1, talle: "M", seña: 35000, total: 70000, resta: 35000, notas: "" },
-  { id: 39, nombre: "Mariscotti Andres", blanca: 0, azul: 1, talle: "L", seña: 35000, total: 70000, resta: 35000, notas: "mujer" }
-];
-
 // ============ STATE ============
-let retiros = {};
-let currentTab = 'blanca';
+let PEDIDOS = []; // Loaded from Google Sheet
+let currentSection = 'pedidos';
+let currentFilter = 'todos';
 let SCRIPT_URL = localStorage.getItem('gasUrl') || '';
 
-// ============ STOCK CALCULATION ============
-function calcStock() {
-  // Count how many have been picked up (retirado) per type+talle
-  const entregadas = { blanca: {}, azul: {} };
-  const pedidas = { blanca: {}, azul: {} };
+// ============ HELPERS ============
+function fmt(n) { return '$' + Number(n).toLocaleString('es-AR'); }
 
-  PEDIDOS.forEach(p => {
-    const tipo = p.blanca ? 'blanca' : 'azul';
-    const t = p.talle.toUpperCase();
-    pedidas[tipo][t] = (pedidas[tipo][t] || 0) + 1;
-    if (retiros[p.id]?.retirado) {
-      entregadas[tipo][t] = (entregadas[tipo][t] || 0) + 1;
-    }
-  });
-
-  const remaining = { blanca: {}, azul: {} };
-  ['blanca', 'azul'].forEach(tipo => {
-    TALLES_ORDER.forEach(t => {
-      const stock = STOCK_INICIAL[tipo][t] || 0;
-      const entregado = entregadas[tipo][t] || 0;
-      remaining[tipo][t] = stock - entregado;
-    });
-  });
-
-  return { remaining, pedidas, entregadas };
+function getTipo(p) {
+  if (Number(p['BLANCA']) === 1) return 'blanca';
+  if (Number(p['AZUL']) === 1) return 'azul';
+  if (Number(p['CHOMBA']) === 1) return 'chomba';
+  if (Number(p['SHORT']) === 1) return 'short';
+  return 'otro';
 }
 
-function hasStockForPedido(p) {
-  // SIN STOCK solo cuando el stock restante (inicial - ya retirados) llega a 0
-  const { remaining } = calcStock();
-  const tipo = p.blanca ? 'blanca' : 'azul';
-  const t = p.talle.toUpperCase();
-  return remaining[tipo][t] > 0;
+function getTipoLabel(tipo) {
+  const map = { blanca: 'BLANCA', azul: 'AZUL', chomba: 'CHOMBA', short: 'SHORT' };
+  return map[tipo] || tipo.toUpperCase();
 }
 
-function renderStock() {
-  const { remaining, pedidas } = calcStock();
+function isRetirado(p) {
+  return Number(p['Retirado']) === 1 || p['Retirado'] === true || p['Retirado'] === 'TRUE';
+}
 
-  ['blanca', 'azul'].forEach(tipo => {
-    const container = document.getElementById(tipo === 'blanca' ? 'stockBlanca' : 'stockAzul');
-    container.innerHTML = TALLES_ORDER.map(t => {
-      const r = remaining[tipo][t];
-      const total = STOCK_INICIAL[tipo][t];
-      const pedido = pedidas[tipo][t] || 0;
-      let cls = 'ok';
-      if (r <= 0) cls = 'out';
-      else if (r <= 2) cls = 'low';
+function showLoading(show) {
+  document.getElementById('loading').style.display = show ? 'flex' : 'none';
+}
 
-      return `<div class="stock-cell ${cls}">
-        <div class="talle-label">${t}</div>
-        <div class="stock-num">${r}</div>
-        <div class="stock-detail">${total} ini / ${pedido} ped</div>
-      </div>`;
-    }).join('');
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============ SECTION NAVIGATION ============
+function switchSection(section) {
+  currentSection = section;
+  document.querySelectorAll('.main-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && section === 'pedidos') || (i === 1 && section === 'nuevo'));
   });
+  document.getElementById('sectionPedidos').classList.toggle('active', section === 'pedidos');
+  document.getElementById('sectionNuevo').classList.toggle('active', section === 'nuevo');
 }
 
-function toggleStock() {
-  document.getElementById('stockPanel').classList.toggle('collapsed');
+function switchFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.sub-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.filter === filter);
+  });
+  renderList();
+  updateStatus();
 }
 
 // ============ CONFIG ============
@@ -318,60 +374,58 @@ function saveConfig() {
   showToast('Conectado correctamente');
 }
 
-// ============ GOOGLE SHEETS SYNC ============
-function showLoading(show) {
-  document.getElementById('loading').style.display = show ? 'flex' : 'none';
-}
-
+// ============ GOOGLE SHEETS: LOAD ============
 async function loadFromSheets() {
   if (!SCRIPT_URL) return;
   try {
     showLoading(true);
     const res = await fetch(SCRIPT_URL + '?action=getAll');
     const data = await res.json();
-    if (data.status === 'ok' && data.retiros) {
-      retiros = {};
-      data.retiros.forEach(r => {
-        retiros[r.id] = {
-          retirado: r.retirado === true || r.retirado === 'true' || r.retirado === 'TRUE',
-          pago: Number(r.pago) || 0,
-          medioPago: r.medioPago || 'efectivo',
-          observacion: r.observacion || '',
-          fecha: r.fecha || ''
-        };
-      });
+    if (data.status === 'ok') {
+      // Map pedidos from sheet, assign an internal id based on row
+      PEDIDOS = (data.pedidos || []).map((p, i) => ({
+        ...p,
+        _id: i + 1, // internal id
+        _sheetRow: p._row // actual row number in sheet
+      }));
+      localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
+      showToast('Datos actualizados');
     }
   } catch (e) {
-    console.error('Error loading from sheets:', e);
-    showToast('Error al conectar con Google Sheets');
+    console.error('Error loading:', e);
+    // Try local backup
+    const backup = localStorage.getItem('pedidos_backup');
+    if (backup) {
+      try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(ex) {}
+    }
+    showToast('Error al conectar. Usando datos locales.');
   } finally {
     showLoading(false);
   }
 }
 
-async function saveToSheets(id, data) {
-  if (!SCRIPT_URL) {
-    showToast('Configurá la URL de Google Apps Script primero');
-    return;
-  }
+// ============ GOOGLE SHEETS: SAVE RETIRO ============
+async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion) {
+  if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
   try {
     showLoading(true);
-    const pedido = PEDIDOS.find(p => p.id === id);
+    const tipo = getTipo(pedido);
     const payload = {
-      action: 'update',
-      id: id,
-      nombre: pedido.nombre,
-      talle: pedido.talle,
-      tipo: pedido.blanca ? 'BLANCA' : 'AZUL',
-      retirado: data.retirado,
-      pago: data.pago,
-      medioPago: data.medioPago,
-      observacion: data.observacion,
-      fecha: data.fecha,
-      seña: pedido.seña,
-      total: pedido.total,
-      resta: pedido.resta
+      action: 'registrarRetiro',
+      id: pedido._id,
+      sheetRow: pedido._sheetRow,
+      nombre: pedido['Nombre'] || '',
+      talle: pedido['Talle'] || '',
+      tipo: getTipoLabel(tipo),
+      retirado: retirado,
+      pagoRetiro: pagoRetiro,
+      medioPago: medioPago,
+      observacion: observacion,
+      fecha: new Date().toLocaleDateString('es-AR') + ' ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
+      seña: pedido['Seña'],
+      total: pedido['Total'],
+      resta: pedido['Resta']
     };
     await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -379,36 +433,153 @@ async function saveToSheets(id, data) {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload)
     });
-    showToast('Guardado en Google Sheets');
+    // Update local state
+    pedido['Retirado'] = retirado ? 1 : 0;
+    if (pagoRetiro && Number(pagoRetiro) > 0) {
+      const pago = Number(pagoRetiro);
+      pedido['Seña'] = (Number(pedido['Seña']) || 0) + pago;
+      pedido['Resta'] = Math.max(0, (Number(pedido['Resta']) || 0) - pago);
+      if (medioPago === 'transferencia') {
+        pedido['Total Transferencia'] = (Number(pedido['Total Transferencia']) || 0) + pago;
+      } else {
+        pedido['Total Efectivo'] = (Number(pedido['Total Efectivo']) || 0) + pago;
+      }
+    }
+    localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
+    renderAll();
+    showToast('Retiro guardado');
   } catch (e) {
-    console.error('Error saving:', e);
+    console.error('Error saving retiro:', e);
     showToast('Error al guardar');
   } finally {
     showLoading(false);
   }
 }
 
-// ============ FORMATTING ============
-function fmt(n) {
-  return '$' + Number(n).toLocaleString('es-AR');
+// ============ GOOGLE SHEETS: NUEVO PEDIDO ============
+async function submitNuevoPedido() {
+  const nombre = document.getElementById('np_nombre').value.trim();
+  const tipo = document.getElementById('np_tipo').value;
+  const talle = document.getElementById('np_talle').value;
+  const seña = document.getElementById('np_seña').value;
+  const total = document.getElementById('np_total').value;
+  const modoPago = document.getElementById('np_modoPago').value;
+  const nota = document.getElementById('np_nota').value.trim();
+  const tanda = document.getElementById('np_tanda').value;
+
+  if (!nombre) { showToast('Ingresá el nombre'); return; }
+  if (!tipo) { showToast('Seleccioná el tipo de prenda'); return; }
+  if (!talle) { showToast('Seleccioná el talle'); return; }
+
+  if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+
+  const btn = document.getElementById('btnNuevoPedido');
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+
+  try {
+    showLoading(true);
+    const payload = {
+      action: 'nuevoPedido',
+      nombre, tipo, talle, seña, total, modoPago, notas: nota, tanda
+    };
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+
+    document.getElementById('successMsg').style.display = 'block';
+    setTimeout(() => { document.getElementById('successMsg').style.display = 'none'; }, 3000);
+
+    // Clear form
+    document.getElementById('np_nombre').value = '';
+    document.getElementById('np_tipo').value = '';
+    document.getElementById('np_talle').value = '';
+    document.getElementById('np_seña').value = '';
+    document.getElementById('np_total').value = '';
+    document.getElementById('np_nota').value = '';
+
+    showToast('Pedido registrado en Google Sheets');
+
+    // Reload data
+    setTimeout(() => loadFromSheets(), 1500);
+  } catch (e) {
+    console.error('Error:', e);
+    showToast('Error al registrar pedido');
+  } finally {
+    showLoading(false);
+    btn.disabled = false;
+    btn.textContent = 'Registrar Pedido';
+  }
 }
 
-// ============ TABS ============
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelector('.tab.' + tab).classList.add('active');
-  renderList();
-  updateStatus();
+// ============ STOCK ============
+function calcStock() {
+  const entregadas = { blanca: {}, azul: {} };
+  const pedidas = { blanca: {}, azul: {} };
+
+  PEDIDOS.forEach(p => {
+    const tipo = getTipo(p);
+    if (tipo !== 'blanca' && tipo !== 'azul') return;
+    const t = (p['Talle'] || '').toUpperCase();
+    if (!TALLES_ORDER.includes(t)) return;
+    pedidas[tipo][t] = (pedidas[tipo][t] || 0) + 1;
+    if (isRetirado(p)) {
+      entregadas[tipo][t] = (entregadas[tipo][t] || 0) + 1;
+    }
+  });
+
+  const remaining = { blanca: {}, azul: {} };
+  ['blanca', 'azul'].forEach(tipo => {
+    TALLES_ORDER.forEach(t => {
+      remaining[tipo][t] = (STOCK_INICIAL[tipo][t] || 0) - (entregadas[tipo][t] || 0);
+    });
+  });
+
+  return { remaining, pedidas, entregadas };
+}
+
+function hasStockForPedido(p) {
+  const tipo = getTipo(p);
+  if (tipo !== 'blanca' && tipo !== 'azul') return true; // no stock control for chomba/short
+  const { remaining } = calcStock();
+  const t = (p['Talle'] || '').toUpperCase();
+  return (remaining[tipo][t] || 0) > 0;
+}
+
+function renderStock() {
+  const { remaining, pedidas } = calcStock();
+  ['blanca', 'azul'].forEach(tipo => {
+    const container = document.getElementById(tipo === 'blanca' ? 'stockBlanca' : 'stockAzul');
+    container.innerHTML = TALLES_ORDER.map(t => {
+      const r = remaining[tipo][t];
+      const ini = STOCK_INICIAL[tipo][t];
+      const ped = pedidas[tipo][t] || 0;
+      let cls = 'ok';
+      if (r <= 0) cls = 'out';
+      else if (r <= 2) cls = 'low';
+      return `<div class="stock-cell ${cls}">
+        <div class="talle-label">${t}</div>
+        <div class="stock-num">${r}</div>
+        <div class="stock-detail">${ini} ini / ${ped} ped</div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function toggleStock() {
+  document.getElementById('stockPanel').classList.toggle('collapsed');
 }
 
 // ============ RENDER ============
 function getFiltered() {
   const search = document.getElementById('searchInput').value.toLowerCase();
   return PEDIDOS.filter(p => {
-    if (currentTab === 'blanca' && !p.blanca) return false;
-    if (currentTab === 'azul' && !p.azul) return false;
-    if (search && !p.nombre.toLowerCase().includes(search)) return false;
+    const tipo = getTipo(p);
+    if (currentFilter !== 'todos' && tipo !== currentFilter) return false;
+    if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
     return true;
   });
 }
@@ -417,60 +588,78 @@ function renderAll() {
   renderList();
   renderStock();
   updateStatus();
+  updateBadges();
+}
+
+function updateBadges() {
+  document.getElementById('badgeTodos').textContent = PEDIDOS.length;
+  document.getElementById('badgeBlanca').textContent = PEDIDOS.filter(p => getTipo(p) === 'blanca').length;
+  document.getElementById('badgeAzul').textContent = PEDIDOS.filter(p => getTipo(p) === 'azul').length;
+  document.getElementById('badgeChomba').textContent = PEDIDOS.filter(p => getTipo(p) === 'chomba').length;
+  document.getElementById('badgeShort').textContent = PEDIDOS.filter(p => getTipo(p) === 'short').length;
 }
 
 function renderList() {
   const items = getFiltered();
   const container = document.getElementById('listContainer');
 
-  container.innerHTML = items.map(p => {
-    const r = retiros[p.id] || {};
-    const isRetirado = r.retirado || false;
-    const tipo = p.blanca ? 'blanca' : 'azul';
-    const tipoLabel = p.blanca ? 'BLANCA' : 'AZUL';
-    const sinStock = !hasStockForPedido(p);
+  if (items.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="icon">📋</div>
+      <p>${PEDIDOS.length === 0 ? 'Conectá tu Google Sheet para ver los pedidos' : 'No hay pedidos en esta categoría'}</p>
+    </div>`;
+    updateStatus();
+    return;
+  }
+
+  container.innerHTML = items.map((p, idx) => {
+    const id = p._id;
+    const ret = isRetirado(p);
+    const tipo = getTipo(p);
+    const sinStock = !ret && !hasStockForPedido(p);
+    const tanda = p['Tanda'] || '';
 
     return `
-      <div class="card ${isRetirado ? 'retirado' : ''} ${sinStock && !isRetirado ? 'sin-stock' : ''}" id="card-${p.id}">
-        <div class="card-header" onclick="toggleCard(${p.id})">
-          <div class="check">${isRetirado ? '✓' : ''}</div>
-          <span class="name">${p.nombre}</span>
-          ${sinStock && !isRetirado ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
-          ${currentTab === 'todos' ? `<span class="tipo-badge ${tipo}">${tipoLabel}</span>` : ''}
-          <span class="talle">${p.talle}</span>
+      <div class="card ${ret ? 'retirado' : ''} ${sinStock ? 'sin-stock' : ''}" id="card-${id}">
+        <div class="card-header" onclick="toggleCard(${id})">
+          <div class="check">${ret ? '✓' : ''}</div>
+          <span class="name">${p['Nombre'] || '—'}</span>
+          ${sinStock ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
+          ${currentFilter === 'todos' ? `<span class="tipo-badge ${tipo}">${getTipoLabel(tipo)}</span>` : ''}
+          ${tanda === 'SEGUNDA' ? '<span class="tanda-badge">2da</span>' : ''}
+          <span class="talle">${p['Talle'] || '—'}</span>
           <span class="arrow">▼</span>
         </div>
         <div class="card-info">
-          <span>Seña: <span class="val">${fmt(p.seña)}</span></span>
-          <span>Total: <span class="val">${fmt(p.total)}</span></span>
-          <span>Resta: <span class="val">${fmt(p.resta)}</span></span>
-          ${isRetirado && r.pago ? `<span>Pagó: <span class="val">${fmt(r.pago)}</span> (${r.medioPago})</span>` : ''}
+          <span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
+          <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
+          <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
         </div>
-        ${p.notas ? `<div class="notas-excel">📝 ${p.notas}</div>` : ''}
+        ${p['Notas'] ? `<div class="notas-excel">📝 ${p['Notas']}</div>` : ''}
         <div class="card-body">
           <div class="form-row">
             <div class="form-group">
               <label>Monto pagado al retirar</label>
-              <input type="number" id="pago-${p.id}" value="${r.pago || ''}" placeholder="0">
+              <input type="number" id="pago-${id}" placeholder="0">
             </div>
             <div class="form-group">
               <label>Medio de pago</label>
-              <select id="medio-${p.id}">
-                <option value="efectivo" ${r.medioPago === 'efectivo' || !r.medioPago ? 'selected' : ''}>Efectivo</option>
-                <option value="transferencia" ${r.medioPago === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+              <select id="medio-${id}">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
               </select>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group" style="flex:2;">
               <label>Observación</label>
-              <textarea id="obs-${p.id}" placeholder="Notas sobre el retiro...">${r.observacion || ''}</textarea>
+              <textarea id="obs-${id}" placeholder="Notas sobre el retiro..."></textarea>
             </div>
           </div>
           <div class="actions">
-            ${isRetirado
-              ? `<button class="btn btn-danger btn-sm" onclick="marcarRetiro(${p.id}, false)">Desmarcar retiro</button>`
-              : `<button class="btn btn-primary btn-sm" onclick="marcarRetiro(${p.id}, true)">Marcar como retirado ✓</button>`
+            ${ret
+              ? `<button class="btn btn-danger btn-sm" onclick="marcarRetiro(${id}, false)">Desmarcar retiro</button>`
+              : `<button class="btn btn-primary btn-sm" onclick="marcarRetiro(${id}, true)">Marcar como retirado ✓</button>`
             }
           </div>
         </div>
@@ -478,12 +667,7 @@ function renderList() {
     `;
   }).join('');
 
-  document.getElementById('badgeBlanca').textContent = PEDIDOS.filter(p => p.blanca).length;
-  document.getElementById('badgeAzul').textContent = PEDIDOS.filter(p => p.azul).length;
-  document.getElementById('badgeTodos').textContent = PEDIDOS.length;
-
   updateStatus();
-  renderStock();
 }
 
 function toggleCard(id) {
@@ -494,61 +678,45 @@ async function marcarRetiro(id, retirado) {
   const pago = Number(document.getElementById('pago-' + id)?.value) || 0;
   const medio = document.getElementById('medio-' + id)?.value || 'efectivo';
   const obs = document.getElementById('obs-' + id)?.value || '';
-  const fecha = new Date().toLocaleDateString('es-AR') + ' ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
 
-  retiros[id] = { retirado, pago, medioPago: medio, observacion: obs, fecha };
-  localStorage.setItem('retiros_backup', JSON.stringify(retiros));
-  renderAll();
-  await saveToSheets(id, retiros[id]);
+  const pedido = PEDIDOS.find(p => p._id === id);
+  if (!pedido) return;
+
+  await saveRetiro(pedido, retirado, pago, medio, obs);
 }
 
 function updateStatus() {
-  const filtered = currentTab === 'todos' ? PEDIDOS :
-    PEDIDOS.filter(p => currentTab === 'blanca' ? p.blanca : p.azul);
+  const filtered = currentFilter === 'todos' ? PEDIDOS :
+    PEDIDOS.filter(p => getTipo(p) === currentFilter);
 
   const total = filtered.length;
-  const retiradosCount = filtered.filter(p => retiros[p.id]?.retirado).length;
+  const retiradosCount = filtered.filter(p => isRetirado(p)).length;
 
-  let recaudadoEfectivo = 0;
-  let recaudadoTransf = 0;
+  let recEfectivo = 0;
+  let recTransf = 0;
   filtered.forEach(p => {
-    const r = retiros[p.id];
-    if (r?.retirado && r.pago) {
-      if (r.medioPago === 'transferencia') {
-        recaudadoTransf += r.pago;
-      } else {
-        recaudadoEfectivo += r.pago;
-      }
-    }
+    recEfectivo += Number(p['Total Efectivo']) || 0;
+    recTransf += Number(p['Total Transferencia']) || 0;
   });
-
-  const recaudadoTotal = recaudadoEfectivo + recaudadoTransf;
 
   document.getElementById('totalPedidos').textContent = total;
   document.getElementById('totalRetirados').textContent = retiradosCount;
   document.getElementById('totalPendientes').textContent = total - retiradosCount;
-  document.getElementById('totalRecaudado').textContent = fmt(recaudadoTotal);
-  document.getElementById('totalEfectivo').textContent = fmt(recaudadoEfectivo);
-  document.getElementById('totalTransf').textContent = fmt(recaudadoTransf);
-}
-
-function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2500);
+  document.getElementById('totalRecaudado').textContent = fmt(recEfectivo + recTransf);
+  document.getElementById('totalEfectivo').textContent = fmt(recEfectivo);
+  document.getElementById('totalTransf').textContent = fmt(recTransf);
 }
 
 // ============ INIT ============
 checkConfig();
 
-const backup = localStorage.getItem('retiros_backup');
+// Load backup first for instant display
+const backup = localStorage.getItem('pedidos_backup');
 if (backup) {
-  try { retiros = JSON.parse(backup); } catch(e) {}
+  try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {}
 }
 
-renderAll();
-
+// Then load fresh from Sheets
 if (SCRIPT_URL) {
   loadFromSheets();
 }
