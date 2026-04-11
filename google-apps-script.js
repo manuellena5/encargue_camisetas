@@ -1,225 +1,328 @@
 // =====================================================
-// GOOGLE APPS SCRIPT - Backend para Gestión Camisetas
+// GOOGLE APPS SCRIPT - Backend Gestión Camisetas v2
 // =====================================================
 // INSTRUCCIONES:
 // 1. Abrí https://script.google.com y creá un nuevo proyecto
 // 2. Pegá este código completo reemplazando todo lo existente
 // 3. Cambiá SPREADSHEET_ID por el ID de tu Google Sheet
-// 4. La hoja "Pedidos" debe existir con encabezados en la fila 1
-//    (Nombre, BLANCA, AZUL, CHOMBA, SHORT, Talle, Tanda, Seña, Total,
-//     Resta, Notas, Total Efectivo, Total Transferencia, Retirado, Talle Retiro)
-//    Agrega la columna "Talle Retiro" si no existe todavía.
-// 5. La hoja "Retiros" se crea automáticamente si no existe.
-// 6. Hacé Deploy > New deployment > Web app
+// 4. Asegurate de tener dos hojas: "Pedidos" y "Retiros"
+// 5. Deploy > New deployment > Web app
 //    - Execute as: Me
 //    - Who has access: Anyone
-// 7. Copiá la URL del deployment y pegala en la webapp
+// 6. Copiá la URL del deployment y pegala en la webapp
 // =====================================================
 
-const SPREADSHEET_ID = 'TU_SPREADSHEET_ID_ACA'; // <-- CAMBIAR ESTO
+const SPREADSHEET_ID = '1EVLGu97_2A_TRx6-udU2tOIaE_tVXULGCJ_rMpP1UeM';
 const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_RETIROS = 'Retiros';
+const SHEET_STOCK   = 'Stock';
 
-function getPedidosSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  return ss.getSheetByName(SHEET_PEDIDOS);
-}
+// ============ HELPERS ============
 
-function getRetirosSheet() {
+function getOrCreateSheet(name, headers) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let sheet = ss.getSheetByName(SHEET_RETIROS);
+  let sheet = ss.getSheetByName(name);
   if (!sheet) {
-    sheet = ss.insertSheet(SHEET_RETIROS);
-    sheet.appendRow(['ID', 'Nombre', 'Tipo', 'Talle', 'Seña', 'Total', 'Resta', 'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro']);
-    sheet.getRange(1, 1, 1, 12).setFontWeight('bold');
-    sheet.setFrozenRows(1);
+    sheet = ss.insertSheet(name);
+    if (headers) {
+      sheet.appendRow(headers);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
   }
   return sheet;
 }
 
-function doGet(e) {
-  const action = e.parameter.action;
-
-  if (action === 'getAll') {
-    return getAllPedidos();
+function sheetToObjects(sheet) {
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+  const headers = data[0];
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    const obj = {};
+    for (let j = 0; j < headers.length; j++) {
+      obj[headers[j]] = data[i][j];
+    }
+    obj._row = i + 1; // 1-indexed row number in sheet
+    rows.push(obj);
   }
-
-  return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return rows;
 }
+
+// ============ GET: Read all data ============
+
+function doGet(e) {
+  try {
+    const action = e.parameter.action;
+
+    if (action === 'getPedidos') {
+      return getPedidos();
+    }
+    if (action === 'getRetiros') {
+      return getRetiros();
+    }
+    if (action === 'getAll') {
+      return getAll();
+    }
+
+    return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
+  } catch (err) {
+    return jsonResponse({ status: 'error', message: err.toString() });
+  }
+}
+
+function getAll() {
+  const pedidosSheet = getOrCreateSheet(SHEET_PEDIDOS);
+  const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
+    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
+    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
+  ]);
+
+  const pedidos = sheetToObjects(pedidosSheet);
+  const retiros = sheetToObjects(retirosSheet);
+
+  return jsonResponse({ status: 'ok', pedidos, retiros });
+}
+
+function getPedidos() {
+  const sheet = getOrCreateSheet(SHEET_PEDIDOS);
+  const pedidos = sheetToObjects(sheet);
+  return jsonResponse({ status: 'ok', pedidos });
+}
+
+function getRetiros() {
+  const sheet = getOrCreateSheet(SHEET_RETIROS, [
+    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
+    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
+  ]);
+  const retiros = sheetToObjects(sheet);
+  return jsonResponse({ status: 'ok', retiros });
+}
+
+// ============ POST: Write data ============
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    const action = data.action;
 
-    if (data.action === 'registrarRetiro') {
-      return registrarRetiro(data);
-    }
-
-    if (data.action === 'nuevoPedido') {
+    if (action === 'nuevoPedido') {
       return nuevoPedido(data);
     }
+    if (action === 'registrarRetiro') {
+      return registrarRetiro(data);
+    }
+    if (action === 'updateRetiro') {
+      return updateRetiro(data);
+    }
+    if (action === 'guardarStock') {
+      return guardarStock(data);
+    }
 
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action: ' + data.action }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse({ status: 'error', message: err.toString() });
   }
 }
 
-// Lee todos los pedidos de la hoja "Pedidos" y los devuelve como array de objetos
-// con las claves tomadas de la primera fila (encabezados).
-function getAllPedidos() {
-  const sheet = getPedidosSheet();
-  if (!sheet) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Hoja "Pedidos" no encontrada' }))
-      .setMimeType(ContentService.MimeType.JSON);
+// --- Nuevo pedido: agrega fila a hoja Pedidos ---
+// Acepta 'tipoKey' (ej: 'ARQUERO_CELESTE') y crea la columna en la hoja si no existe.
+function nuevoPedido(data) {
+  // Validar que la seña no supere el total
+  const seña  = Number(data.seña)  || 0;
+  const total = Number(data.total) || 0;
+  if (total > 0 && seña > total) {
+    return jsonResponse({ status: 'error', message: `La seña (${seña}) no puede superar el total (${total})` });
   }
 
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'ok', pedidos: [] }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+  const sheet = getOrCreateSheet(SHEET_PEDIDOS);
+  let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
-  const headers = data[0];
-  const pedidos = [];
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const obj = { _row: i + 1 }; // número de fila en la hoja (1-indexed)
-    headers.forEach((h, j) => {
-      obj[h] = row[j];
+  const tipoKey = (data.tipoKey || '').toString().trim().toUpperCase();
+
+  // Auto-agregar columna si el tipo no existe aún en la hoja
+  if (tipoKey && !headers.map(h => h.toString().trim().toUpperCase()).includes(tipoKey)) {
+    const knownTipoCols = ['BLANCA', 'AZUL', 'SHORT', 'CHOMBA', 'ARQUERO_CELESTE', 'ARQUERO_NEGRA'];
+    let insertAfterCol = 0;
+    headers.forEach((h, idx) => {
+      if (knownTipoCols.includes(h.toString().trim().toUpperCase())) insertAfterCol = idx + 1;
     });
-    pedidos.push(obj);
+    if (insertAfterCol === 0) insertAfterCol = 1;
+    sheet.insertColumnAfter(insertAfterCol);
+    const newColIdx = insertAfterCol + 1;
+    sheet.getRange(1, newColIdx).setValue(tipoKey).setFontWeight('bold');
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   }
 
-  return ContentService.createTextOutput(JSON.stringify({ status: 'ok', pedidos }))
-    .setMimeType(ContentService.MimeType.JSON);
+  // Conjunto de columnas de tipo (flags binarios)
+  const tipoCols = new Set(['BLANCA', 'AZUL', 'SHORT', 'CHOMBA', 'ARQUERO_CELESTE', 'ARQUERO_NEGRA']);
+  if (tipoKey) tipoCols.add(tipoKey);
+
+  // Build row matching existing headers
+  const row = headers.map(h => {
+    const key = h.toString().trim();
+    if (tipoCols.has(key)) return key === tipoKey ? 1 : 0;
+    if (key === 'Nombre') return data.nombre || '';
+    if (key === 'Talle') return data.talle || '';
+    if (key === 'Seña') return Number(data.seña) || 0;
+    if (key === 'Total') return Number(data.total) || 0;
+    if (key === 'Resta') return (Number(data.total) || 0) - (Number(data.seña) || 0);
+    if (key === 'Notas') return data.notas || '';
+    if (key === 'Total Transferencia') return data.modoPago === 'Transferencia' ? (Number(data.seña) || 0) : 0;
+    if (key === 'Total Efectivo') return data.modoPago === 'Efectivo' ? (Number(data.seña) || 0) : 0;
+    if (key === 'Tanda') return data.tanda || 'SEGUNDA';
+    if (key === 'Retirado') return 0;
+    return '';
+  });
+
+  sheet.appendRow(row);
+  return jsonResponse({ status: 'ok', message: 'Pedido registrado' });
 }
 
-// Marca o desmarca un retiro:
-//  - Actualiza columnas "Retirado" y "Talle Retiro" en la hoja "Pedidos".
-//  - Escribe/actualiza una fila en la hoja "Retiros" (o la elimina si se desmarca).
+// --- Registrar retiro: actualiza hoja Pedidos (Retirado=1) + agrega a hoja Retiros ---
 function registrarRetiro(data) {
-  // 1. Actualizar hoja Pedidos
-  const pedidosSheet = getPedidosSheet();
-  if (pedidosSheet && data.sheetRow) {
-    const headers = pedidosSheet.getRange(1, 1, 1, pedidosSheet.getLastColumn()).getValues()[0];
-    const retiradoCol = headers.indexOf('Retirado') + 1;
-    const talleRetiroCol = headers.indexOf('Talle Retiro') + 1;
-    const medioPagoRetiroCol = headers.indexOf('Medio de Pago Retiro') + 1;
-    const montoRetiroCol = headers.indexOf('Monto Retiro') + 1;
-    const notasRetiroCol = headers.indexOf('Notas Retiro') + 1;
+  // 1. Update Pedidos sheet
+  const pedidosSheet = getOrCreateSheet(SHEET_PEDIDOS);
+  const pedidosData = pedidosSheet.getDataRange().getValues();
+  const headers = pedidosData[0];
 
-    if (retiradoCol > 0) {
-      pedidosSheet.getRange(data.sheetRow, retiradoCol).setValue(data.retirado ? 1 : 0);
+  const colRetirado        = headers.indexOf('Retirado');
+  const colSeña            = headers.indexOf('Seña');
+  const colResta           = headers.indexOf('Resta');
+  const colTotalTransf     = headers.indexOf('Total Transferencia');
+  const colTotalEfect      = headers.indexOf('Total Efectivo');
+  const colTalleRetiro     = headers.indexOf('Talle Retiro');
+  const colMedioPagoRetiro = headers.indexOf('Medio de Pago Retiro');
+  const colMontoRetiro     = headers.indexOf('Monto Retiro');
+  const colNotasRetiro     = headers.indexOf('Notas Retiro');
+
+  const targetRow = Number(data.sheetRow);
+  if (targetRow > 1 && targetRow <= pedidosData.length) {
+    // Mark as retirado / desmarcar
+    if (colRetirado >= 0) {
+      pedidosSheet.getRange(targetRow, colRetirado + 1).setValue(data.retirado ? 1 : 0);
     }
-    if (talleRetiroCol > 0) {
-      pedidosSheet.getRange(data.sheetRow, talleRetiroCol).setValue(
-        data.retirado ? (data.talleRetiro || data.talle || '') : ''
-      );
-    }
-    if (medioPagoRetiroCol > 0) {
-      pedidosSheet.getRange(data.sheetRow, medioPagoRetiroCol).setValue(
-        data.retirado ? (data.medioPago || '') : ''
-      );
-    }
-    if (montoRetiroCol > 0) {
-      pedidosSheet.getRange(data.sheetRow, montoRetiroCol).setValue(
-        data.retirado ? (Number(data.pagoRetiro) || 0) : ''
-      );
-    }
-    if (notasRetiroCol > 0) {
-      pedidosSheet.getRange(data.sheetRow, notasRetiroCol).setValue(
-        data.retirado ? (data.observacion || '') : ''
-      );
+
+    // Escribir / limpiar campos de retiro en hoja Pedidos
+    const clearOrSet = (col, val) => {
+      if (col >= 0) pedidosSheet.getRange(targetRow, col + 1).setValue(data.retirado ? val : '');
+    };
+    clearOrSet(colTalleRetiro,     data.talleRetiro || data.talle || '');
+    clearOrSet(colMedioPagoRetiro, data.medioPago   || '');
+    clearOrSet(colMontoRetiro,     Number(data.pagoRetiro) || 0);
+    clearOrSet(colNotasRetiro,     data.observacion || '');
+
+    // If there's a payment at pickup, add to seña and recalculate resta
+    if (data.retirado && data.pagoRetiro && Number(data.pagoRetiro) > 0) {
+      const pago = Number(data.pagoRetiro);
+      if (colSeña >= 0) {
+        const currentSeña = Number(pedidosData[targetRow - 1][colSeña]) || 0;
+        pedidosSheet.getRange(targetRow, colSeña + 1).setValue(currentSeña + pago);
+      }
+      if (colResta >= 0) {
+        const currentResta = Number(pedidosData[targetRow - 1][colResta]) || 0;
+        pedidosSheet.getRange(targetRow, colResta + 1).setValue(Math.max(0, currentResta - pago));
+      }
+      if (data.medioPago === 'transferencia' && colTotalTransf >= 0) {
+        const current = Number(pedidosData[targetRow - 1][colTotalTransf]) || 0;
+        pedidosSheet.getRange(targetRow, colTotalTransf + 1).setValue(current + pago);
+      }
+      if (data.medioPago === 'efectivo' && colTotalEfect >= 0) {
+        const current = Number(pedidosData[targetRow - 1][colTotalEfect]) || 0;
+        pedidosSheet.getRange(targetRow, colTotalEfect + 1).setValue(current + pago);
+      }
     }
   }
 
-  // 2. Actualizar hoja Retiros
-  const retirosSheet = getRetirosSheet();
-  const allData = retirosSheet.getDataRange().getValues();
-  let rowIndex = -1;
-  for (let i = 1; i < allData.length; i++) {
-    if (String(allData[i][0]) === String(data.id)) {
-      rowIndex = i + 1; // 1-indexed
+  // 2. Add/update Retiros sheet
+  const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
+    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
+    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
+  ]);
+
+  // Check if row already exists in Retiros
+  const retirosData = retirosSheet.getDataRange().getValues();
+  let retiroRow = -1;
+  for (let i = 1; i < retirosData.length; i++) {
+    if (retirosData[i][0] == data.id) {
+      retiroRow = i + 1;
       break;
     }
   }
 
-  if (data.retirado) {
-    const row = [
-      data.id,                              // ID
-      data.nombre,                          // Nombre
-      data.tipo,                            // Tipo
-      data.talleRetiro || data.talle || '', // Talle (el retirado efectivamente)
-      data.seña,                            // Seña
-      data.total,                           // Total
-      data.resta,                           // Resta
-      1,                                    // Retirado
-      data.pagoRetiro,                      // Pago al Retirar
-      data.medioPago,                       // Medio de Pago
-      data.observacion,                     // Observación
-      data.fecha                            // Fecha Retiro
-    ];
-    if (rowIndex > 0) {
-      retirosSheet.getRange(rowIndex, 1, 1, 12).setValues([row]);
-    } else {
-      retirosSheet.appendRow(row);
-    }
+  const retiroValues = [
+    data.id,
+    data.nombre,
+    data.tipo,
+    data.talle,
+    data.talleRetiro || data.talle,
+    data.seña,
+    data.total,
+    data.resta,
+    data.retirado ? 'TRUE' : 'FALSE',
+    data.pagoRetiro || 0,
+    data.medioPago || '',
+    data.observacion || '',
+    data.fecha || ''
+  ];
+
+  if (retiroRow > 0) {
+    retirosSheet.getRange(retiroRow, 1, 1, 13).setValues([retiroValues]);
   } else {
-    // Desmarcar retiro: eliminar fila de Retiros si existe
-    if (rowIndex > 0) {
-      retirosSheet.deleteRow(rowIndex);
-    }
+    retirosSheet.appendRow(retiroValues);
   }
 
-  return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return jsonResponse({ status: 'ok', message: 'Retiro registrado' });
 }
 
-// Agrega un nuevo pedido a la hoja "Pedidos" usando los encabezados existentes.
-function nuevoPedido(data) {
-  const sheet = getPedidosSheet();
+// Legacy support
+function updateRetiro(data) {
+  return registrarRetiro(data);
+}
+
+// ============ Stock: guardar en hoja Stock ============
+// data: { tipo: 'BLANCA', stock: { XS: 2, S: 6, M: 10, L: 8, XL: 4, XXL: 2 } }
+function guardarStock(data) {
+  const TALLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const headers = ['Tipo', ...TALLES, 'Última Actualización'];
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(SHEET_STOCK);
   if (!sheet) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Hoja "Pedidos" no encontrada' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    sheet = ss.insertSheet(SHEET_STOCK);
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
   }
 
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const newRow = new Array(headers.length).fill('');
+  const tipo = (data.tipo || '').toUpperCase();
+  const stock = data.stock || {};
+  const allData = sheet.getDataRange().getValues();
+  const sheetHeaders = allData[0];
+  const colTipo = sheetHeaders.indexOf('Tipo');
 
-  const set = (col, val) => {
-    const idx = headers.indexOf(col);
-    if (idx >= 0) newRow[idx] = val;
-  };
+  // Buscar fila existente para este tipo
+  let targetRow = -1;
+  for (let i = 1; i < allData.length; i++) {
+    if ((allData[i][colTipo] || '').toString().toUpperCase() === tipo) {
+      targetRow = i + 1; // 1-indexed
+      break;
+    }
+  }
 
-  const tipoLower = (data.tipo || '').toLowerCase();
-  set('Nombre', data.nombre);
-  set('Talle', data.talle);
-  set('Seña', Number(data.seña) || 0);
-  set('Total', Number(data.total) || 0);
-  set('Resta', (Number(data.total) || 0) - (Number(data.seña) || 0));
-  set('Tanda', data.tanda || '');
-  set('Notas', data.notas || '');
-  set('Retirado', 0);
-  set('Talle Retiro', '');
-  set('BLANCA', tipoLower.includes('blanca') ? 1 : 0);
-  set('AZUL', tipoLower.includes('azul') ? 1 : 0);
-  set('CHOMBA', tipoLower.includes('chomba') ? 1 : 0);
-  set('SHORT', tipoLower.includes('short') ? 1 : 0);
+  const rowValues = [tipo, ...TALLES.map(t => Number(stock[t]) || 0), new Date()];
 
-  if ((data.modoPago || '').toLowerCase() === 'efectivo') {
-    set('Total Efectivo', Number(data.seña) || 0);
-    set('Total Transferencia', 0);
+  if (targetRow > 0) {
+    sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
   } else {
-    set('Total Transferencia', Number(data.seña) || 0);
-    set('Total Efectivo', 0);
+    sheet.appendRow(rowValues);
   }
 
-  sheet.appendRow(newRow);
+  return jsonResponse({ status: 'ok', message: `Stock de ${tipo} guardado` });
+}
 
-  return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
+// ============ JSON Response ============
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }

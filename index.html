@@ -37,16 +37,19 @@
     .stock-table h4 { font-size: 0.75rem; margin-bottom: 4px; padding: 3px 8px; border-radius: 4px; color: white; }
     .stock-table h4.blanca-title { background: #95a5a6; }
     .stock-table h4.azul-title { background: #3498db; }
-    .stock-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
-    .stock-cell { text-align: center; padding: 6px 4px; border-radius: 6px; background: #f8f9fa; border: 1px solid #eee; }
-    .stock-cell .talle-label { font-size: 0.6rem; color: #888; font-weight: 600; margin-bottom: 2px; }
-    .stock-cell .stock-num { font-size: 0.95rem; font-weight: 700; }
-    .stock-cell .stock-num-label { font-size: 0.55rem; color: #aaa; }
-    .stock-cell.ok .stock-num { color: #27ae60; }
-    .stock-cell.low .stock-num { color: #e67e22; }
-    .stock-cell.out .stock-num { color: #e74c3c; }
+    .stock-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .stock-cell { text-align: center; padding: 6px 3px 5px; border-radius: 7px; background: #f8f9fa; border: 1px solid #eee; }
+    .stock-cell .talle-label { font-size: 0.6rem; color: #888; font-weight: 700; margin-bottom: 2px; }
+    .stock-cell .stock-actual { font-size: 1.05rem; font-weight: 800; line-height: 1; }
+    .stock-cell.ok  .stock-actual { color: #27ae60; }
+    .stock-cell.low .stock-actual { color: #e67e22; }
+    .stock-cell.out .stock-actual { color: #e74c3c; }
     .stock-cell.out { background: #fdf0f0; border-color: #f5c6cb; }
-    .stock-cell .stock-detail { font-size: 0.55rem; color: #999; margin-top: 2px; line-height: 1.4; }
+    .stock-cell .stock-orig  { font-size: 0.6rem; color: #aaa; margin-top: 2px; }
+    .stock-cell .stock-pend  { font-size: 0.58rem; margin-top: 1px; }
+    .stock-cell.ok  .stock-pend { color: #27ae60; }
+    .stock-cell.low .stock-pend { color: #e67e22; }
+    .stock-cell.out .stock-pend { color: #e74c3c; }
 
     /* MAIN TABS */
     .main-tabs { display: flex; background: #1a1a2e; }
@@ -65,9 +68,6 @@
     .search-bar { padding: 10px 16px; background: white; border-bottom: 1px solid #eee; }
     .search-bar input { width: 100%; padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; }
     .search-bar input:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.1); }
-    .filter-row { display: flex; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #eee; }
-    .filter-row select { flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; outline: none; background: #f8f9fa; cursor: pointer; }
-    .filter-row select:focus { border-color: #3498db; background: white; }
 
     .section { display: none; }
     .section.active { display: block; }
@@ -93,6 +93,35 @@
     .card-header .arrow { color: #aaa; transition: transform 0.2s; font-size: 0.75rem; }
     .card.expanded .card-header .arrow { transform: rotate(180deg); }
     .sin-stock-badge { background: #e74c3c; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
+
+    /* SEARCH + FILTERS */
+    .filter-bar { background: white; border-bottom: 1px solid #eee; }
+    .filter-line { display: flex; gap: 8px; padding: 8px 12px; }
+    .filter-line:first-child { padding-bottom: 4px; }
+    .filter-line:last-child  { padding-top: 4px; border-top: 1px solid #f5f5f5; }
+    .filter-line input, .filter-line select { flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; outline: none; background: #f8f9fa; }
+    .filter-line input:focus, .filter-line select:focus { border-color: #3498db; background: white; }
+
+    /* EDITOR STOCK en tipos */
+    .stock-editor { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
+    .stock-editor-title { font-size: 0.75rem; font-weight: 700; color: #555; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+    .stock-editor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+    .stock-editor-cell { display: flex; flex-direction: column; gap: 2px; }
+    .stock-editor-cell label { font-size: 0.65rem; font-weight: 700; color: #888; text-align: center; }
+    .stock-editor-cell input { width: 100%; padding: 5px 4px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; text-align: center; }
+
+    /* TIPOS DE PRENDAS SECTION */
+    .tipos-section { padding: 16px; max-width: 600px; margin: 0 auto; }
+    .tipos-section h2 { font-size: 1.1rem; margin-bottom: 12px; color: #1a1a2e; }
+    .tipo-card-config { display: flex; align-items: center; gap: 12px; background: white; border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .tipo-card-config .tipo-dot { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+    .tipo-card-config .tipo-info { flex: 1; }
+    .tipo-card-config .tipo-name { font-weight: 700; font-size: 0.95rem; }
+    .tipo-card-config .tipo-key-label { font-size: 0.7rem; color: #999; font-family: monospace; }
+    .tipo-card-config .btn-delete { background: #e74c3c; color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; }
+    .tipo-card-config .builtin-badge { font-size: 0.65rem; background: #eee; color: #888; padding: 2px 6px; border-radius: 4px; }
+    .add-tipo-form { background: white; border-radius: 10px; padding: 16px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .add-tipo-form h3 { font-size: 0.9rem; margin-bottom: 12px; color: #333; }
 
     /* BLOCKED 2da tanda */
     .card.bloqueado { position: relative; }
@@ -190,6 +219,7 @@
 <div class="main-tabs">
   <div class="main-tab active" onclick="switchSection('pedidos')">Pedidos y Retiros</div>
   <div class="main-tab" onclick="switchSection('nuevo')">Nuevo Pedido</div>
+  <div class="main-tab" onclick="switchSection('tipos')">Tipos de Prendas</div>
 </div>
 
 <div id="configPanel" class="config-panel" style="display:none;">
@@ -236,49 +266,40 @@
     </div>
   </div>
 
-  <div class="stock-panel" id="stockPanel">
-    <h3 onclick="toggleStock()"><span class="arrow">▼</span> Stock de Camisetas</h3>
-    <div class="stock-content">
-      <div class="stock-tables">
-        <div class="stock-table">
-          <h4 class="blanca-title">CAMISETA BLANCA</h4>
-          <div class="stock-grid" id="stockBlanca"></div>
-        </div>
-        <div class="stock-table">
-          <h4 class="azul-title">CAMISETA AZUL</h4>
-          <div class="stock-grid" id="stockAzul"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="sub-tabs" id="subTabs">
-    <div class="sub-tab active" data-filter="todos" onclick="switchFilter('todos')">TODOS <span class="badge" id="badgeTodos">0</span></div>
-    <div class="sub-tab" data-filter="blanca" onclick="switchFilter('blanca')">BLANCA <span class="badge" id="badgeBlanca">0</span></div>
-    <div class="sub-tab" data-filter="azul" onclick="switchFilter('azul')">AZUL <span class="badge" id="badgeAzul">0</span></div>
-    <div class="sub-tab" data-filter="chomba" onclick="switchFilter('chomba')">CHOMBA <span class="badge" id="badgeChomba">0</span></div>
-    <div class="sub-tab" data-filter="short" onclick="switchFilter('short')">SHORT <span class="badge" id="badgeShort">0</span></div>
+    <!-- Poblado dinámicamente por initSubTabs() -->
   </div>
 
-  <div class="search-bar">
-    <input type="text" id="searchInput" placeholder="Buscar por nombre..." oninput="renderList()">
+  <div class="stock-panel collapsed" id="stockPanel">
+    <h3 onclick="toggleStock()"><span class="arrow">▼</span> <span id="stockPanelTitle">Stock de Prendas</span></h3>
+    <div class="stock-content" id="stockContent"></div>
   </div>
-  <div class="filter-row">
-    <select id="filterTalle" onchange="renderList()">
-      <option value="">Todos los talles</option>
-      <option value="XS">XS</option>
-      <option value="S">S</option>
-      <option value="M">M</option>
-      <option value="L">L</option>
-      <option value="XL">XL</option>
-      <option value="XXL">XXL</option>
-      <option value="Talle unico">Talle único</option>
-    </select>
-    <select id="filterEstado" onchange="renderList()">
-      <option value="todos">Todos los estados</option>
-      <option value="pendientes">Pendientes</option>
-      <option value="retirados">Retirados</option>
-    </select>
+
+  <div class="filter-bar">
+    <div class="filter-line">
+      <input type="text" id="searchInput" placeholder="Buscar por nombre..." oninput="renderList()">
+      <select id="filterTalle" onchange="renderList()" style="max-width:110px;">
+        <option value="">Todos los talles</option>
+        <option value="XS">XS</option>
+        <option value="S">S</option>
+        <option value="M">M</option>
+        <option value="L">L</option>
+        <option value="XL">XL</option>
+        <option value="XXL">XXL</option>
+      </select>
+    </div>
+    <div class="filter-line">
+      <select id="filterEstado" onchange="renderList()">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="retirado">Retirados</option>
+      </select>
+      <select id="filterTanda" onchange="renderList()">
+        <option value="">Todas las tandas</option>
+        <option value="PRIMERA">1era Tanda</option>
+        <option value="SEGUNDA">2da Tanda</option>
+      </select>
+    </div>
   </div>
 
   <div class="list" id="listContainer"></div>
@@ -295,11 +316,7 @@
     <div class="form-group">
       <label>Tipo de prenda</label>
       <select id="np_tipo">
-        <option value="">Seleccionar...</option>
-        <option value="Camiseta Blanca">Camiseta Blanca</option>
-        <option value="Camiseta Azul">Camiseta Azul</option>
-        <option value="Chomba">Chomba</option>
-        <option value="Short">Short</option>
+        <!-- Poblado dinámicamente por initNuevoPedidoTipos() -->
       </select>
     </div>
     <div class="form-group">
@@ -345,6 +362,29 @@
   </div>
 </div>
 
+<!-- ========== SECTION: TIPOS DE PRENDAS ========== -->
+<div class="section" id="sectionTipos">
+  <div class="tipos-section">
+    <h2>Tipos de Prendas</h2>
+    <div id="tiposListContainer"></div>
+    <div class="add-tipo-form">
+      <h3>➕ Agregar nuevo tipo</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre del tipo</label>
+          <input type="text" id="newTipoLabel" placeholder="Ej: Arquero Amarilla">
+        </div>
+        <div class="form-group" style="max-width:80px;">
+          <label>Color</label>
+          <input type="color" id="newTipoColor" value="#9b59b6" style="height:38px; padding:2px; width:100%;">
+        </div>
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="agregarTipo()" style="margin-top:8px;">Agregar tipo</button>
+      <p style="font-size:0.75rem; color:#e67e22; margin-top:10px;">⚠ Después de agregar un tipo nuevo, Apps Script creará la columna automáticamente en tu hoja de Google Sheet al registrar el primer pedido de ese tipo.</p>
+    </div>
+  </div>
+</div>
+
 <button class="config-toggle" onclick="toggleConfig()" title="Configuración">⚙</button>
 <button class="refresh-btn" onclick="loadFromSheets()" title="Recargar datos">↻</button>
 
@@ -366,11 +406,35 @@
 </div>
 
 <script>
+// ============ TIPOS DE PRENDAS ============
+const PRENDA_TYPES_BUILTIN = [
+  { key: 'BLANCA',          label: 'Camiseta Blanca',  color: '#95a5a6', hasStock: true  },
+  { key: 'AZUL',            label: 'Camiseta Azul',    color: '#3498db', hasStock: true  },
+  { key: 'CHOMBA',          label: 'Chomba',           color: '#e67e22', hasStock: false },
+  { key: 'SHORT',           label: 'Short',            color: '#27ae60', hasStock: false },
+  { key: 'ARQUERO_CELESTE', label: 'Arquero Celeste',  color: '#00bcd4', hasStock: false },
+  { key: 'ARQUERO_NEGRA',   label: 'Arquero Negra',    color: '#2c3e50', hasStock: false },
+];
+function getPrendaTypes() {
+  const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+  return [...PRENDA_TYPES_BUILTIN, ...custom];
+}
+
 // ============ STOCK INICIAL ============
+// Base stock — puede sobreescribirse con valores guardados en localStorage
 const STOCK_INICIAL = {
-  blanca: { XS: 2, S: 6, M: 6, L: 5, XL: 6, XXL: 2 },
+  blanca: { XS: 2, S: 6, M: 6, L: 6, XL: 6, XXL: 2 },
   azul:   { XS: 2, S: 4, M: 4, L: 4, XL: 4, XXL: 2 }
 };
+(function loadSavedStock() {
+  const saved = localStorage.getItem('stockInicial');
+  if (saved) { try { Object.assign(STOCK_INICIAL, JSON.parse(saved)); } catch(e) {} }
+  // Apply builtin overrides (hasStock toggles, etc)
+  const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
+  PRENDA_TYPES_BUILTIN.forEach(t => {
+    if (overrides[t.key]) Object.assign(t, overrides[t.key]);
+  });
+})();
 const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 // ============ STATE ============
@@ -385,16 +449,20 @@ let pendingUnlockId = null;
 function fmt(n) { return '$' + Number(n).toLocaleString('es-AR'); }
 
 function getTipo(p) {
-  if (Number(p['BLANCA']) === 1) return 'blanca';
-  if (Number(p['AZUL']) === 1) return 'azul';
-  if (Number(p['CHOMBA']) === 1) return 'chomba';
-  if (Number(p['SHORT']) === 1) return 'short';
+  for (const t of getPrendaTypes()) {
+    if (Number(p[t.key]) === 1) return t.key.toLowerCase();
+  }
   return 'otro';
 }
 
-function getTipoLabel(tipo) {
-  const map = { blanca: 'BLANCA', azul: 'AZUL', chomba: 'CHOMBA', short: 'SHORT' };
-  return map[tipo] || tipo.toUpperCase();
+function getTipoLabel(tipoLower) {
+  const found = getPrendaTypes().find(t => t.key.toLowerCase() === tipoLower);
+  return found ? found.key.replace(/_/g, ' ') : tipoLower.toUpperCase();
+}
+
+function getTipoColor(tipoLower) {
+  const found = getPrendaTypes().find(t => t.key.toLowerCase() === tipoLower);
+  return found ? found.color : '#999';
 }
 
 function isRetirado(p) {
@@ -420,10 +488,15 @@ function showToast(msg) {
 function switchSection(section) {
   currentSection = section;
   document.querySelectorAll('.main-tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0 && section === 'pedidos') || (i === 1 && section === 'nuevo'));
+    t.classList.toggle('active',
+      (i === 0 && section === 'pedidos') ||
+      (i === 1 && section === 'nuevo') ||
+      (i === 2 && section === 'tipos')
+    );
   });
   document.getElementById('sectionPedidos').classList.toggle('active', section === 'pedidos');
   document.getElementById('sectionNuevo').classList.toggle('active', section === 'nuevo');
+  document.getElementById('sectionTipos').classList.toggle('active', section === 'tipos');
 }
 
 function switchFilter(filter) {
@@ -431,8 +504,25 @@ function switchFilter(filter) {
   document.querySelectorAll('.sub-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.filter === filter);
   });
+  renderStock();
   renderList();
   updateKPIs();
+}
+
+function initSubTabs() {
+  const container = document.getElementById('subTabs');
+  container.innerHTML =
+    `<div class="sub-tab active" data-filter="todos" onclick="switchFilter('todos')">TODOS <span class="badge" id="badgeTodos">0</span></div>` +
+    getPrendaTypes().map(t => {
+      const key = t.key.toLowerCase();
+      return `<div class="sub-tab" data-filter="${key}" onclick="switchFilter('${key}')">${t.key.replace(/_/g,' ')} <span class="badge" id="badge-${key}">0</span></div>`;
+    }).join('');
+}
+
+function initNuevoPedidoTipos() {
+  const sel = document.getElementById('np_tipo');
+  sel.innerHTML = '<option value="">Seleccionar...</option>' +
+    getPrendaTypes().map(t => `<option value="${t.label}">${t.label}</option>`).join('');
 }
 
 // ============ CONFIG ============
@@ -481,10 +571,11 @@ async function loadFromSheets() {
         ...p,
         _id: i + 1,
         _sheetRow: p._row,
-        _talleRetiro: p['Talle Retiro'] || '',
-        _medioPago: p['Medio de Pago Retiro'] || '',
-        _montoRetiro: p['Monto Retiro'] || '',
-        _observacionRetiro: p['Notas Retiro'] || ''
+        // Normalizar campos de retiro desde las columnas de la hoja Pedidos
+        _talleRetiro:     p['Talle Retiro']           || '',
+        _medioPagoRetiro: p['Medio de Pago Retiro']   || '',
+        _montoRetiro:     p['Monto Retiro']            || 0,
+        _notasRetiro:     p['Notas Retiro']            || '',
       }));
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
@@ -529,16 +620,18 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, 
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload)
     });
-    // Update local
+    // Update local — todos los campos de retiro
     pedido['Retirado'] = retirado ? 1 : 0;
-    pedido['_talleRetiro'] = retirado ? (talleRetiro || pedido['Talle'] || '') : '';
-    pedido['_observacionRetiro'] = retirado ? observacion : '';
-    pedido['_medioPago'] = retirado ? medioPago : '';
-    pedido['_montoRetiro'] = retirado ? (Number(pagoRetiro) || 0) : '';
-    if (talleRetiro && talleRetiro !== pedido['Talle']) {
-      pedido['_talleRetiro'] = talleRetiro;
-    }
-    if (pagoRetiro && Number(pagoRetiro) > 0) {
+    const talleEfectivo = talleRetiro || pedido['Talle'] || '';
+    pedido['Talle Retiro']         = retirado ? talleEfectivo : '';
+    pedido['_talleRetiro']         = retirado ? talleEfectivo : '';
+    pedido['Medio de Pago Retiro'] = retirado ? (medioPago || '') : '';
+    pedido['_medioPagoRetiro']     = retirado ? (medioPago || '') : '';
+    pedido['Monto Retiro']         = retirado ? (pagoRetiro || 0) : 0;
+    pedido['_montoRetiro']         = retirado ? (pagoRetiro || 0) : 0;
+    pedido['Notas Retiro']         = retirado ? (observacion || '') : '';
+    pedido['_notasRetiro']         = retirado ? (observacion || '') : '';
+    if (retirado && pagoRetiro && Number(pagoRetiro) > 0) {
       const pago = Number(pagoRetiro);
       pedido['Seña'] = (Number(pedido['Seña']) || 0) + pago;
       pedido['Resta'] = Math.max(0, (Number(pedido['Resta']) || 0) - pago);
@@ -572,16 +665,24 @@ async function submitNuevoPedido() {
   if (!nombre) { showToast('Ingresá el nombre'); return; }
   if (!tipo) { showToast('Seleccioná el tipo de prenda'); return; }
   if (!talle) { showToast('Seleccioná el talle'); return; }
+  // Validar que la seña no supere el total
+  if (Number(total) > 0 && Number(seña) > Number(total)) {
+    showToast(`⚠️ La seña ($${Number(seña).toLocaleString('es-AR')}) no puede superar el total ($${Number(total).toLocaleString('es-AR')})`);
+    return;
+  }
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
   const btn = document.getElementById('btnNuevoPedido');
   btn.disabled = true;
   btn.textContent = 'Registrando...';
+  // Derive tipoKey from selected tipo label
+  const selectedTipoObj = getPrendaTypes().find(t => t.label === tipo);
+  const tipoKey = selectedTipoObj ? selectedTipoObj.key : tipo.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
   try {
     showLoading(true);
     await fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'nuevoPedido', nombre, tipo, talle, seña, total, modoPago, notas: nota, tanda })
+      body: JSON.stringify({ action: 'nuevoPedido', nombre, tipo, tipoKey, talle, seña, total, modoPago, notas: nota, tanda })
     });
     document.getElementById('successMsg').style.display = 'block';
     setTimeout(() => { document.getElementById('successMsg').style.display = 'none'; }, 3000);
@@ -604,71 +705,248 @@ async function submitNuevoPedido() {
 }
 
 // ============ STOCK ============
-function calcStock() {
-  const entregadas = { blanca: {}, azul: {} };
-  const pendientes = { blanca: {}, azul: {} };
+function calcStock(tandaFilter) {
+  const stockTypes = getPrendaTypes().filter(t => t.hasStock).map(t => t.key.toLowerCase());
+  const pendientes        = {};  // no-retirados por talle PEDIDO, filtrados por tanda
+  const retirados         = {};  // retirados por talle PEDIDO, filtrados por tanda
+  const entregadasGlobal  = {};  // retirados por talle RETIRO, siempre globales (stock real)
+  stockTypes.forEach(k => {
+    pendientes[k] = {}; retirados[k] = {};
+    entregadasGlobal[k] = {};
+  });
 
   PEDIDOS.forEach(p => {
     const tipo = getTipo(p);
-    if (tipo !== 'blanca' && tipo !== 'azul') return;
-    const t = (p['Talle'] || '').toUpperCase();
+    if (!stockTypes.includes(tipo)) return;
+    const t = (p['Talle'] || '').toUpperCase();  // talle pedido
     if (!TALLES_ORDER.includes(t)) return;
+
+    // Stock real: usa el talle de retiro (puede diferir del pedido)
     if (isRetirado(p)) {
-      // cuenta por talle efectivamente retirado
       const tr = (p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
       if (TALLES_ORDER.includes(tr)) {
-        entregadas[tipo][tr] = (entregadas[tipo][tr] || 0) + 1;
+        entregadasGlobal[tipo][tr] = (entregadasGlobal[tipo][tr] || 0) + 1;
       }
+    }
+
+    // KPI Ret/Pend: respetan el filtro de tanda, indexados por talle PEDIDO
+    if (tandaFilter) {
+      const tanda = getTanda(p);
+      if (tandaFilter === 'PRIMERA' && tanda === 'SEGUNDA') return;
+      if (tandaFilter === 'SEGUNDA' && tanda !== 'SEGUNDA') return;
+    }
+    if (isRetirado(p)) {
+      retirados[tipo][t] = (retirados[tipo][t] || 0) + 1;
     } else {
-      // pendiente: cuenta por talle pedido
       pendientes[tipo][t] = (pendientes[tipo][t] || 0) + 1;
     }
   });
 
-  const remaining = { blanca: {}, azul: {} };
-  ['blanca', 'azul'].forEach(tipo => {
+  // Remaining: stock inicial menos lo entregado globalmente (por talle de retiro)
+  const remaining = {};
+  stockTypes.forEach(tipo => {
+    remaining[tipo] = {};
     TALLES_ORDER.forEach(t => {
-      remaining[tipo][t] = (STOCK_INICIAL[tipo][t] || 0) - (entregadas[tipo][t] || 0);
+      remaining[tipo][t] = (STOCK_INICIAL[tipo]?.[t] || 0) - (entregadasGlobal[tipo][t] || 0);
     });
   });
-  return { remaining, pendientes, entregadas };
+  return { remaining, pendientes, retirados };
 }
 
 function hasStockForPedido(p) {
   const tipo = getTipo(p);
-  if (tipo !== 'blanca' && tipo !== 'azul') return true;
+  const typeObj = getPrendaTypes().find(t => t.key.toLowerCase() === tipo);
+  if (!typeObj || !typeObj.hasStock) return true;
   const { remaining } = calcStock();
   const t = (p['Talle'] || '').toUpperCase();
-  return (remaining[tipo][t] || 0) > 0;
+  return ((remaining[tipo] || {})[t] || 0) > 0;
 }
 
 function renderStock() {
-  const { remaining, pendientes, entregadas } = calcStock();
-  ['blanca', 'azul'].forEach(tipo => {
-    const container = document.getElementById(tipo === 'blanca' ? 'stockBlanca' : 'stockAzul');
-    container.innerHTML = TALLES_ORDER.map(t => {
-      const r = remaining[tipo][t];
-      const stk = STOCK_INICIAL[tipo][t];
-      const pend = pendientes[tipo][t] || 0;
-      const ret = entregadas[tipo][t] || 0;
-      let cls = 'ok';
-      if (r <= 0) cls = 'out';
-      else if (r < pend) cls = 'out';
-      else if (pend === 0 && r >= 0) cls = 'ok';
-      else if (r <= 2) cls = 'low';
-      return `<div class="stock-cell ${cls}">
-        <div class="talle-label">${t}</div>
-        <div class="stock-num">${r}</div>
-        <div class="stock-num-label">Stk actual</div>
-        <div class="stock-detail">Orig: ${stk}</div>
-        <div class="stock-detail">Retiros ${ret} / ${pend} Pend.</div>
+  const panel = document.getElementById('stockPanel');
+  const contentDiv = document.getElementById('stockContent');
+  const titleEl = document.getElementById('stockPanelTitle');
+  const stockTypes = getPrendaTypes().filter(t => t.hasStock);
+
+  const typesToShow = currentFilter === 'todos'
+    ? stockTypes
+    : stockTypes.filter(t => t.key.toLowerCase() === currentFilter);
+
+  if (typesToShow.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+  titleEl.textContent = typesToShow.length === 1 ? `Stock ${typesToShow[0].label}` : 'Stock de Prendas';
+
+  const tandaFilter = document.getElementById('filterTanda')?.value || '';
+  const { remaining, pendientes, retirados } = calcStock(tandaFilter);
+  const tandaLabel = tandaFilter === 'PRIMERA' ? ' — 1era Tanda' : tandaFilter === 'SEGUNDA' ? ' — 2da Tanda' : '';
+  if (tandaLabel) titleEl.textContent = titleEl.textContent.replace(/ — .*$/, '') + tandaLabel;
+
+  contentDiv.innerHTML = `<div class="stock-tables">` +
+    typesToShow.map(t => {
+      const tipo = t.key.toLowerCase();
+      const stk = STOCK_INICIAL[tipo] || {};
+      return `<div class="stock-table">
+        <h4 style="background:${t.color};color:white;font-size:0.75rem;margin-bottom:4px;padding:3px 8px;border-radius:4px;">${t.label.toUpperCase()}</h4>
+        <div class="stock-grid">${
+          TALLES_ORDER.map(talle => {
+            const orig = stk[talle] || 0;
+            const r    = (remaining[tipo] || {})[talle] ?? orig;
+            const ret  = (retirados[tipo]  || {})[talle] || 0;
+            const pend = (pendientes[tipo] || {})[talle] || 0;
+            // Rojo si los pendientes superan el stock disponible
+            const cls  = (pend > r || r <= 0) ? 'out' : (r <= 2 || pend === r) ? 'low' : 'ok';
+            return `<div class="stock-cell ${cls}">
+              <div class="talle-label">${talle}</div>
+              <div class="stock-actual">${r}</div>
+              <div class="stock-orig">Orig: ${orig}</div>
+              <div class="stock-pend">${ret} Ret / ${pend} Pend</div>
+            </div>`;
+          }).join('')
+        }</div>
       </div>`;
-    }).join('');
-  });
+    }).join('') +
+  `</div>`;
 }
 
 function toggleStock() {
   document.getElementById('stockPanel').classList.toggle('collapsed');
+}
+
+// ============ TIPOS DE PRENDAS ============
+function renderTipos() {
+  const container = document.getElementById('tiposListContainer');
+  if (!container) return;
+  const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+  container.innerHTML = [
+    ...PRENDA_TYPES_BUILTIN.map(t => renderTipoCard(t, false)),
+    ...custom.map(t => renderTipoCard(t, true))
+  ].join('');
+}
+
+function renderTipoCard(t, isDeletable) {
+  const tipo = t.key.toLowerCase();
+  const stk = STOCK_INICIAL[tipo] || {};
+  const stockEditorHtml = t.hasStock ? `
+    <div class="stock-editor">
+      <div class="stock-editor-title" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'">
+        📦 Stock inicial &nbsp;<span style="font-size:0.6rem;color:#aaa;">(tap para editar)</span>
+      </div>
+      <div class="stock-editor-grid">
+        ${TALLES_ORDER.map(talle => `
+          <div class="stock-editor-cell">
+            <label>${talle}</label>
+            <input type="number" min="0" id="stk-${t.key}-${talle}" value="${stk[talle] || 0}">
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%;" onclick="saveStockTipo('${t.key}')">Guardar stock</button>
+    </div>` : '';
+
+  return `<div class="tipo-card-config">
+    <div class="tipo-dot" style="background:${t.color}"></div>
+    <div class="tipo-info" style="flex:1;">
+      <div class="tipo-name">${t.label}</div>
+      <div class="tipo-key-label">Columna: <strong>${t.key}</strong>${t.hasStock ? ' &nbsp;• con stock' : ''}</div>
+      ${stockEditorHtml}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
+      ${isDeletable
+        ? `<button class="btn-delete" onclick="deleteTipo('${t.key}')">Eliminar</button>`
+        : '<span class="builtin-badge">Predefinido</span>'
+      }
+      ${!t.hasStock
+        ? `<button style="background:#3498db;color:white;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;cursor:pointer;" onclick="activarStock('${t.key}')">+ Stock</button>`
+        : `<button style="background:#e0e0e0;color:#888;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;cursor:pointer;" onclick="desactivarStock('${t.key}')">- Stock</button>`
+      }
+    </div>
+  </div>`;
+}
+
+function deleteTipo(key) {
+  let custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+  custom = custom.filter(t => t.key !== key);
+  localStorage.setItem('customPrendaTypes', JSON.stringify(custom));
+  renderTipos();
+  initSubTabs();
+  initNuevoPedidoTipos();
+  updateBadges();
+  showToast('Tipo eliminado');
+}
+
+function saveStockTipo(key) {
+  const tipo = key.toLowerCase();
+  const updated = {};
+  TALLES_ORDER.forEach(talle => {
+    const el = document.getElementById(`stk-${key}-${talle}`);
+    updated[talle] = el ? (Number(el.value) || 0) : 0;
+  });
+  STOCK_INICIAL[tipo] = updated;
+  localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+  renderStock();
+  showToast(`Stock de ${key} guardado`);
+
+  // Persistir en Google Sheet si hay URL configurada
+  if (SCRIPT_URL) {
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'guardarStock', tipo: key, stock: updated })
+    }).catch(() => {}); // no-cors: no hay respuesta, ignorar errores de red silenciosamente
+  }
+}
+
+function activarStock(key) {
+  _updateTipoField(key, 'hasStock', true);
+  if (!STOCK_INICIAL[key.toLowerCase()]) {
+    STOCK_INICIAL[key.toLowerCase()] = {};
+    TALLES_ORDER.forEach(t => { STOCK_INICIAL[key.toLowerCase()][t] = 0; });
+    localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+  }
+  renderTipos(); initSubTabs(); renderStock();
+  showToast('Stock activado para este tipo');
+}
+
+function desactivarStock(key) {
+  _updateTipoField(key, 'hasStock', false);
+  renderTipos(); initSubTabs(); renderStock();
+  showToast('Stock desactivado');
+}
+
+function _updateTipoField(key, field, value) {
+  // Builtins se guardan en override map
+  const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
+  const builtinIdx = PRENDA_TYPES_BUILTIN.findIndex(t => t.key === key);
+  if (builtinIdx >= 0) {
+    PRENDA_TYPES_BUILTIN[builtinIdx][field] = value;
+    overrides[key] = overrides[key] || {};
+    overrides[key][field] = value;
+    localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
+  } else {
+    let custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+    const idx = custom.findIndex(t => t.key === key);
+    if (idx >= 0) { custom[idx][field] = value; localStorage.setItem('customPrendaTypes', JSON.stringify(custom)); }
+  }
+}
+
+function agregarTipo() {
+  const label = document.getElementById('newTipoLabel').value.trim();
+  const color = document.getElementById('newTipoColor').value;
+  if (!label) { showToast('Ingresá un nombre'); return; }
+  const key = label.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+  const allKeys = getPrendaTypes().map(t => t.key);
+  if (allKeys.includes(key)) { showToast('Ya existe un tipo con ese nombre'); return; }
+  const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+  custom.push({ key, label, color, hasStock: false });
+  localStorage.setItem('customPrendaTypes', JSON.stringify(custom));
+  document.getElementById('newTipoLabel').value = '';
+  renderTipos();
+  initSubTabs();
+  initNuevoPedidoTipos();
+  updateBadges();
+  showToast(`Tipo "${label}" agregado. La columna "${key}" se creará automáticamente en tu Sheet.`);
 }
 
 // ============ BLOQUEO 2DA TANDA ============
@@ -719,25 +997,25 @@ function confirmarDesbloqueo() {
 // ============ RENDER ============
 function getFiltered() {
   const search = document.getElementById('searchInput').value.toLowerCase();
-  const filterTalle = document.getElementById('filterTalle').value;
-  const filterEstado = document.getElementById('filterEstado').value;
+  const filterTanda  = document.getElementById('filterTanda')?.value || '';
+  const filterTalle  = document.getElementById('filterTalle')?.value || '';
+  const filterEstado = document.getElementById('filterEstado')?.value || '';
   return PEDIDOS.filter(p => {
     const tipo = getTipo(p);
     if (currentFilter !== 'todos' && tipo !== currentFilter) return false;
     if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
-    if (filterEstado === 'retirados' && !isRetirado(p)) return false;
-    if (filterEstado === 'pendientes' && isRetirado(p)) return false;
+    if (filterEstado === 'retirado'  && !isRetirado(p)) return false;
+    if (filterEstado === 'pendiente' &&  isRetirado(p)) return false;
+    if (filterTanda) {
+      const tanda = getTanda(p);
+      if (filterTanda === 'PRIMERA' && tanda === 'SEGUNDA') return false;
+      if (filterTanda === 'SEGUNDA' && tanda !== 'SEGUNDA') return false;
+    }
     if (filterTalle) {
       const t = filterTalle.toUpperCase();
       const tallePedido = (p['Talle'] || '').toUpperCase();
       const talleRetiro = (p['_talleRetiro'] || p['Talle Retiro'] || '').toUpperCase();
-      if (filterEstado === 'retirados') {
-        if (talleRetiro !== t) return false;
-      } else if (filterEstado === 'pendientes') {
-        if (tallePedido !== t) return false;
-      } else {
-        if (tallePedido !== t && talleRetiro !== t) return false;
-      }
+      if (tallePedido !== t && talleRetiro !== t) return false;
     }
     return true;
   });
@@ -751,16 +1029,20 @@ function renderAll() {
 }
 
 function updateBadges() {
-  document.getElementById('badgeTodos').textContent = PEDIDOS.length;
-  document.getElementById('badgeBlanca').textContent = PEDIDOS.filter(p => getTipo(p) === 'blanca').length;
-  document.getElementById('badgeAzul').textContent = PEDIDOS.filter(p => getTipo(p) === 'azul').length;
-  document.getElementById('badgeChomba').textContent = PEDIDOS.filter(p => getTipo(p) === 'chomba').length;
-  document.getElementById('badgeShort').textContent = PEDIDOS.filter(p => getTipo(p) === 'short').length;
+  const elTodos = document.getElementById('badgeTodos');
+  if (elTodos) elTodos.textContent = PEDIDOS.length;
+  getPrendaTypes().forEach(t => {
+    const key = t.key.toLowerCase();
+    const badge = document.getElementById('badge-' + key);
+    if (badge) badge.textContent = PEDIDOS.filter(p => getTipo(p) === key).length;
+  });
 }
 
 function renderList() {
   const items = getFiltered();
   const container = document.getElementById('listContainer');
+  // Refrescar stock al cambiar filtros (por tanda o tipo)
+  renderStock();
 
   if (items.length === 0) {
     container.innerHTML = `<div class="empty-state">
@@ -780,11 +1062,15 @@ function renderList() {
     const bloqueado = isBloqueado(p);
     const is2da = tanda === 'SEGUNDA';
     const tallePedido = p['Talle'] || '—';
-    const talleRetiroActual = p['_talleRetiro'] || p['Talle Retiro'] || tallePedido;
+    // Valores previos del retiro (para pre-poblar el formulario)
+    const savedTalleRetiro = p['_talleRetiro'] || p['Talle Retiro'] || tallePedido;
+    const savedMedio       = (p['_medioPagoRetiro'] || p['Medio de Pago Retiro'] || 'efectivo').toLowerCase();
+    const savedMonto       = p['_montoRetiro'] || p['Monto Retiro'] || '';
+    const savedObs         = p['_notasRetiro'] || p['Notas Retiro'] || '';
 
     // Build talle options for the select
     const talleOptions = TALLES_ORDER.map(t =>
-      `<option value="${t}" ${t === talleRetiroActual.toUpperCase() ? 'selected' : ''}>${t}</option>`
+      `<option value="${t}" ${t === savedTalleRetiro.toUpperCase() ? 'selected' : ''}>${t}</option>`
     ).join('');
 
     return `
@@ -793,7 +1079,7 @@ function renderList() {
           <div class="check">${ret ? '✓' : ''}</div>
           <span class="name">${p['Nombre'] || '—'}</span>
           ${sinStock ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
-          ${currentFilter === 'todos' ? `<span class="tipo-badge ${tipo}">${getTipoLabel(tipo)}</span>` : ''}
+          ${currentFilter === 'todos' ? `<span class="tipo-badge" style="background:${getTipoColor(tipo)}">${getTipoLabel(tipo)}</span>` : ''}
           ${is2da ? '<span class="tanda-badge">2da TANDA</span>' : ''}
           <span class="talle">${tallePedido}</span>
           <span class="arrow">${bloqueado ? '🔒' : '▼'}</span>
@@ -802,10 +1088,10 @@ function renderList() {
           <span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
           <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
           <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
-          ${ret && talleRetiroActual && talleRetiroActual !== tallePedido ? `<span>Talle retiro: <span class="val">${talleRetiroActual}</span></span>` : ''}
+          ${ret && savedTalleRetiro && savedTalleRetiro.toUpperCase() !== tallePedido.toUpperCase() ? `<span>Talle retiro: <span class="val">${savedTalleRetiro}</span></span>` : ''}
         </div>
         ${p['Notas'] ? `<div class="notas-excel">📝 ${p['Notas']}</div>` : ''}
-        ${ret && (p['_observacionRetiro'] || p['Observacion Retiro']) ? `<div class="notas-excel">📢 ${p['_observacionRetiro'] || p['Observacion Retiro']}</div>` : ''}
+        ${ret && (savedObs) ? `<div class="notas-excel" style="color:#2980b9;">Obs. retiro: ${savedObs}</div>` : ''}
         <div class="card-body">
           <div class="form-row">
             <div class="form-group">
@@ -817,20 +1103,20 @@ function renderList() {
             </div>
             <div class="form-group">
               <label>Monto pagado al retirar</label>
-              <input type="number" id="pago-${id}" placeholder="0" value="${p['_montoRetiro'] || ''}">
+              <input type="number" id="pago-${id}" placeholder="0" value="${savedMonto || ''}">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Medio de pago</label>
               <select id="medio-${id}">
-                <option value="efectivo" ${(p['_medioPago'] || 'efectivo') === 'efectivo' ? 'selected' : ''}>Efectivo</option>
-                <option value="transferencia" ${p['_medioPago'] === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+                <option value="efectivo" ${savedMedio === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+                <option value="transferencia" ${savedMedio === 'transferencia' ? 'selected' : ''}>Transferencia</option>
               </select>
             </div>
             <div class="form-group">
               <label>Observación</label>
-              <textarea id="obs-${id}" placeholder="Notas sobre el retiro...">${p['_observacionRetiro'] || ''}</textarea>
+              <textarea id="obs-${id}" placeholder="Notas sobre el retiro...">${savedObs}</textarea>
             </div>
           </div>
           <div class="actions">
@@ -858,13 +1144,22 @@ function toggleCard(id) {
 }
 
 async function marcarRetiro(id, retirado) {
-  const pago = Number(document.getElementById('pago-' + id)?.value) || 0;
+  const pago  = Number(document.getElementById('pago-'  + id)?.value) || 0;
   const medio = document.getElementById('medio-' + id)?.value || 'efectivo';
-  const obs = document.getElementById('obs-' + id)?.value || '';
+  const obs   = document.getElementById('obs-'   + id)?.value || '';
   const talleRetiro = document.getElementById('talleRetiro-' + id)?.value || '';
 
   const pedido = PEDIDOS.find(p => p._id === id);
   if (!pedido) return;
+
+  // Validar que el pago al retirar no supere lo que resta
+  if (retirado && pago > 0) {
+    const resta = Number(pedido['Resta']) || 0;
+    if (pago > resta) {
+      showToast(`⚠️ El monto ($${pago.toLocaleString('es-AR')}) supera la resta ($${resta.toLocaleString('es-AR')})`);
+      return;
+    }
+  }
 
   await saveRetiro(pedido, retirado, pago, medio, obs, talleRetiro);
 }
@@ -922,6 +1217,9 @@ function updateKPIs() {
 }
 
 // ============ INIT ============
+initSubTabs();
+initNuevoPedidoTipos();
+renderTipos();
 checkConfig();
 const backup = localStorage.getItem('pedidos_backup');
 if (backup) { try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
