@@ -118,6 +118,9 @@ function doPost(e) {
     if (action === 'guardarStock') {
       return guardarStock(data);
     }
+    if (action === 'registrarSeña') {
+      return registrarSeña(data);
+    }
 
     return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
   } catch (err) {
@@ -278,6 +281,49 @@ function registrarRetiro(data) {
 // Legacy support
 function updateRetiro(data) {
   return registrarRetiro(data);
+}
+
+// --- Registrar pago/seña adicional sin marcar como retirado ---
+function registrarSeña(data) {
+  const pedidosSheet = getOrCreateSheet(SHEET_PEDIDOS);
+  const pedidosData = pedidosSheet.getDataRange().getValues();
+  const headers = pedidosData[0];
+
+  const colSeña        = headers.indexOf('Seña');
+  const colResta       = headers.indexOf('Resta');
+  const colTotalTransf = headers.indexOf('Total Transferencia');
+  const colTotalEfect  = headers.indexOf('Total Efectivo');
+
+  const targetRow = Number(data.sheetRow);
+  if (targetRow < 2 || targetRow > pedidosData.length) {
+    return jsonResponse({ status: 'error', message: 'Fila inválida' });
+  }
+
+  const pagoSeña = Number(data.pagoSeña) || 0;
+  if (pagoSeña <= 0) {
+    return jsonResponse({ status: 'error', message: 'Monto inválido' });
+  }
+
+  const rowData = pedidosData[targetRow - 1];
+
+  if (colSeña >= 0) {
+    const currentSeña = Number(rowData[colSeña]) || 0;
+    pedidosSheet.getRange(targetRow, colSeña + 1).setValue(currentSeña + pagoSeña);
+  }
+  if (colResta >= 0) {
+    const currentResta = Number(rowData[colResta]) || 0;
+    pedidosSheet.getRange(targetRow, colResta + 1).setValue(Math.max(0, currentResta - pagoSeña));
+  }
+  if (data.medioPago === 'transferencia' && colTotalTransf >= 0) {
+    const current = Number(rowData[colTotalTransf]) || 0;
+    pedidosSheet.getRange(targetRow, colTotalTransf + 1).setValue(current + pagoSeña);
+  }
+  if (data.medioPago === 'efectivo' && colTotalEfect >= 0) {
+    const current = Number(rowData[colTotalEfect]) || 0;
+    pedidosSheet.getRange(targetRow, colTotalEfect + 1).setValue(current + pagoSeña);
+  }
+
+  return jsonResponse({ status: 'ok', message: 'Pago registrado' });
 }
 
 // ============ Stock: guardar en hoja Stock ============

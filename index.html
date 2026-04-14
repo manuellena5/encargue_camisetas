@@ -286,6 +286,15 @@
         <option value="L">L</option>
         <option value="XL">XL</option>
         <option value="XXL">XXL</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
       </select>
     </div>
     <div class="filter-line">
@@ -329,6 +338,15 @@
         <option value="L">L</option>
         <option value="XL">XL</option>
         <option value="XXL">XXL</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
         <option value="Talle unico">Talle único</option>
       </select>
     </div>
@@ -436,6 +454,7 @@ const STOCK_INICIAL = {
   });
 })();
 const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const TALLES_EXTENDIDOS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
 
 // ============ STATE ============
 let PEDIDOS = [];
@@ -589,6 +608,56 @@ async function loadFromSheets() {
   } finally {
     showLoading(false);
   }
+}
+
+// ============ GOOGLE SHEETS: SAVE PAGO SEÑA ============
+async function savePagoSeña(pedido, pagoSeña, medioPago) {
+  if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+  try {
+    showLoading(true);
+    const payload = {
+      action: 'registrarSeña',
+      sheetRow: pedido._sheetRow,
+      pagoSeña: pagoSeña,
+      medioPago: medioPago
+    };
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+    // Actualizar localmente
+    pedido['Seña'] = (Number(pedido['Seña']) || 0) + pagoSeña;
+    pedido['Resta'] = Math.max(0, (Number(pedido['Resta']) || 0) - pagoSeña);
+    if (medioPago === 'transferencia') {
+      pedido['Total Transferencia'] = (Number(pedido['Total Transferencia']) || 0) + pagoSeña;
+    } else {
+      pedido['Total Efectivo'] = (Number(pedido['Total Efectivo']) || 0) + pagoSeña;
+    }
+    localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
+    renderAll();
+    showToast('Pago registrado');
+  } catch (e) {
+    console.error('Error saving pago:', e);
+    showToast('Error al guardar el pago');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function registrarPagoSeña(id) {
+  const pago  = Number(document.getElementById('pagoSeña-' + id)?.value) || 0;
+  const medio = document.getElementById('medioSeña-' + id)?.value || 'efectivo';
+  if (!pago || pago <= 0) { showToast('Ingresá un monto válido'); return; }
+  const pedido = PEDIDOS.find(p => p._id === id);
+  if (!pedido) return;
+  const resta = Number(pedido['Resta']) || 0;
+  if (pago > resta) {
+    showToast(`⚠️ El monto ($${pago.toLocaleString('es-AR')}) supera la resta ($${resta.toLocaleString('es-AR')})`);
+    return;
+  }
+  await savePagoSeña(pedido, pago, medio);
 }
 
 // ============ GOOGLE SHEETS: SAVE RETIRO ============
@@ -1069,7 +1138,7 @@ function renderList() {
     const savedObs         = p['_notasRetiro'] || p['Notas Retiro'] || '';
 
     // Build talle options for the select
-    const talleOptions = TALLES_ORDER.map(t =>
+    const talleOptions = TALLES_EXTENDIDOS.map(t =>
       `<option value="${t}" ${t === savedTalleRetiro.toUpperCase() ? 'selected' : ''}>${t}</option>`
     ).join('');
 
@@ -1119,6 +1188,24 @@ function renderList() {
               <textarea id="obs-${id}" placeholder="Notas sobre el retiro...">${savedObs}</textarea>
             </div>
           </div>
+          ${!ret ? `
+          <div style="border-top:1px solid #eee;margin-top:10px;padding-top:10px;">
+            <div style="font-size:0.75rem;font-weight:700;color:#555;margin-bottom:6px;">💰 Registrar pago adicional</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Monto del pago</label>
+                <input type="number" id="pagoSeña-${id}" placeholder="0" min="0">
+              </div>
+              <div class="form-group">
+                <label>Medio de pago</label>
+                <select id="medioSeña-${id}">
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-warning btn-sm" onclick="registrarPagoSeña(${id})">Registrar Pago</button>
+          </div>` : ''}
           <div class="actions">
             ${ret
               ? `<button class="btn btn-danger btn-sm" onclick="marcarRetiro(${id}, false)">Desmarcar retiro</button>`
