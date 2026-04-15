@@ -1241,14 +1241,14 @@ function getFiltered() {
       if (filterTanda === 'SEGUNDA' && tanda !== 'SEGUNDA') return false;
     }
     if (filterTalle) {
-      const t = filterTalle.toUpperCase();
+      const t = String(filterTalle).toUpperCase();
       if (isRetirado(p)) {
         // Retirado: filtrar por el talle que efectivamente se retiró
-        const talleRetiro = (p['_talleRetiro'] || p['Talle Retiro'] || p['Talle'] || '').toUpperCase();
+        const talleRetiro = String(p['_talleRetiro'] || p['Talle Retiro'] || p['Talle'] || '').toUpperCase();
         if (talleRetiro !== t) return false;
       } else {
         // Pendiente: filtrar por el talle pedido
-        const tallePedido = (p['Talle'] || '').toUpperCase();
+        const tallePedido = String(p['Talle'] || '').toUpperCase();
         if (tallePedido !== t) return false;
       }
     }
