@@ -937,12 +937,12 @@ function calcStock(tandaFilter) {
   PEDIDOS.forEach(p => {
     const tipo = getTipo(p);
     if (!stockTypes.includes(tipo)) return;
-    const t = (p['Talle'] || '').toUpperCase();  // talle pedido
+    const t = String(p['Talle'] || '').toUpperCase();  // talle pedido
     if (!TALLES_ORDER.includes(t)) return;
 
     // Stock real: usa el talle de retiro (puede diferir del pedido)
     if (isRetirado(p)) {
-      const tr = (p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
+      const tr = String(p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
       if (TALLES_ORDER.includes(tr)) {
         entregadasGlobal[tipo][tr] = (entregadasGlobal[tipo][tr] || 0) + 1;
       }
@@ -955,7 +955,7 @@ function calcStock(tandaFilter) {
       if (tandaFilter === 'SEGUNDA' && tanda !== 'SEGUNDA') return;
     }
     if (isRetirado(p)) {
-      const tr = (p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
+      const tr = String(p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
       const talleEfectivo = TALLES_ORDER.includes(tr) ? tr : t;
       retirados[tipo][talleEfectivo] = (retirados[tipo][talleEfectivo] || 0) + 1;
     } else {
@@ -979,7 +979,7 @@ function hasStockForPedido(p) {
   const typeObj = getPrendaTypes().find(t => t.key.toLowerCase() === tipo);
   if (!typeObj || !typeObj.hasStock) return true;
   const { remaining } = calcStock();
-  const t = (p['Talle'] || '').toUpperCase();
+  const t = String(p['Talle'] || '').toUpperCase();
   return ((remaining[tipo] || {})[t] || 0) > 0;
 }
 
@@ -1291,7 +1291,7 @@ function renderResumen() {
     // Agrupar por talle dentro del tipo — ordenar por TALLES_EXTENDIDOS
     const talleMap = {};
     grupo.forEach(p => {
-      const talle = (p['Talle'] || '—').toString().toUpperCase();
+      const talle = String(p['Talle'] || '—').toUpperCase();
       if (!talleMap[talle]) talleMap[talle] = { cantidad: 0, pagado: 0, resta: 0 };
       talleMap[talle].cantidad++;
       talleMap[talle].pagado += Number(p['Seña']) || 0;
@@ -1484,7 +1484,7 @@ function renderPedidoProveedor() {
 
     const talleMap = {};
     grupo.forEach(p => {
-      const talle = (p['Talle'] || '').toString().toUpperCase();
+      const talle = String(p['Talle'] || '').toUpperCase();
       if (talle) talleMap[talle] = (talleMap[talle] || 0) + 1;
     });
 
