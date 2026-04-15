@@ -583,11 +583,9 @@ function fmt(n) { return '$' + Number(n).toLocaleString('es-AR'); }
 function normalizeKey(str) {
   return String(str || '')
     .normalize('NFD')
-    .replace(/[ 0--]/g, '') // quitar caracteres de control
-    .replace(/[ --]/g, '')
-    .replace(/ñ/gi, 'n')
-    .replace(/[00-6f]/g, '') // quitar diacríticos
-    .replace(/[^A-Z0-9]/gi, '')   // underscores stripped for consistent normalization
+    .replace(/\u00f1/gi, 'n')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/gi, '')
     .toUpperCase();
 }
 
