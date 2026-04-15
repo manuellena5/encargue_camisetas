@@ -578,9 +578,33 @@ let pendingUnlockId = null;
 // ============ HELPERS ============
 function fmt(n) { return '$' + Number(n).toLocaleString('es-AR'); }
 
+
+// Normaliza un string: mayúsculas, sin tildes, ñ->n, sin diacríticos
+function normalizeKey(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[ 0--]/g, '') // quitar caracteres de control
+    .replace(/[ --]/g, '')
+    .replace(/ñ/gi, 'n')
+    .replace(/[00-6f]/g, '') // quitar diacríticos
+    .replace(/[^A-Z0-9_]/gi, '')
+    .toUpperCase();
+}
+
 function getTipo(p) {
-  for (const t of getPrendaTypes()) {
-    if (Number(p[t.key]) === 1) return t.key.toLowerCase();
+  // Buscar la PRIMERA columna de tipo que tenga valor 1, normalizando keys
+  const tipos = getPrendaTypes();
+  // Construir un mapa de keys normalizados a key real
+  const keyMap = {};
+  tipos.forEach(t => {
+    keyMap[normalizeKey(t.key)] = t.key.toLowerCase();
+  });
+  for (const k in p) {
+    if (typeof p[k] === 'undefined') continue;
+    const norm = normalizeKey(k);
+    if (keyMap[norm] && Number(p[k]) === 1) {
+      return keyMap[norm];
+    }
   }
   return 'otro';
 }
