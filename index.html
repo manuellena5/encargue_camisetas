@@ -1610,8 +1610,11 @@ function renderList() {
     const savedObs         = p['_notasRetiro'] || p['Notas Retiro'] || '';
 
     // Build talle options for the select
+
+    const savedTalleRetiroStr = String(savedTalleRetiro || '');
+    const tallePedidoStr = String(tallePedido || '');
     const talleOptions = TALLES_EXTENDIDOS.map(t =>
-      `<option value="${t}" ${t === savedTalleRetiro.toUpperCase() ? 'selected' : ''}>${t}</option>`
+      `<option value="${t}" ${t === savedTalleRetiroStr.toUpperCase() ? 'selected' : ''}>${t}</option>`
     ).join('');
 
     const html = `
@@ -1629,7 +1632,7 @@ function renderList() {
           <span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
           <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
           <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
-          ${ret && savedTalleRetiro && savedTalleRetiro.toUpperCase() !== tallePedido.toUpperCase() ? `<span>Talle retiro: <span class="val">${savedTalleRetiro}</span></span>` : ''}
+          ${ret && savedTalleRetiroStr && savedTalleRetiroStr.toUpperCase() !== tallePedidoStr.toUpperCase() ? `<span>Talle retiro: <span class="val">${savedTalleRetiroStr}</span></span>` : ''}
         </div>
         ${p['Notas'] ? `<div class="notas-excel">📝 ${p['Notas']}</div>` : ''}
         ${ret && (savedObs) ? `<div class="notas-excel" style="color:#2980b9;">Obs. retiro: ${savedObs}</div>` : ''}
