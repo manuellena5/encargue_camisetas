@@ -540,8 +540,13 @@ const PRENDA_TYPES_BUILTIN = [
   { key: 'ARQUERO_NEGRA',   label: 'Arquero Negra',    color: '#2c3e50', hasStock: false },
 ];
 function getPrendaTypes() {
-  const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
-  return [...PRENDA_TYPES_BUILTIN, ...custom];
+  try {
+    const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+    return [...PRENDA_TYPES_BUILTIN, ...(Array.isArray(custom) ? custom : [])];
+  } catch(e) {
+    console.error('Error leyendo tipos customizados:', e);
+    return [...PRENDA_TYPES_BUILTIN];
+  }
 }
 
 // ============ STOCK INICIAL ============
@@ -1129,18 +1134,26 @@ function agregarTipo() {
   const label = document.getElementById('newTipoLabel').value.trim();
   const color = document.getElementById('newTipoColor').value;
   if (!label) { showToast('Ingresá un nombre'); return; }
-  const key = label.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+  // Normalizar: quitar tildes y ñ → n, etc., luego limpiar a A-Z0-9_
+  const labelNorm = label.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const key = labelNorm.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+  if (!key) { showToast('El nombre no genera una clave válida. Usá letras o números.'); return; }
   const allKeys = getPrendaTypes().map(t => t.key);
-  if (allKeys.includes(key)) { showToast('Ya existe un tipo con ese nombre'); return; }
-  const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
-  custom.push({ key, label, color, hasStock: false });
-  localStorage.setItem('customPrendaTypes', JSON.stringify(custom));
+  if (allKeys.includes(key)) { showToast('Ya existe un tipo con ese nombre (clave: ' + key + ')'); return; }
+  try {
+    const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+    custom.push({ key, label, color, hasStock: false });
+    localStorage.setItem('customPrendaTypes', JSON.stringify(custom));
+  } catch(e) {
+    // Si el storage estaba corrupto, reiniciar con solo el nuevo tipo
+    localStorage.setItem('customPrendaTypes', JSON.stringify([{ key, label, color, hasStock: false }]));
+  }
   document.getElementById('newTipoLabel').value = '';
   renderTipos();
   initSubTabs();
   initNuevoPedidoTipos();
   updateBadges();
-  showToast(`Tipo "${label}" agregado. La columna "${key}" se creará automáticamente en tu Sheet.`);
+  showToast(`Tipo "${label}" agregado (clave: ${key}).`);
 }
 
 // ============ BLOQUEO 2DA TANDA ============
@@ -1557,9 +1570,11 @@ function renderList() {
     return;
   }
 
-  container.innerHTML = items.map(p => {
-    const id = p._id;
-    const ret = isRetirado(p);
+  const cards = [];
+  items.forEach(p => {
+    try {
+      const id = p._id;
+      const ret = isRetirado(p);
     const tipo = getTipo(p);
     const sinStock = !ret && !hasStockForPedido(p);
     const tanda = getTanda(p);
@@ -1577,7 +1592,7 @@ function renderList() {
       `<option value="${t}" ${t === savedTalleRetiro.toUpperCase() ? 'selected' : ''}>${t}</option>`
     ).join('');
 
-    return `
+    const html = `
       <div class="card ${ret ? 'retirado' : ''} ${sinStock ? 'sin-stock' : ''} ${bloqueado ? 'bloqueado' : ''}" id="card-${id}">
         <div class="card-header" onclick="toggleCard(${id})">
           <div class="check">${ret ? '✓' : ''}</div>
@@ -1651,7 +1666,13 @@ function renderList() {
         </div>
       </div>
     `;
-  }).join('');
+    cards.push(html);
+    } catch(err) {
+      console.error('Error renderizando pedido', p._id, err);
+    }
+  });
+
+  container.innerHTML = cards.join('');
 
   updateKPIs();
 }
