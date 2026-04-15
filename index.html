@@ -587,7 +587,7 @@ function normalizeKey(str) {
     .replace(/[ --]/g, '')
     .replace(/ñ/gi, 'n')
     .replace(/[00-6f]/g, '') // quitar diacríticos
-    .replace(/[^A-Z0-9_]/gi, '')
+    .replace(/[^A-Z0-9]/gi, '')   // underscores stripped for consistent normalization
     .toUpperCase();
 }
 
