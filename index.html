@@ -777,7 +777,7 @@ async function submitNuevoPedido() {
 function calcStock(tandaFilter) {
   const stockTypes = getPrendaTypes().filter(t => t.hasStock).map(t => t.key.toLowerCase());
   const pendientes        = {};  // no-retirados por talle PEDIDO, filtrados por tanda
-  const retirados         = {};  // retirados por talle PEDIDO, filtrados por tanda
+  const retirados         = {};  // retirados por talle RETIRO, filtrados por tanda
   const entregadasGlobal  = {};  // retirados por talle RETIRO, siempre globales (stock real)
   stockTypes.forEach(k => {
     pendientes[k] = {}; retirados[k] = {};
@@ -798,14 +798,16 @@ function calcStock(tandaFilter) {
       }
     }
 
-    // KPI Ret/Pend: respetan el filtro de tanda, indexados por talle PEDIDO
+    // KPI Ret/Pend: respetan el filtro de tanda; retirados indexados por talle RETIRO, pendientes por talle PEDIDO
     if (tandaFilter) {
       const tanda = getTanda(p);
       if (tandaFilter === 'PRIMERA' && tanda === 'SEGUNDA') return;
       if (tandaFilter === 'SEGUNDA' && tanda !== 'SEGUNDA') return;
     }
     if (isRetirado(p)) {
-      retirados[tipo][t] = (retirados[tipo][t] || 0) + 1;
+      const tr = (p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
+      const talleEfectivo = TALLES_ORDER.includes(tr) ? tr : t;
+      retirados[tipo][talleEfectivo] = (retirados[tipo][talleEfectivo] || 0) + 1;
     } else {
       pendientes[tipo][t] = (pendientes[tipo][t] || 0) + 1;
     }
@@ -1082,9 +1084,15 @@ function getFiltered() {
     }
     if (filterTalle) {
       const t = filterTalle.toUpperCase();
-      const tallePedido = (p['Talle'] || '').toUpperCase();
-      const talleRetiro = (p['_talleRetiro'] || p['Talle Retiro'] || '').toUpperCase();
-      if (tallePedido !== t && talleRetiro !== t) return false;
+      if (isRetirado(p)) {
+        // Retirado: filtrar por el talle que efectivamente se retiró
+        const talleRetiro = (p['_talleRetiro'] || p['Talle Retiro'] || p['Talle'] || '').toUpperCase();
+        if (talleRetiro !== t) return false;
+      } else {
+        // Pendiente: filtrar por el talle pedido
+        const tallePedido = (p['Talle'] || '').toUpperCase();
+        if (tallePedido !== t) return false;
+      }
     }
     return true;
   });
