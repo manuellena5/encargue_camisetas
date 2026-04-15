@@ -198,6 +198,82 @@
     .config-toggle { position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px; border-radius: 50%; background: #7f8c8d; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
     .config-toggle:hover { background: #95a5a6; }
 
+    /* RESUMEN */
+    .resumen-section { padding: 16px; max-width: 600px; margin: 0 auto; }
+    .resumen-section h2 { font-size: 1.1rem; margin-bottom: 4px; color: #1a1a2e; }
+    .resumen-subtitle { font-size: 0.75rem; color: #999; margin-bottom: 16px; }
+    .resumen-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .resumen-table thead tr { background: #1a1a2e; color: white; }
+    .resumen-table thead th { padding: 10px 12px; text-align: left; font-size: 0.78rem; font-weight: 700; }
+    .resumen-table thead th:not(:first-child) { text-align: right; }
+    .resumen-table tbody tr { border-bottom: 1px solid #f0f0f0; }
+    .resumen-table tbody tr:last-child { border-bottom: none; }
+    .resumen-table tbody tr:hover { background: #f8f9fa; }
+    .resumen-table td { padding: 11px 12px; font-size: 0.85rem; }
+    .resumen-table td:not(:first-child) { text-align: right; }
+    .resumen-table .tipo-dot-sm { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: middle; flex-shrink: 0; }
+    .resumen-table .tipo-name-cell { display: flex; align-items: center; }
+    .resumen-table tfoot tr { background: #f0f2f5; font-weight: 700; border-top: 2px solid #ddd; }
+    .resumen-table tfoot td { padding: 11px 12px; font-size: 0.85rem; }
+    .resumen-table tfoot td:not(:first-child) { text-align: right; }
+    .resumen-empty { text-align: center; padding: 40px 20px; color: #999; font-size: 0.9rem; }
+    .resumen-cobrado { color: #27ae60; font-weight: 600; }
+    .resumen-resta { color: #e74c3c; font-weight: 600; }
+    .resumen-count { color: #2980b9; font-weight: 700; }
+    .resumen-table .resumen-tipo-header td { background: #eef2f7; font-size: 0.8rem; padding: 8px 12px; border-top: 2px solid #dde3ed; }
+    .resumen-table .resumen-subtotal td { background: #f7f9fc; font-size: 0.8rem; font-weight: 700; color: #444; border-bottom: 2px solid #dde3ed; }
+
+    /* PEDIDO PROVEEDOR - PANTALLA COMPLETA */
+    #sectionPedidoProveedor { background: #f0f2f5; min-height: 100vh; padding-bottom: 120px; }
+    .pp-header { background: #1a1a2e; color: white; padding: 14px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 50; }
+    .pp-header .btn-back { background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 8px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .pp-header .btn-back:hover { background: rgba(255,255,255,0.25); }
+    .pp-header h2 { font-size: 1rem; font-weight: 700; flex: 1; }
+    .pp-header .fecha { font-size: 0.72rem; opacity: 0.65; }
+    .pp-body { max-width: 600px; margin: 0 auto; padding: 16px; }
+    .pp-tipo-block { background: white; border-radius: 12px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .pp-tipo-title { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f7f9fc; border-bottom: 1px solid #eee; }
+    .pp-tipo-title .dot { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+    .pp-tipo-title span { font-weight: 700; font-size: 0.95rem; color: #1a1a2e; flex: 1; }
+    .pp-tipo-title .subtotal-badge { font-size: 0.78rem; color: #555; background: #eee; padding: 2px 8px; border-radius: 10px; }
+    .pp-table { width: 100%; border-collapse: collapse; }
+    .pp-table th { font-size: 0.72rem; color: #888; font-weight: 700; text-transform: uppercase; padding: 7px 14px; border-bottom: 1px solid #eee; text-align: left; background: #fff; }
+    .pp-table th:nth-child(2), .pp-table th:nth-child(3), .pp-table th:nth-child(4) { text-align: center; }
+    .pp-table td { padding: 9px 14px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; }
+    .pp-table td:nth-child(2), .pp-table td:nth-child(4) { text-align: center; font-weight: 700; color: #1a1a2e; }
+    .pp-table td:nth-child(3) { text-align: center; }
+    .pp-table tr:last-child td { border-bottom: none; }
+    .pp-table .talle-label { font-weight: 600; }
+    .pp-adj { display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .pp-adj button { width: 28px; height: 28px; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 700; cursor: pointer; line-height: 1; display: flex; align-items: center; justify-content: center; }
+    .pp-adj .btn-minus { background: #fde8e8; color: #e74c3c; }
+    .pp-adj .btn-plus  { background: #e8f8ee; color: #27ae60; }
+    .pp-adj .btn-minus:hover { background: #f5c6c6; }
+    .pp-adj .btn-plus:hover  { background: #c6efd8; }
+    .pp-adj input { width: 44px; padding: 4px 2px; border: 1px solid #ddd; border-radius: 6px; text-align: center; font-size: 0.9rem; font-weight: 700; }
+    .pp-total-col { color: #1a1a2e; font-size: 1rem; font-weight: 800; }
+    .pp-add-talle { margin: 8px 14px 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .pp-add-talle select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; background: #f8f9fa; flex: 1; min-width: 100px; }
+    .pp-add-talle button { background: #3498db; color: white; border: none; border-radius: 8px; padding: 7px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .pp-add-talle button:hover { background: #2980b9; }
+    .pp-footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 2px solid #eee; padding: 12px 16px; display: flex; gap: 10px; z-index: 50; max-width: 600px; margin: 0 auto; left: 50%; transform: translateX(-50%); width: 100%; box-shadow: 0 -2px 10px rgba(0,0,0,0.08); }
+    .pp-footer .btn { flex: 1; }
+    .btn-dark { background: #1a1a2e; color: white; }
+    .btn-dark:hover { background: #2c3e50; }
+
+    /* PANTALLA IMPRESION */
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body > *:not(#sectionPedidoProveedor) { display: none !important; }
+      #sectionPedidoProveedor { display: block !important; padding: 0; min-height: auto; }
+      .pp-header .btn-back { display: none; }
+      .pp-footer { display: none !important; }
+      .pp-add-talle { display: none !important; }
+      .pp-adj button { display: none !important; }
+      .pp-adj input { border: none; font-size: 1rem; width: auto; }
+      .pp-tipo-block { box-shadow: none; border: 1px solid #ccc; }
+    }
+
     @media (max-width: 600px) {
       .header h1 { font-size: 1.15rem; }
       .card-info { padding-left: 14px; }
@@ -219,6 +295,7 @@
 <div class="main-tabs">
   <div class="main-tab active" onclick="switchSection('pedidos')">Pedidos y Retiros</div>
   <div class="main-tab" onclick="switchSection('nuevo')">Nuevo Pedido</div>
+  <div class="main-tab" onclick="switchSection('resumen')">Resumen</div>
   <div class="main-tab" onclick="switchSection('tipos')">Tipos de Prendas</div>
 </div>
 
@@ -380,6 +457,18 @@
   </div>
 </div>
 
+<!-- ========== SECTION: RESUMEN ========== -->
+<div class="section" id="sectionResumen">
+  <div class="resumen-section">
+    <h2>Resumen por tipo de prenda</h2>
+    <p class="resumen-subtitle">Solo pedidos pendientes (no retirados) &nbsp;·&nbsp; <span id="resumenDiag" style="color:#27ae60;"></span></p>
+    <div style="margin-bottom:14px;">
+      <button class="btn btn-dark" onclick="switchSection('pedidoproveedor')" style="width:100%;font-size:0.95rem;padding:12px;">📋 Generar pedido al proveedor</button>
+    </div>
+    <div id="resumenContent"></div>
+  </div>
+</div>
+
 <!-- ========== SECTION: TIPOS DE PRENDAS ========== -->
 <div class="section" id="sectionTipos">
   <div class="tipos-section">
@@ -406,6 +495,23 @@
 <button class="config-toggle" onclick="toggleConfig()" title="Configuración">⚙</button>
 <button class="refresh-btn" onclick="loadFromSheets()" title="Recargar datos">↻</button>
 
+<!-- ========== SECTION: PEDIDO PROVEEDOR ========== -->
+<div class="section" id="sectionPedidoProveedor">
+  <div class="pp-header">
+    <button class="btn-back" onclick="switchSection('resumen')">&#8592; Volver</button>
+    <div style="flex:1">
+      <h2>Pedido al Proveedor</h2>
+      <div class="fecha" id="ppFecha"></div>
+    </div>
+  </div>
+  <div class="pp-body" id="ppBody"></div>
+  <div class="pp-footer">
+    <button class="btn btn-dark" onclick="window.print()">🖨 Imprimir / PDF</button>
+    <button class="btn btn-blue" onclick="switchSection('resumen')">&#8592; Volver al Resumen</button>
+  </div>
+</div>
+
+<!-- ========== MODAL: PEDIDO PROVEEDOR (legacy, reemplazado) ========== -->
 <div class="modal-overlay" id="modalDesbloqueo" style="display:none;" onclick="cerrarModal(event)">
   <div class="modal">
     <h3>Desbloquear 2da Tanda?</h3>
@@ -485,7 +591,10 @@ function getTipoColor(tipoLower) {
 }
 
 function isRetirado(p) {
-  return Number(p['Retirado']) === 1 || p['Retirado'] === true || p['Retirado'] === 'TRUE';
+  const v = p['Retirado'];
+  if (v === 1 || v === true) return true;
+  const s = String(v).trim().toLowerCase();
+  return s === '1' || s === 'true' || s === 'si' || s === 'sí';
 }
 
 function getTanda(p) {
@@ -510,12 +619,19 @@ function switchSection(section) {
     t.classList.toggle('active',
       (i === 0 && section === 'pedidos') ||
       (i === 1 && section === 'nuevo') ||
-      (i === 2 && section === 'tipos')
+      (i === 2 && section === 'resumen') ||
+      (i === 3 && section === 'tipos')
     );
   });
   document.getElementById('sectionPedidos').classList.toggle('active', section === 'pedidos');
   document.getElementById('sectionNuevo').classList.toggle('active', section === 'nuevo');
+  document.getElementById('sectionResumen').classList.toggle('active', section === 'resumen');
   document.getElementById('sectionTipos').classList.toggle('active', section === 'tipos');
+  document.getElementById('sectionPedidoProveedor').classList.toggle('active', section === 'pedidoproveedor');
+  // Ocultar tabs cuando se navega a pantalla especial
+  document.querySelector('.main-tabs').style.display = section === 'pedidoproveedor' ? 'none' : '';
+  if (section === 'resumen') renderResumen();
+  if (section === 'pedidoproveedor') renderPedidoProveedor();
 }
 
 function switchFilter(filter) {
@@ -586,16 +702,23 @@ async function loadFromSheets() {
     const res = await fetch(SCRIPT_URL + '?action=getAll');
     const data = await res.json();
     if (data.status === 'ok') {
-      PEDIDOS = (data.pedidos || []).map((p, i) => ({
-        ...p,
-        _id: i + 1,
-        _sheetRow: p._row,
-        // Normalizar campos de retiro desde las columnas de la hoja Pedidos
-        _talleRetiro:     p['Talle Retiro']           || '',
-        _medioPagoRetiro: p['Medio de Pago Retiro']   || '',
-        _montoRetiro:     p['Monto Retiro']            || 0,
-        _notasRetiro:     p['Notas Retiro']            || '',
-      }));
+      PEDIDOS = (data.pedidos || []).map((p, i) => {
+        // Normalizar Retirado a 0/1 sin importar qué devuelve Sheets
+        const rawRet = p['Retirado'];
+        const retiradoNorm = (rawRet === 1 || rawRet === true ||
+          String(rawRet).trim().toLowerCase() === '1' ||
+          String(rawRet).trim().toLowerCase() === 'true') ? 1 : 0;
+        return {
+          ...p,
+          'Retirado': retiradoNorm,
+          _id: i + 1,
+          _sheetRow: p._row,
+          _talleRetiro:     p['Talle Retiro']         || '',
+          _medioPagoRetiro: p['Medio de Pago Retiro'] || '',
+          _montoRetiro:     p['Monto Retiro']          || 0,
+          _notasRetiro:     p['Notas Retiro']          || '',
+        };
+      });
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
       showToast('Datos actualizados');
@@ -1103,6 +1226,310 @@ function renderAll() {
   renderStock();
   updateKPIs();
   updateBadges();
+  if (currentSection === 'resumen') renderResumen();
+}
+
+// ============ RESUMEN POR TIPO ============
+function renderResumen() {
+  const container = document.getElementById('resumenContent');
+  if (!container) return;
+
+  const tipos = getPrendaTypes();
+  // Solo pedidos que NO fueron retirados (Retirado normalizado a 0/1 al cargar)
+  const retiradosCount = PEDIDOS.filter(p => isRetirado(p)).length;
+  const pendientes = PEDIDOS.filter(p => !isRetirado(p));
+
+  // Mostrar diagnóstico
+  const diagEl = document.getElementById('resumenDiag');
+  if (diagEl) diagEl.textContent =
+    `${pendientes.length} pendientes · ${retiradosCount} ya retirados (excluidos)`;
+
+  // Agrupar por tipo > talle
+  let totalCantidad = 0, totalPagado = 0, totalResta = 0;
+  let html = '';
+
+  tipos.forEach(t => {
+    const key = t.key.toLowerCase();
+    const grupo = pendientes.filter(p => getTipo(p) === key);
+    if (grupo.length === 0) return;
+
+    // Agrupar por talle dentro del tipo — ordenar por TALLES_EXTENDIDOS
+    const talleMap = {};
+    grupo.forEach(p => {
+      const talle = (p['Talle'] || '—').toString().toUpperCase();
+      if (!talleMap[talle]) talleMap[talle] = { cantidad: 0, pagado: 0, resta: 0 };
+      talleMap[talle].cantidad++;
+      talleMap[talle].pagado += Number(p['Seña']) || 0;
+      talleMap[talle].resta  += Number(p['Resta']) || 0;
+    });
+
+    const tallesOrdenados = [
+      ...TALLES_EXTENDIDOS.filter(t => talleMap[t]),
+      ...Object.keys(talleMap).filter(t => !TALLES_EXTENDIDOS.includes(t)).sort()
+    ];
+
+    const subtotalCant   = grupo.length;
+    const subtotalPagado = grupo.reduce((s, p) => s + (Number(p['Seña']) || 0), 0);
+    const subtotalResta  = grupo.reduce((s, p) => s + (Number(p['Resta']) || 0), 0);
+
+    totalCantidad += subtotalCant;
+    totalPagado   += subtotalPagado;
+    totalResta    += subtotalResta;
+
+    // Subtítulo del tipo
+    html += `<tr class="resumen-tipo-header">
+      <td colspan="4"><span class="tipo-dot-sm" style="background:${t.color}"></span><strong>${t.label}</strong></td>
+    </tr>`;
+
+    tallesOrdenados.forEach(talle => {
+      const d = talleMap[talle];
+      html += `<tr>
+        <td style="padding-left:28px;">${talle}</td>
+        <td><span class="resumen-count">${d.cantidad}</span></td>
+        <td><span class="resumen-cobrado">${fmt(d.pagado)}</span></td>
+        <td><span class="resumen-resta">${fmt(d.resta)}</span></td>
+      </tr>`;
+    });
+
+    // Subtotal del tipo
+    html += `<tr class="resumen-subtotal">
+      <td style="padding-left:14px; color:#555;">Subtotal ${t.label}</td>
+      <td>${subtotalCant}</td>
+      <td>${fmt(subtotalPagado)}</td>
+      <td>${fmt(subtotalResta)}</td>
+    </tr>`;
+  });
+
+  if (!totalCantidad) {
+    container.innerHTML = '<div class="resumen-empty">No hay pedidos pendientes</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="resumen-table">
+      <thead>
+        <tr>
+          <th>Prenda / Talle</th>
+          <th>Cant.</th>
+          <th>Cobrado</th>
+          <th>Por cobrar</th>
+        </tr>
+      </thead>
+      <tbody>${html}</tbody>
+      <tfoot>
+        <tr>
+          <td>TOTAL</td>
+          <td>${totalCantidad}</td>
+          <td>${fmt(totalPagado)}</td>
+          <td>${fmt(totalResta)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+
+// ============ GENERAR PEDIDO AL PROVEEDOR ============
+// ============ PEDIDO PROVEEDOR (pantalla interactiva) ============
+// Estado: ajustes manuales por tipo+talle
+let ppAjustes = {}; // { 'BLANCA|M': 2, 'AZUL|L': -1, ... }
+
+function ppKey(tipoKey, talle) { return tipoKey + '|' + talle; }
+
+function ppGetTotal(tipoKey, talle, base) {
+  return Math.max(0, base + (ppAjustes[ppKey(tipoKey, talle)] || 0));
+}
+
+function ppAjustar(tipoKey, talle, delta) {
+  const k = ppKey(tipoKey, talle);
+  ppAjustes[k] = (ppAjustes[k] || 0) + delta;
+
+  const inputEl  = document.getElementById('pp-adj-' + tipoKey + '-' + talle);
+  const totalEl  = document.getElementById('pp-tot-' + tipoKey + '-' + talle);
+
+  if (inputEl) inputEl.value = ppAjustes[k] || 0;
+
+  // Actualizar celda total PRIMERO, luego recalcular subtotal
+  if (totalEl) {
+    const base = Number(totalEl.dataset.base);
+    const tot  = Math.max(0, base + (ppAjustes[k] || 0));
+    totalEl.textContent = tot;
+    totalEl.style.color = tot === 0 ? '#ccc' : '#1a1a2e';
+  }
+  _ppRecalcSubtotal(tipoKey);
+}
+
+function ppSetAdj(tipoKey, talle, val) {
+  const k = ppKey(tipoKey, talle);
+  const parsed = parseInt(val, 10);
+  ppAjustes[k] = isNaN(parsed) ? 0 : parsed;
+
+  const totalEl = document.getElementById('pp-tot-' + tipoKey + '-' + talle);
+
+  // Actualizar celda total PRIMERO, luego recalcular subtotal
+  if (totalEl) {
+    const base = Number(totalEl.dataset.base);
+    const tot  = Math.max(0, base + (ppAjustes[k] || 0));
+    totalEl.textContent = tot;
+    totalEl.style.color = tot === 0 ? '#ccc' : '#1a1a2e';
+  }
+  _ppRecalcSubtotal(tipoKey);
+}
+
+function _ppRecalcSubtotal(tipoKey) {
+  // Sumar todos los totales de este tipo (data-tipo attribute)
+  let sub = 0;
+  document.querySelectorAll('[data-tipo="' + tipoKey + '"]').forEach(el => {
+    sub += parseInt(el.textContent, 10) || 0;
+  });
+  const subtotEl = document.getElementById('pp-sub-' + tipoKey);
+  if (subtotEl) subtotEl.textContent = sub;
+
+  // Recalcular gran total sumando todos los subtotales
+  let grand = 0;
+  getPrendaTypes().forEach(t => {
+    const el = document.getElementById('pp-sub-' + t.key);
+    if (el) grand += parseInt(el.textContent, 10) || 0;
+  });
+  const grandEl = document.getElementById('pp-grand-total');
+  if (grandEl) grandEl.textContent = grand;
+}
+
+function ppAgregarTalle(tipoKey, selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel || !sel.value) return;
+  const talle = sel.value;
+  sel.value = '';
+  // Verificar si ya existe esa fila
+  if (document.getElementById('pp-tot-' + tipoKey + '-' + talle)) {
+    showToast('Ese talle ya está en la lista'); return;
+  }
+  // Insertar fila antes del botón Agregar Talle
+  const tbody = document.getElementById('pp-tbody-' + tipoKey);
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="talle-label">${talle}</td>
+    <td>0</td>
+    <td>
+      <div class="pp-adj">
+        <button class="btn-minus" onclick="ppAjustar('${tipoKey}','${talle}',-1)">-</button>
+        <input type="number" id="pp-adj-${tipoKey}-${talle}" value="0"
+          onchange="ppSetAdj('${tipoKey}','${talle}',this.value)"
+          oninput="ppSetAdj('${tipoKey}','${talle}',this.value)">
+        <button class="btn-plus" onclick="ppAjustar('${tipoKey}','${talle}',1)">+</button>
+      </div>
+    </td>
+    <td id="pp-tot-${tipoKey}-${talle}" data-base="0" data-tipo="${tipoKey}" class="pp-total-col pp-grand-item">0</td>
+  `;
+  tbody.appendChild(tr);
+  ppAjustes[ppKey(tipoKey, talle)] = 0;
+  // El talle nuevo arranca en 0, subtotal y gran total no cambian pero forzamos recalc por consistencia
+  _ppRecalcSubtotal(tipoKey);
+}
+
+function renderPedidoProveedor() {
+  // Resetear ajustes al entrar
+  ppAjustes = {};
+
+  const tipos = getPrendaTypes();
+  const pendientes = PEDIDOS.filter(p => !isRetirado(p));
+
+  const ahora = new Date();
+  document.getElementById('ppFecha').textContent =
+    ahora.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  let grandTotal = 0;
+  let html = '';
+
+  tipos.forEach(t => {
+    const key = t.key;
+    const keyLower = key.toLowerCase();
+    const grupo = pendientes.filter(p => getTipo(p) === keyLower);
+    if (grupo.length === 0) return;
+
+    const talleMap = {};
+    grupo.forEach(p => {
+      const talle = (p['Talle'] || '').toString().toUpperCase();
+      if (talle) talleMap[talle] = (talleMap[talle] || 0) + 1;
+    });
+
+    const tallesOrdenados = [
+      ...TALLES_EXTENDIDOS.filter(tl => talleMap[tl]),
+      ...Object.keys(talleMap).filter(tl => !TALLES_EXTENDIDOS.includes(tl)).sort()
+    ];
+
+    const subtotal = grupo.length;
+    grandTotal += subtotal;
+
+    // Opciones del selector de talles (todos menos los que ya aparecen)
+    const tallesDisponibles = TALLES_EXTENDIDOS
+      .concat(['Talle unico'])
+      .filter(tl => !talleMap[tl.toUpperCase()] && !talleMap[tl]);
+    const addSelectId = 'pp-add-sel-' + key;
+
+    const filasTalles = tallesOrdenados.map(talle => `
+      <tr>
+        <td class="talle-label">${talle}</td>
+        <td>${talleMap[talle]}</td>
+        <td>
+          <div class="pp-adj">
+            <button class="btn-minus" onclick="ppAjustar('${key}','${talle}',-1)">-</button>
+            <input type="number" id="pp-adj-${key}-${talle}" value="0"
+              onchange="ppSetAdj('${key}','${talle}',this.value)"
+              oninput="ppSetAdj('${key}','${talle}',this.value)">
+            <button class="btn-plus" onclick="ppAjustar('${key}','${talle}',1)">+</button>
+          </div>
+        </td>
+        <td id="pp-tot-${key}-${talle}" data-base="${talleMap[talle]}" data-tipo="${key}" class="pp-total-col pp-grand-item">${talleMap[talle]}</td>
+      </tr>`).join('');
+
+    html += `
+      <div class="pp-tipo-block">
+        <div class="pp-tipo-title">
+          <div class="dot" style="background:${t.color}"></div>
+          <span>${t.label}</span>
+          <span class="subtotal-badge">Subtotal: <strong id="pp-sub-${key}">${subtotal}</strong></span>
+        </div>
+        <table class="pp-table">
+          <thead>
+            <tr>
+              <th>Prenda / Talle</th>
+              <th>Cant. pedidos</th>
+              <th>Agregar</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="pp-tbody-${key}">
+            ${filasTalles}
+          </tbody>
+        </table>
+        <div class="pp-add-talle">
+          <select id="${addSelectId}">
+            <option value="">+ Talle...</option>
+            ${tallesDisponibles.map(tl => `<option value="${tl.toUpperCase()}">${tl}</option>`).join('')}
+          </select>
+          <button onclick="ppAgregarTalle('${key}','${addSelectId}')">Agregar talle</button>
+        </div>
+      </div>`;
+  });
+
+  if (!grandTotal) {
+    document.getElementById('ppBody').innerHTML =
+      '<div style="text-align:center;padding:40px 20px;color:#999;">No hay pedidos pendientes</div>';
+    return;
+  }
+
+  html += `
+    <div style="background:#1a1a2e;color:white;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+      <strong style="font-size:0.95rem;">TOTAL PRENDAS</strong>
+      <strong style="font-size:1.3rem;" id="pp-grand-total">${grandTotal}</strong>
+    </div>`;
+
+  document.getElementById('ppBody').innerHTML = html;
+}
+
+function generarPedidoProveedor() {
+  switchSection('pedidoproveedor');
 }
 
 function updateBadges() {
