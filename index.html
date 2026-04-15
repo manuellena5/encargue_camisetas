@@ -1158,8 +1158,8 @@ function agregarTipo() {
   const label = document.getElementById('newTipoLabel').value.trim();
   const color = document.getElementById('newTipoColor').value;
   if (!label) { showToast('Ingresá un nombre'); return; }
-  // Normalizar: quitar tildes y ñ → n, etc., luego limpiar a A-Z0-9_
-  const labelNorm = label.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Normalizar: reemplazar ñ/Ñ por n/N, quitar tildes, luego limpiar a A-Z0-9_
+  const labelNorm = label.normalize('NFD').replace(/ñ/gi, 'n').replace(/[\u0300-\u036f]/g, '');
   const key = labelNorm.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
   if (!key) { showToast('El nombre no genera una clave válida. Usá letras o números.'); return; }
   const allKeys = getPrendaTypes().map(t => t.key);
