@@ -1464,7 +1464,6 @@ function ppAgregarTalle(tipoKey, selectId) {
   _ppRecalcSubtotal(tipoKey);
 }
 
-
 function renderPedidoProveedor() {
   // Resetear ajustes al entrar
   ppAjustes = {};
@@ -1475,9 +1474,6 @@ function renderPedidoProveedor() {
   const ahora = new Date();
   document.getElementById('ppFecha').textContent =
     ahora.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
-
-  // Detectar si estamos en modo impresión/PDF
-  const isPrint = window.matchMedia && window.matchMedia('print').matches;
 
   let grandTotal = 0;
   let html = '';
@@ -1508,32 +1504,21 @@ function renderPedidoProveedor() {
       .filter(tl => !talleMap[tl.toUpperCase()] && !talleMap[tl]);
     const addSelectId = 'pp-add-sel-' + key;
 
-    let filasTalles = '';
-    if (isPrint) {
-      // SOLO mostrar Prenda/Talle y Total
-      filasTalles = tallesOrdenados.map(talle => `
-        <tr>
-          <td class="talle-label">${talle}</td>
-          <td id="pp-tot-${key}-${talle}" data-base="${talleMap[talle]}" data-tipo="${key}" class="pp-total-col pp-grand-item">${talleMap[talle]}</td>
-        </tr>`).join('');
-    } else {
-      // Vista editable normal
-      filasTalles = tallesOrdenados.map(talle => `
-        <tr>
-          <td class="talle-label">${talle}</td>
-          <td>${talleMap[talle]}</td>
-          <td>
-            <div class="pp-adj">
-              <button class="btn-minus" onclick="ppAjustar('${key}','${talle}',-1)">-</button>
-              <input type="number" id="pp-adj-${key}-${talle}" value="0"
-                onchange="ppSetAdj('${key}','${talle}',this.value)"
-                oninput="ppSetAdj('${key}','${talle}',this.value)">
-              <button class="btn-plus" onclick="ppAjustar('${key}','${talle}',1)">+</button>
-            </div>
-          </td>
-          <td id="pp-tot-${key}-${talle}" data-base="${talleMap[talle]}" data-tipo="${key}" class="pp-total-col pp-grand-item">${talleMap[talle]}</td>
-        </tr>`).join('');
-    }
+    const filasTalles = tallesOrdenados.map(talle => `
+      <tr>
+        <td class="talle-label">${talle}</td>
+        <td>${talleMap[talle]}</td>
+        <td>
+          <div class="pp-adj">
+            <button class="btn-minus" onclick="ppAjustar('${key}','${talle}',-1)">-</button>
+            <input type="number" id="pp-adj-${key}-${talle}" value="0"
+              onchange="ppSetAdj('${key}','${talle}',this.value)"
+              oninput="ppSetAdj('${key}','${talle}',this.value)">
+            <button class="btn-plus" onclick="ppAjustar('${key}','${talle}',1)">+</button>
+          </div>
+        </td>
+        <td id="pp-tot-${key}-${talle}" data-base="${talleMap[talle]}" data-tipo="${key}" class="pp-total-col pp-grand-item">${talleMap[talle]}</td>
+      </tr>`).join('');
 
     html += `
       <div class="pp-tipo-block">
@@ -1546,8 +1531,8 @@ function renderPedidoProveedor() {
           <thead>
             <tr>
               <th>Prenda / Talle</th>
-              ${isPrint ? '' : '<th>Cant. pedidos</th>'}
-              ${isPrint ? '' : '<th>Agregar</th>'}
+              <th>Cant. pedidos</th>
+              <th>Agregar</th>
               <th>Total</th>
             </tr>
           </thead>
@@ -1555,13 +1540,13 @@ function renderPedidoProveedor() {
             ${filasTalles}
           </tbody>
         </table>
-        ${isPrint ? '' : `<div class="pp-add-talle">
+        <div class="pp-add-talle">
           <select id="${addSelectId}">
             <option value="">+ Talle...</option>
             ${tallesDisponibles.map(tl => `<option value="${tl.toUpperCase()}">${tl}</option>`).join('')}
           </select>
           <button onclick="ppAgregarTalle('${key}','${addSelectId}')">Agregar talle</button>
-        </div>`}
+        </div>
       </div>`;
   });
 
