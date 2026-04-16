@@ -272,6 +272,7 @@
       .pp-adj button { display: none !important; }
       .pp-adj input { border: none; font-size: 1rem; width: auto; }
       .pp-tipo-block { box-shadow: none; border: 1px solid #ccc; }
+      .print-hide { display: none !important; }
     }
 
     @media (max-width: 600px) {
@@ -1504,50 +1505,50 @@ function renderPedidoProveedor() {
       .filter(tl => !talleMap[tl.toUpperCase()] && !talleMap[tl]);
     const addSelectId = 'pp-add-sel-' + key;
 
-    const filasTalles = tallesOrdenados.map(talle => `
-      <tr>
-        <td class="talle-label">${talle}</td>
-        <td>${talleMap[talle]}</td>
-        <td>
-          <div class="pp-adj">
-            <button class="btn-minus" onclick="ppAjustar('${key}','${talle}',-1)">-</button>
-            <input type="number" id="pp-adj-${key}-${talle}" value="0"
-              onchange="ppSetAdj('${key}','${talle}',this.value)"
-              oninput="ppSetAdj('${key}','${talle}',this.value)">
-            <button class="btn-plus" onclick="ppAjustar('${key}','${talle}',1)">+</button>
-          </div>
-        </td>
-        <td id="pp-tot-${key}-${talle}" data-base="${talleMap[talle]}" data-tipo="${key}" class="pp-total-col pp-grand-item">${talleMap[talle]}</td>
-      </tr>`).join('');
+    let filasTalles = tallesOrdenados.map(talle => `
+  <tr>
+    <td class="talle-label">${talle}</td>
+    <td class="print-hide">${talleMap[talle]}</td>
+    <td class="print-hide">
+      <div class="pp-adj">
+        <button class="btn-minus" onclick="ppAjustar('${key}','${talle}',-1)">-</button>
+        <input type="number" id="pp-adj-${key}-${talle}" value="0"
+          onchange="ppSetAdj('${key}','${talle}',this.value)"
+          oninput="ppSetAdj('${key}','${talle}',this.value)">
+        <button class="btn-plus" onclick="ppAjustar('${key}','${talle}',1)">+</button>
+      </div>
+    </td>
+    <td id="pp-tot-${key}-${talle}" data-base="${talleMap[talle]}" data-tipo="${key}" class="pp-total-col pp-grand-item">${talleMap[talle]}</td>
+  </tr>`).join('');
 
-    html += `
-      <div class="pp-tipo-block">
-        <div class="pp-tipo-title">
-          <div class="dot" style="background:${t.color}"></div>
-          <span>${t.label}</span>
-          <span class="subtotal-badge">Subtotal: <strong id="pp-sub-${key}">${subtotal}</strong></span>
-        </div>
-        <table class="pp-table">
-          <thead>
-            <tr>
-              <th>Prenda / Talle</th>
-              <th>Cant. pedidos</th>
-              <th>Agregar</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody id="pp-tbody-${key}">
-            ${filasTalles}
-          </tbody>
-        </table>
-        <div class="pp-add-talle">
-          <select id="${addSelectId}">
-            <option value="">+ Talle...</option>
-            ${tallesDisponibles.map(tl => `<option value="${tl.toUpperCase()}">${tl}</option>`).join('')}
-          </select>
-          <button onclick="ppAgregarTalle('${key}','${addSelectId}')">Agregar talle</button>
-        </div>
-      </div>`;
+html += `
+  <div class="pp-tipo-block">
+    <div class="pp-tipo-title">
+      <div class="dot" style="background:${t.color}"></div>
+      <span>${t.label}</span>
+      <span class="subtotal-badge">Subtotal: <strong id="pp-sub-${key}">${subtotal}</strong></span>
+    </div>
+    <table class="pp-table">
+      <thead>
+        <tr>
+          <th>Prenda / Talle</th>
+          <th class="print-hide">Cant. pedidos</th>
+          <th class="print-hide">Agregar</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="pp-tbody-${key}">
+        ${filasTalles}
+      </tbody>
+    </table>
+    <div class="pp-add-talle print-hide">
+      <select id="${addSelectId}">
+        <option value="">+ Talle...</option>
+        ${tallesDisponibles.map(tl => `<option value="${tl.toUpperCase()}">${tl}</option>`).join('')}
+      </select>
+      <button onclick="ppAgregarTalle('${key}','${addSelectId}')">Agregar talle</button>
+    </div>
+  </div>`;
   });
 
   if (!grandTotal) {
