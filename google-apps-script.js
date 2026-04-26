@@ -306,14 +306,13 @@ function registrarSeña(data) {
 
   const rowData = pedidosData[targetRow - 1];
 
-  if (colSeña >= 0) {
-    const currentSeña = Number(rowData[colSeña]) || 0;
-    pedidosSheet.getRange(targetRow, colSeña + 1).setValue(currentSeña + pagoSeña);
-  }
-  if (colResta >= 0) {
-    const currentResta = Number(rowData[colResta]) || 0;
-    pedidosSheet.getRange(targetRow, colResta + 1).setValue(Math.max(0, currentResta - pagoSeña));
-  }
+  const currentSeña  = Number(rowData[colSeña])  || 0;
+  const currentResta = Number(rowData[colResta]) || 0;
+  const newSeña  = currentSeña + pagoSeña;
+  const newResta = Math.max(0, currentResta - pagoSeña);
+
+  if (colSeña  >= 0) pedidosSheet.getRange(targetRow, colSeña  + 1).setValue(newSeña);
+  if (colResta >= 0) pedidosSheet.getRange(targetRow, colResta + 1).setValue(newResta);
   if (data.medioPago === 'transferencia' && colTotalTransf >= 0) {
     const current = Number(rowData[colTotalTransf]) || 0;
     pedidosSheet.getRange(targetRow, colTotalTransf + 1).setValue(current + pagoSeña);
@@ -321,6 +320,25 @@ function registrarSeña(data) {
   if (data.medioPago === 'efectivo' && colTotalEfect >= 0) {
     const current = Number(rowData[colTotalEfect]) || 0;
     pedidosSheet.getRange(targetRow, colTotalEfect + 1).setValue(current + pagoSeña);
+  }
+
+  // Sincronizar hoja Retiros si existe una fila para este pedido
+  if (data.pedidoId) {
+    const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
+      'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
+      'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
+    ]);
+    const retirosData   = retirosSheet.getDataRange().getValues();
+    const rHeaders      = retirosData[0];
+    const rColSeña      = rHeaders.indexOf('Seña');
+    const rColResta     = rHeaders.indexOf('Resta');
+    for (let i = 1; i < retirosData.length; i++) {
+      if (String(retirosData[i][0]) === String(data.pedidoId)) {
+        if (rColSeña  >= 0) retirosSheet.getRange(i + 1, rColSeña  + 1).setValue(newSeña);
+        if (rColResta >= 0) retirosSheet.getRange(i + 1, rColResta + 1).setValue(newResta);
+        break;
+      }
+    }
   }
 
   return jsonResponse({ status: 'ok', message: 'Pago registrado' });
