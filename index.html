@@ -605,45 +605,49 @@ const STOCK_INICIAL_SEGUNDA = {
 };
 
 (function initializeStock() {
-  // Cargar stock guardado
-  const saved1 = localStorage.getItem('stockInicial');
-  if (saved1) { try { Object.assign(STOCK_INICIAL, JSON.parse(saved1)); } catch(e) {} }
-  
-  const saved2 = localStorage.getItem('stockInicialSegunda');
-  if (saved2) { try { Object.assign(STOCK_INICIAL_SEGUNDA, JSON.parse(saved2)); } catch(e) {} }
-  
-  // Aplicar overrides existentes primero
-  const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
-  PRENDA_TYPES_BUILTIN.forEach(t => {
-    if (overrides[t.key]) Object.assign(t, overrides[t.key]);
-  });
-  
-  // Auto-activar hasStock para tipos que tienen datos de stock guardados
-  const allStockTypes = new Set([
-    ...Object.keys(STOCK_INICIAL),
-    ...Object.keys(STOCK_INICIAL_SEGUNDA)
-  ]);
-  
-  allStockTypes.forEach(tipoKey => {
-    const stock1 = STOCK_INICIAL[tipoKey] || {};
-    const stock2 = STOCK_INICIAL_SEGUNDA[tipoKey] || {};
-    const hasData = 
-      Object.values(stock1).some(val => Number(val) > 0) ||
-      Object.values(stock2).some(val => Number(val) > 0);
+  try {
+    // Cargar stock guardado
+    const saved1 = localStorage.getItem('stockInicial');
+    if (saved1) { try { Object.assign(STOCK_INICIAL, JSON.parse(saved1)); } catch(e) {} }
     
-    if (hasData) {
-      const builtinType = PRENDA_TYPES_BUILTIN.find(t => t.key.toLowerCase() === tipoKey.toLowerCase());
-      if (builtinType && !builtinType.hasStock) {
-        builtinType.hasStock = true;
-        // Guardar el override
-        if (!overrides[builtinType.key]) {
-          overrides[builtinType.key] = {};
+    const saved2 = localStorage.getItem('stockInicialSegunda');
+    if (saved2) { try { Object.assign(STOCK_INICIAL_SEGUNDA, JSON.parse(saved2)); } catch(e) {} }
+    
+    // Aplicar overrides existentes primero
+    const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
+    PRENDA_TYPES_BUILTIN.forEach(t => {
+      if (overrides[t.key]) Object.assign(t, overrides[t.key]);
+    });
+    
+    // Auto-activar hasStock para tipos que tienen datos de stock guardados
+    const allStockTypes = new Set([
+      ...Object.keys(STOCK_INICIAL),
+      ...Object.keys(STOCK_INICIAL_SEGUNDA)
+    ]);
+    
+    allStockTypes.forEach(tipoKey => {
+      const stock1 = STOCK_INICIAL[tipoKey] || {};
+      const stock2 = STOCK_INICIAL_SEGUNDA[tipoKey] || {};
+      const hasData = 
+        Object.values(stock1).some(val => Number(val) > 0) ||
+        Object.values(stock2).some(val => Number(val) > 0);
+      
+      if (hasData) {
+        const builtinType = PRENDA_TYPES_BUILTIN.find(t => t.key.toLowerCase() === tipoKey.toLowerCase());
+        if (builtinType && !builtinType.hasStock) {
+          builtinType.hasStock = true;
+          // Guardar el override
+          if (!overrides[builtinType.key]) {
+            overrides[builtinType.key] = {};
+          }
+          overrides[builtinType.key].hasStock = true;
+          localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
         }
-        overrides[builtinType.key].hasStock = true;
-        localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
       }
-    }
-  });
+    });
+  } catch (e) {
+    console.error('Error inicializando stock:', e);
+  }
 })();
 
 const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '12'];
@@ -816,6 +820,9 @@ async function loadFromSheets() {
     showLoading(true);
     const res = await fetch(SCRIPT_URL + '?action=getAll');
     const data = await res.json();
+    
+    console.log('Datos recibidos:', data); // Debug
+    
     if (data.status === 'ok') {
       PEDIDOS = (data.pedidos || []).map((p, i) => {
         // Normalizar Retirado a 0/1 sin importar qué devuelve Sheets
@@ -835,37 +842,66 @@ async function loadFromSheets() {
         };
       });
       
+      console.log('Pedidos procesados:', PEDIDOS.length); // Debug
+      
       // Sincronizar stock desde Google Sheets
       if (data.stock) {
+        console.log('Stock recibido:', data.stock); // Debug
         if (data.stock.primera && Object.keys(data.stock.primera).length > 0) {
           Object.assign(STOCK_INICIAL, data.stock.primera);
           localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
-          
-          // Activar hasStock para los tipos que tienen datos
-          Object.keys(data.stock.primera).forEach(tipoKey => {
-            _updateTipoField(tipoKey.toUpperCase(), 'hasStock', true);
-          });
         }
         if (data.stock.segunda && Object.keys(data.stock.segunda).length > 0) {
           Object.assign(STOCK_INICIAL_SEGUNDA, data.stock.segunda);
           localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
-          
-          // Activar hasStock para los tipos que tienen datos en segunda tanda
-          Object.keys(data.stock.segunda).forEach(tipoKey => {
-            _updateTipoField(tipoKey.toUpperCase(), 'hasStock', true);
-          });
         }
+        // Activar hasStock para los tipos que tienen datos (después de renderizar)
+        setTimeout(() => {
+          try {
+            const allStockTypes = new Set([
+              ...Object.keys(data.stock.primera || {}),
+              ...Object.keys(data.stock.segunda || {})
+            ]);
+            allStockTypes.forEach(tipoKey => {
+              const upperKey = tipoKey.toUpperCase();
+              const builtinType = PRENDA_TYPES_BUILTIN.find(t => t.key === upperKey);
+              if (builtinType && !builtinType.hasStock) {
+                builtinType.hasStock = true;
+                const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
+                if (!overrides[upperKey]) overrides[upperKey] = {};
+                overrides[upperKey].hasStock = true;
+                localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
+              }
+            });
+            renderTipos();
+            renderStock();
+          } catch (err) {
+            console.error('Error activando stock:', err);
+          }
+        }, 100);
       }
       
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
-      showToast('Datos actualizados');
+      showToast('Datos actualizados (' + PEDIDOS.length + ' pedidos)');
+    } else {
+      throw new Error(data.message || 'Error desconocido');
     }
   } catch (e) {
     console.error('Error loading:', e);
+    showToast('Error: ' + e.message);
     const backup = localStorage.getItem('pedidos_backup');
-    if (backup) { try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(ex) {} }
-    showToast('Error al conectar. Usando datos locales.');
+    if (backup) { 
+      try { 
+        PEDIDOS = JSON.parse(backup); 
+        renderAll();
+        showToast('Usando datos locales (' + PEDIDOS.length + ' pedidos)');
+      } catch(ex) {
+        console.error('Error cargando backup:', ex);
+      } 
+    } else {
+      showToast('No hay datos guardados. Verificá la conexión.');
+    }
   } finally {
     showLoading(false);
   }
