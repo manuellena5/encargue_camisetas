@@ -45,11 +45,14 @@
     .stock-cell.low .stock-actual { color: #e67e22; }
     .stock-cell.out .stock-actual { color: #e74c3c; }
     .stock-cell.out { background: #fdf0f0; border-color: #f5c6cb; }
+    .stock-cell.empty .stock-actual { color: #95a5a6; }
+    .stock-cell.empty { background: #f5f5f5; border-color: #ddd; opacity: 0.7; }
     .stock-cell .stock-orig  { font-size: 0.6rem; color: #aaa; margin-top: 2px; }
     .stock-cell .stock-pend  { font-size: 0.58rem; margin-top: 1px; }
     .stock-cell.ok  .stock-pend { color: #27ae60; }
     .stock-cell.low .stock-pend { color: #e67e22; }
     .stock-cell.out .stock-pend { color: #e74c3c; }
+    .stock-cell.empty .stock-pend { color: #95a5a6; }
 
     /* MAIN TABS */
     .main-tabs { display: flex; background: #1a1a2e; }
@@ -1097,8 +1100,8 @@ function renderStock() {
             const r    = (remaining[tipo] || {})[talle] ?? orig;
             const ret  = (retirados[tipo]  || {})[talle] || 0;
             const pend = (pendientes[tipo] || {})[talle] || 0;
-            // Rojo si los pendientes superan el stock disponible
-            const cls  = (pend > r || r <= 0) ? 'out' : (r <= 2 || pend === r) ? 'low' : 'ok';
+            // Gris si no hay stock ni pendientes, rojo si hay problema, naranja si bajo, verde si ok
+            const cls  = (r <= 0 && pend === 0) ? 'empty' : (pend > r || r <= 0) ? 'out' : (r <= 2 || pend === r) ? 'low' : 'ok';
             return `<div class="stock-cell ${cls}">
               <div class="talle-label">${talle}</div>
               <div class="stock-actual">${r}</div>
