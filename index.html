@@ -1303,15 +1303,17 @@ function agregarTipo() {
 }
 
 // ============ BLOQUEO 2DA TANDA ============
+// Los pedidos de segunda tanda ya no están bloqueados
 function isBloqueado(p) {
-  return getTanda(p) === 'SEGUNDA' && !desbloqueados[p._id] && !isRetirado(p);
+  return false; // Desactivado: todos los pedidos están desbloqueados
 }
 
 function bloquearPedido(id) {
-  delete desbloqueados[id];
-  localStorage.setItem('desbloqueados', JSON.stringify(desbloqueados));
-  renderAll();
-  showToast('Pedido bloqueado');
+  // Función desactivada
+}
+
+function desbloquearTodos() {
+  // Función desactivada
 }
 
 function openModalDesbloqueo(id) {
