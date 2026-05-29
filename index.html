@@ -605,7 +605,18 @@ const STOCK_INICIAL = {
     if (overrides[t.key]) Object.assign(t, overrides[t.key]);
   });
 })();
-const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6'];
+
+// Stock para SEGUNDA TANDA (independiente de la primera)
+const STOCK_INICIAL_SEGUNDA = {
+  blanca: { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '6': 0, '8': 0, '12': 0 },
+  azul:   { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '6': 0, '8': 0, '12': 0 }
+};
+(function loadSavedStockSegunda() {
+  const saved = localStorage.getItem('stockInicialSegunda');
+  if (saved) { try { Object.assign(STOCK_INICIAL_SEGUNDA, JSON.parse(saved)); } catch(e) {} }
+})();
+
+const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '12'];
 const TALLES_EXTENDIDOS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
 
 // ============ STATE ============
@@ -976,10 +987,13 @@ function calcStock(tandaFilter) {
   const stockTypes = getPrendaTypes().filter(t => t.hasStock).map(t => t.key.toLowerCase());
   const pendientes        = {};  // no-retirados por talle PEDIDO, filtrados por tanda
   const retirados         = {};  // retirados por talle RETIRO, filtrados por tanda
-  const entregadasGlobal  = {};  // retirados por talle RETIRO, siempre globales (stock real)
+  const entregadasPorTanda = { PRIMERA: {}, SEGUNDA: {} }; // Separar entregas por tanda
+  
   stockTypes.forEach(k => {
-    pendientes[k] = {}; retirados[k] = {};
-    entregadasGlobal[k] = {};
+    pendientes[k] = {}; 
+    retirados[k] = {};
+    entregadasPorTanda.PRIMERA[k] = {};
+    entregadasPorTanda.SEGUNDA[k] = {};
   });
 
   PEDIDOS.forEach(p => {
@@ -987,18 +1001,20 @@ function calcStock(tandaFilter) {
     if (!stockTypes.includes(tipo)) return;
     const t = String(p['Talle'] || '').toUpperCase();  // talle pedido
     if (!TALLES_ORDER.includes(t)) return;
+    
+    const tanda = getTanda(p); // 'PRIMERA' o 'SEGUNDA'
 
-    // Stock real: usa el talle de retiro (puede diferir del pedido)
+    // Contar entregas separadas por tanda
     if (isRetirado(p)) {
       const tr = String(p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
       if (TALLES_ORDER.includes(tr)) {
-        entregadasGlobal[tipo][tr] = (entregadasGlobal[tipo][tr] || 0) + 1;
+        if (!entregadasPorTanda[tanda][tipo]) entregadasPorTanda[tanda][tipo] = {};
+        entregadasPorTanda[tanda][tipo][tr] = (entregadasPorTanda[tanda][tipo][tr] || 0) + 1;
       }
     }
 
     // KPI Ret/Pend: respetan el filtro de tanda; retirados indexados por talle RETIRO, pendientes por talle PEDIDO
     if (tandaFilter) {
-      const tanda = getTanda(p);
       if (tandaFilter === 'PRIMERA' && tanda === 'SEGUNDA') return;
       if (tandaFilter === 'SEGUNDA' && tanda !== 'SEGUNDA') return;
     }
@@ -1011,14 +1027,30 @@ function calcStock(tandaFilter) {
     }
   });
 
-  // Remaining: stock inicial menos lo entregado globalmente (por talle de retiro)
+  // Calcular remaining según la tanda filtrada
   const remaining = {};
   stockTypes.forEach(tipo => {
     remaining[tipo] = {};
     TALLES_ORDER.forEach(t => {
-      remaining[tipo][t] = (STOCK_INICIAL[tipo]?.[t] || 0) - (entregadasGlobal[tipo][t] || 0);
+      let stockDisponible = 0;
+      
+      if (tandaFilter === 'SEGUNDA') {
+        // Solo stock de segunda tanda
+        stockDisponible = (STOCK_INICIAL_SEGUNDA[tipo]?.[t] || 0) - ((entregadasPorTanda.SEGUNDA[tipo] || {})[t] || 0);
+      } else if (tandaFilter === 'PRIMERA') {
+        // Solo stock de primera tanda
+        stockDisponible = (STOCK_INICIAL[tipo]?.[t] || 0) - ((entregadasPorTanda.PRIMERA[tipo] || {})[t] || 0);
+      } else {
+        // Todos: sumar ambas tandas
+        const stock1 = (STOCK_INICIAL[tipo]?.[t] || 0) - ((entregadasPorTanda.PRIMERA[tipo] || {})[t] || 0);
+        const stock2 = (STOCK_INICIAL_SEGUNDA[tipo]?.[t] || 0) - ((entregadasPorTanda.SEGUNDA[tipo] || {})[t] || 0);
+        stockDisponible = stock1 + stock2;
+      }
+      
+      remaining[tipo][t] = stockDisponible;
     });
   });
+  
   return { remaining, pendientes, retirados };
 }
 
@@ -1098,10 +1130,11 @@ function renderTipos() {
 function renderTipoCard(t, isDeletable) {
   const tipo = t.key.toLowerCase();
   const stk = STOCK_INICIAL[tipo] || {};
+  const stk2 = STOCK_INICIAL_SEGUNDA[tipo] || {};
   const stockEditorHtml = t.hasStock ? `
     <div class="stock-editor">
       <div class="stock-editor-title" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'">
-        📦 Stock inicial &nbsp;<span style="font-size:0.6rem;color:#aaa;">(tap para editar)</span>
+        📦 Stock 1ra Tanda &nbsp;<span style="font-size:0.6rem;color:#aaa;">(tap para editar)</span>
       </div>
       <div class="stock-editor-grid">
         ${TALLES_ORDER.map(talle => `
@@ -1110,7 +1143,19 @@ function renderTipoCard(t, isDeletable) {
             <input type="number" min="0" id="stk-${t.key}-${talle}" value="${stk[talle] || 0}">
           </div>`).join('')}
       </div>
-      <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%;" onclick="saveStockTipo('${t.key}')">Guardar stock</button>
+      <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%;" onclick="saveStockTipo('${t.key}', 'PRIMERA')">Guardar stock 1ra tanda</button>
+      
+      <div class="stock-editor-title" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'" style="margin-top:12px;">
+        📦 Stock 2da Tanda &nbsp;<span style="font-size:0.6rem;color:#aaa;">(tap para editar)</span>
+      </div>
+      <div class="stock-editor-grid">
+        ${TALLES_ORDER.map(talle => `
+          <div class="stock-editor-cell">
+            <label>${talle}</label>
+            <input type="number" min="0" id="stk2-${t.key}-${talle}" value="${stk2[talle] || 0}">
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-warning btn-sm" style="margin-top:8px;width:100%;" onclick="saveStockTipo('${t.key}', 'SEGUNDA')">Guardar stock 2da tanda</button>
     </div>` : '';
 
   return `<div class="tipo-card-config">
@@ -1144,17 +1189,26 @@ function deleteTipo(key) {
   showToast('Tipo eliminado');
 }
 
-function saveStockTipo(key) {
+function saveStockTipo(key, tandaTarget = 'PRIMERA') {
   const tipo = key.toLowerCase();
   const updated = {};
+  const prefix = tandaTarget === 'SEGUNDA' ? 'stk2' : 'stk';
+  
   TALLES_ORDER.forEach(talle => {
-    const el = document.getElementById(`stk-${key}-${talle}`);
+    const el = document.getElementById(`${prefix}-${key}-${talle}`);
     updated[talle] = el ? (Number(el.value) || 0) : 0;
   });
-  STOCK_INICIAL[tipo] = updated;
-  localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+  
+  if (tandaTarget === 'SEGUNDA') {
+    STOCK_INICIAL_SEGUNDA[tipo] = updated;
+    localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
+  } else {
+    STOCK_INICIAL[tipo] = updated;
+    localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+  }
+  
   renderStock();
-  showToast(`Stock de ${key} guardado`);
+  showToast(`Stock de ${key} (${tandaTarget}) guardado`);
 
   // Persistir en Google Sheet si hay URL configurada
   if (SCRIPT_URL) {
@@ -1162,17 +1216,23 @@ function saveStockTipo(key) {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'guardarStock', tipo: key, stock: updated })
+      body: JSON.stringify({ action: 'guardarStock', tipo: key, stock: updated, tanda: tandaTarget })
     }).catch(() => {}); // no-cors: no hay respuesta, ignorar errores de red silenciosamente
   }
 }
 
 function activarStock(key) {
   _updateTipoField(key, 'hasStock', true);
-  if (!STOCK_INICIAL[key.toLowerCase()]) {
-    STOCK_INICIAL[key.toLowerCase()] = {};
-    TALLES_ORDER.forEach(t => { STOCK_INICIAL[key.toLowerCase()][t] = 0; });
+  const tipo = key.toLowerCase();
+  if (!STOCK_INICIAL[tipo]) {
+    STOCK_INICIAL[tipo] = {};
+    TALLES_ORDER.forEach(t => { STOCK_INICIAL[tipo][t] = 0; });
     localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+  }
+  if (!STOCK_INICIAL_SEGUNDA[tipo]) {
+    STOCK_INICIAL_SEGUNDA[tipo] = {};
+    TALLES_ORDER.forEach(t => { STOCK_INICIAL_SEGUNDA[tipo][t] = 0; });
+    localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
   }
   renderTipos(); initSubTabs(); renderStock();
   showToast('Stock activado para este tipo');

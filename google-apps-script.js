@@ -345,9 +345,9 @@ function registrarSeña(data) {
 }
 
 // ============ Stock: guardar en hoja Stock ============
-// data: { tipo: 'BLANCA', stock: { XS: 2, S: 6, M: 10, L: 8, XL: 4, XXL: 2 } }
+// data: { tipo: 'BLANCA', stock: { XS: 2, S: 6, M: 10, L: 8, XL: 4, XXL: 2 }, tanda: 'PRIMERA' o 'SEGUNDA' }
 function guardarStock(data) {
-  const TALLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const TALLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '12'];
   const headers = ['Tipo', ...TALLES, 'Última Actualización'];
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -359,7 +359,8 @@ function guardarStock(data) {
     sheet.setFrozenRows(1);
   }
 
-  const tipo = (data.tipo || '').toUpperCase();
+  const tanda = data.tanda || 'PRIMERA';
+  const tipo = (data.tipo || '').toUpperCase() + (tanda === 'SEGUNDA' ? '_2DA' : '');
   const stock = data.stock || {};
   const allData = sheet.getDataRange().getValues();
   const sheetHeaders = allData[0];
