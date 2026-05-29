@@ -85,7 +85,7 @@ function getAll() {
   return jsonResponse({ status: 'ok', pedidos, retiros, stock });
 }
 
-// Leer stock desde la hoja Stock
+// Leer stock desde la hoja Stock (formato: Tipo | Talle | Stock | Última Actualización)
 function getStock() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEET_STOCK);
@@ -94,30 +94,27 @@ function getStock() {
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return { primera: {}, segunda: {} };
   
-  const headers = data[0];
   const stockPrimera = {};
   const stockSegunda = {};
   
+  // Formato: fila 0 = headers, resto = datos
+  // Columnas esperadas: Tipo | Talle | Stock | Última Actualización
   for (let i = 1; i < data.length; i++) {
     const tipoRaw = String(data[i][0] || '').trim().toUpperCase();
-    if (!tipoRaw) continue;
+    const talle = String(data[i][1] || '').trim().toUpperCase();
+    const cantidad = Number(data[i][2]) || 0;
+    
+    if (!tipoRaw || !talle) continue;
     
     const esSegunda = tipoRaw.endsWith('_2DA');
     const tipoClean = tipoRaw.replace('_2DA', '').toLowerCase();
-    const stockObj = {};
-    
-    // Leer cada talle desde las columnas
-    for (let j = 1; j < headers.length; j++) {
-      const header = String(headers[j]).trim();
-      if (header && header !== 'Última Actualización') {
-        stockObj[header] = Number(data[i][j]) || 0;
-      }
-    }
     
     if (esSegunda) {
-      stockSegunda[tipoClean] = stockObj;
+      if (!stockSegunda[tipoClean]) stockSegunda[tipoClean] = {};
+      stockSegunda[tipoClean][talle] = cantidad;
     } else {
-      stockPrimera[tipoClean] = stockObj;
+      if (!stockPrimera[tipoClean]) stockPrimera[tipoClean] = {};
+      stockPrimera[tipoClean][talle] = cantidad;
     }
   }
   
@@ -385,80 +382,50 @@ function registrarSeña(data) {
 }
 
 // ============ Stock: guardar en hoja Stock ============
+// Formato: Tipo | Talle | Stock | Última Actualización (una fila por cada tipo+talle)
 // data: { tipo: 'BLANCA', stock: { XS: 2, S: 6, M: 10, L: 8, XL: 4, XXL: 2 }, tanda: 'PRIMERA' o 'SEGUNDA' }
 function guardarStock(data) {
-  const TALLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '12'];
-  const headers = ['Tipo', ...TALLES, 'Última Actualización'];
-
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(SHEET_STOCK);
   
   if (!sheet) {
-    // Crear hoja nueva con todas las columnas
+    // Crear hoja nueva con estructura de filas
     sheet = ss.insertSheet(SHEET_STOCK);
-    sheet.appendRow(headers);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    sheet.appendRow(['Tipo', 'Talle', 'Stock', 'Última Actualización']);
+    sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
     sheet.setFrozenRows(1);
-  } else {
-    // Verificar y actualizar columnas si es necesario
-    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
-    
-    if (missingHeaders.length > 0) {
-      // Agregar columnas faltantes al final (antes de "Última Actualización")
-      const lastCol = sheet.getLastColumn();
-      const lastActCol = currentHeaders.indexOf('Última Actualización');
-      
-      if (lastActCol >= 0) {
-        // Insertar antes de "Última Actualización"
-        for (let i = 0; i < missingHeaders.length; i++) {
-          if (missingHeaders[i] !== 'Última Actualización') {
-            sheet.insertColumnBefore(lastActCol + 1);
-            sheet.getRange(1, lastActCol + 1).setValue(missingHeaders[i]).setFontWeight('bold');
-          }
-        }
-      } else {
-        // Agregar al final
-        missingHeaders.forEach(h => {
-          sheet.getRange(1, sheet.getLastColumn() + 1).setValue(h).setFontWeight('bold');
-        });
-      }
-    }
   }
 
   const tanda = data.tanda || 'PRIMERA';
   const tipo = (data.tipo || '').toUpperCase() + (tanda === 'SEGUNDA' ? '_2DA' : '');
   const stock = data.stock || {};
+  const timestamp = new Date();
+  
+  // Obtener todos los datos existentes
   const allData = sheet.getDataRange().getValues();
-  const sheetHeaders = allData[0];
-  const colTipo = sheetHeaders.indexOf('Tipo');
-
-  // Buscar fila existente para este tipo
-  let targetRow = -1;
+  const existingRows = {}; // Map de "TIPO_TALLE" -> rowIndex
+  
   for (let i = 1; i < allData.length; i++) {
-    if ((allData[i][colTipo] || '').toString().toUpperCase() === tipo) {
-      targetRow = i + 1; // 1-indexed
-      break;
-    }
+    const rowTipo = String(allData[i][0] || '').trim().toUpperCase();
+    const rowTalle = String(allData[i][1] || '').trim().toUpperCase();
+    const key = `${rowTipo}_${rowTalle}`;
+    existingRows[key] = i + 1; // 1-indexed
   }
-
-  // Construir valores en el orden correcto según las columnas actuales
-  const rowValues = [];
-  sheetHeaders.forEach(header => {
-    if (header === 'Tipo') {
-      rowValues.push(tipo);
-    } else if (header === 'Última Actualización') {
-      rowValues.push(new Date());
+  
+  // Actualizar o crear filas para cada talle
+  Object.keys(stock).forEach(talle => {
+    const key = `${tipo}_${talle.toUpperCase()}`;
+    const cantidad = Number(stock[talle]) || 0;
+    const rowValues = [tipo, talle.toUpperCase(), cantidad, timestamp];
+    
+    if (existingRows[key]) {
+      // Actualizar fila existente
+      sheet.getRange(existingRows[key], 1, 1, 4).setValues([rowValues]);
     } else {
-      rowValues.push(Number(stock[header]) || 0);
+      // Agregar nueva fila
+      sheet.appendRow(rowValues);
     }
   });
-
-  if (targetRow > 0) {
-    sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
-  } else {
-    sheet.appendRow(rowValues);
-  }
 
   return jsonResponse({ status: 'ok', message: `Stock de ${tipo} guardado` });
 }
