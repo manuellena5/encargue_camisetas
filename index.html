@@ -807,6 +807,19 @@ async function loadFromSheets() {
           _notasRetiro:     p['Notas Retiro']          || '',
         };
       });
+      
+      // Sincronizar stock desde Google Sheets
+      if (data.stock) {
+        if (data.stock.primera && Object.keys(data.stock.primera).length > 0) {
+          Object.assign(STOCK_INICIAL, data.stock.primera);
+          localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+        }
+        if (data.stock.segunda && Object.keys(data.stock.segunda).length > 0) {
+          Object.assign(STOCK_INICIAL_SEGUNDA, data.stock.segunda);
+          localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
+        }
+      }
+      
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
       showToast('Datos actualizados');

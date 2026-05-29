@@ -80,8 +80,48 @@ function getAll() {
 
   const pedidos = sheetToObjects(pedidosSheet);
   const retiros = sheetToObjects(retirosSheet);
+  const stock = getStock();
 
-  return jsonResponse({ status: 'ok', pedidos, retiros });
+  return jsonResponse({ status: 'ok', pedidos, retiros, stock });
+}
+
+// Leer stock desde la hoja Stock
+function getStock() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_STOCK);
+  if (!sheet) return { primera: {}, segunda: {} };
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return { primera: {}, segunda: {} };
+  
+  const headers = data[0];
+  const stockPrimera = {};
+  const stockSegunda = {};
+  
+  for (let i = 1; i < data.length; i++) {
+    const tipoRaw = String(data[i][0] || '').trim().toUpperCase();
+    if (!tipoRaw) continue;
+    
+    const esSegunda = tipoRaw.endsWith('_2DA');
+    const tipoClean = tipoRaw.replace('_2DA', '').toLowerCase();
+    const stockObj = {};
+    
+    // Leer cada talle desde las columnas
+    for (let j = 1; j < headers.length; j++) {
+      const header = String(headers[j]).trim();
+      if (header && header !== 'Última Actualización') {
+        stockObj[header] = Number(data[i][j]) || 0;
+      }
+    }
+    
+    if (esSegunda) {
+      stockSegunda[tipoClean] = stockObj;
+    } else {
+      stockPrimera[tipoClean] = stockObj;
+    }
+  }
+  
+  return { primera: stockPrimera, segunda: stockSegunda };
 }
 
 function getPedidos() {
