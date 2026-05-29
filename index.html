@@ -599,24 +599,51 @@ const STOCK_INICIAL = {
   blanca: { XS: 2, S: 6, M: 6, L: 6, XL: 6, XXL: 2 },
   azul:   { XS: 2, S: 4, M: 4, L: 4, XL: 4, XXL: 2 }
 };
-(function loadSavedStock() {
-  const saved = localStorage.getItem('stockInicial');
-  if (saved) { try { Object.assign(STOCK_INICIAL, JSON.parse(saved)); } catch(e) {} }
-  // Apply builtin overrides (hasStock toggles, etc)
-  const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
-  PRENDA_TYPES_BUILTIN.forEach(t => {
-    if (overrides[t.key]) Object.assign(t, overrides[t.key]);
-  });
-})();
-
-// Stock para SEGUNDA TANDA (independiente de la primera)
 const STOCK_INICIAL_SEGUNDA = {
   blanca: { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '6': 0, '8': 0, '12': 0 },
   azul:   { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '6': 0, '8': 0, '12': 0 }
 };
-(function loadSavedStockSegunda() {
-  const saved = localStorage.getItem('stockInicialSegunda');
-  if (saved) { try { Object.assign(STOCK_INICIAL_SEGUNDA, JSON.parse(saved)); } catch(e) {} }
+
+(function initializeStock() {
+  // Cargar stock guardado
+  const saved1 = localStorage.getItem('stockInicial');
+  if (saved1) { try { Object.assign(STOCK_INICIAL, JSON.parse(saved1)); } catch(e) {} }
+  
+  const saved2 = localStorage.getItem('stockInicialSegunda');
+  if (saved2) { try { Object.assign(STOCK_INICIAL_SEGUNDA, JSON.parse(saved2)); } catch(e) {} }
+  
+  // Aplicar overrides existentes primero
+  const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
+  PRENDA_TYPES_BUILTIN.forEach(t => {
+    if (overrides[t.key]) Object.assign(t, overrides[t.key]);
+  });
+  
+  // Auto-activar hasStock para tipos que tienen datos de stock guardados
+  const allStockTypes = new Set([
+    ...Object.keys(STOCK_INICIAL),
+    ...Object.keys(STOCK_INICIAL_SEGUNDA)
+  ]);
+  
+  allStockTypes.forEach(tipoKey => {
+    const stock1 = STOCK_INICIAL[tipoKey] || {};
+    const stock2 = STOCK_INICIAL_SEGUNDA[tipoKey] || {};
+    const hasData = 
+      Object.values(stock1).some(val => Number(val) > 0) ||
+      Object.values(stock2).some(val => Number(val) > 0);
+    
+    if (hasData) {
+      const builtinType = PRENDA_TYPES_BUILTIN.find(t => t.key.toLowerCase() === tipoKey.toLowerCase());
+      if (builtinType && !builtinType.hasStock) {
+        builtinType.hasStock = true;
+        // Guardar el override
+        if (!overrides[builtinType.key]) {
+          overrides[builtinType.key] = {};
+        }
+        overrides[builtinType.key].hasStock = true;
+        localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
+      }
+    }
+  });
 })();
 
 const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '12'];
@@ -813,10 +840,20 @@ async function loadFromSheets() {
         if (data.stock.primera && Object.keys(data.stock.primera).length > 0) {
           Object.assign(STOCK_INICIAL, data.stock.primera);
           localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+          
+          // Activar hasStock para los tipos que tienen datos
+          Object.keys(data.stock.primera).forEach(tipoKey => {
+            _updateTipoField(tipoKey.toUpperCase(), 'hasStock', true);
+          });
         }
         if (data.stock.segunda && Object.keys(data.stock.segunda).length > 0) {
           Object.assign(STOCK_INICIAL_SEGUNDA, data.stock.segunda);
           localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
+          
+          // Activar hasStock para los tipos que tienen datos en segunda tanda
+          Object.keys(data.stock.segunda).forEach(tipoKey => {
+            _updateTipoField(tipoKey.toUpperCase(), 'hasStock', true);
+          });
         }
       }
       
