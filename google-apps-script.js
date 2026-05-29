@@ -392,11 +392,38 @@ function guardarStock(data) {
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(SHEET_STOCK);
+  
   if (!sheet) {
+    // Crear hoja nueva con todas las columnas
     sheet = ss.insertSheet(SHEET_STOCK);
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
     sheet.setFrozenRows(1);
+  } else {
+    // Verificar y actualizar columnas si es necesario
+    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+    
+    if (missingHeaders.length > 0) {
+      // Agregar columnas faltantes al final (antes de "Última Actualización")
+      const lastCol = sheet.getLastColumn();
+      const lastActCol = currentHeaders.indexOf('Última Actualización');
+      
+      if (lastActCol >= 0) {
+        // Insertar antes de "Última Actualización"
+        for (let i = 0; i < missingHeaders.length; i++) {
+          if (missingHeaders[i] !== 'Última Actualización') {
+            sheet.insertColumnBefore(lastActCol + 1);
+            sheet.getRange(1, lastActCol + 1).setValue(missingHeaders[i]).setFontWeight('bold');
+          }
+        }
+      } else {
+        // Agregar al final
+        missingHeaders.forEach(h => {
+          sheet.getRange(1, sheet.getLastColumn() + 1).setValue(h).setFontWeight('bold');
+        });
+      }
+    }
   }
 
   const tanda = data.tanda || 'PRIMERA';
@@ -415,7 +442,17 @@ function guardarStock(data) {
     }
   }
 
-  const rowValues = [tipo, ...TALLES.map(t => Number(stock[t]) || 0), new Date()];
+  // Construir valores en el orden correcto según las columnas actuales
+  const rowValues = [];
+  sheetHeaders.forEach(header => {
+    if (header === 'Tipo') {
+      rowValues.push(tipo);
+    } else if (header === 'Última Actualización') {
+      rowValues.push(new Date());
+    } else {
+      rowValues.push(Number(stock[header]) || 0);
+    }
+  });
 
   if (targetRow > 0) {
     sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
