@@ -1781,6 +1781,14 @@ function updateBadges() {
 
 function renderList() {
   const items = getFiltered();
+  // Ordenar: pendientes primero, retirados al final
+  items.sort((a, b) => {
+    const aRetirado = isRetirado(a);
+    const bRetirado = isRetirado(b);
+    if (aRetirado && !bRetirado) return 1;  // a retirado va después
+    if (!aRetirado && bRetirado) return -1; // a pendiente va primero
+    return 0; // mantener orden original si ambos están en el mismo estado
+  });
   const container = document.getElementById('listContainer');
   // Refrescar stock al cambiar filtros (por tanda o tipo)
   renderStock();
