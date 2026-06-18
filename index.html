@@ -672,7 +672,8 @@ const TALLES_EXTENDIDOS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '9', '10'
 let PEDIDOS = [];
 let currentSection = 'pedidos';
 let currentFilter = 'todos';
-let SCRIPT_URL = localStorage.getItem('gasUrl') || '';
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwS9y-drmhJvXVjtJssBtsYgsrxaYQjbj0R1gxymyUaHbVi8un5rurOXYf7ZtcQ_UTRug/exec';
+let SCRIPT_URL = localStorage.getItem('gasUrl') || DEFAULT_SCRIPT_URL;
 let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}');
 let pendingUnlockId = null;
 
