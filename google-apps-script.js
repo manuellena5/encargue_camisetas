@@ -194,6 +194,15 @@ function nuevoPedido(data) {
     headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   }
 
+  // Auto-agregar columna Regalo si no existe aún
+  if (!headers.map(h => h.toString().trim().toUpperCase()).includes('REGALO')) {
+    sheet.appendColumn ? null : null; // no hay appendColumn, usar insertColumn al final
+    const lastCol = sheet.getLastColumn();
+    sheet.insertColumnAfter(lastCol);
+    sheet.getRange(1, lastCol + 1).setValue('Regalo').setFontWeight('bold');
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  }
+
   // Conjunto de columnas de tipo (flags binarios)
   const tipoCols = new Set(['BLANCA', 'AZUL', 'SHORT', 'CHOMBA', 'ARQUERO_CELESTE', 'ARQUERO_NEGRA']);
   if (tipoKey) tipoCols.add(tipoKey);
@@ -212,6 +221,7 @@ function nuevoPedido(data) {
     if (key === 'Total Efectivo') return data.modoPago === 'Efectivo' ? (Number(data.seña) || 0) : 0;
     if (key === 'Tanda') return data.tanda || 'SEGUNDA';
     if (key === 'Retirado') return 0;
+    if (key === 'Regalo') return Number(data.regalo) || 0;
     return '';
   });
 
