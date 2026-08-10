@@ -46,7 +46,13 @@ function sheetToObjects(sheet) {
   for (let i = 1; i < data.length; i++) {
     const obj = {};
     for (let j = 0; j < headers.length; j++) {
-      obj[headers[j]] = data[i][j];
+      const val = data[i][j];
+      // Si Sheets interpretó la celda como fecha, la devolvemos formateada en
+      // hora de Argentina. Sin esto, JSON.stringify la manda en UTC y el día
+      // se corre para los movimientos de la noche.
+      obj[headers[j]] = (val instanceof Date)
+        ? Utilities.formatDate(val, TZ_AR, 'yyyy-MM-dd HH:mm:ss')
+        : val;
     }
     obj._row = i + 1; // 1-indexed row number in sheet
     rows.push(obj);
@@ -304,6 +310,16 @@ function nuevoPedido(data) {
     headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   }
 
+  // Auto-agregar columna Fecha Alta si no existe aún.
+  // Se fuerza formato texto para que Sheets no reinterprete la fecha en otra zona horaria.
+  if (!headers.map(h => h.toString().trim().toUpperCase()).includes('FECHA ALTA')) {
+    const lastCol = sheet.getLastColumn();
+    sheet.insertColumnAfter(lastCol);
+    sheet.getRange(1, lastCol + 1).setValue('Fecha Alta').setFontWeight('bold');
+    sheet.getRange(2, lastCol + 1, Math.max(1, sheet.getMaxRows() - 1), 1).setNumberFormat('@');
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  }
+
   // Conjunto de columnas de tipo (flags binarios)
   const tipoCols = new Set(['BLANCA', 'AZUL', 'SHORT', 'CHOMBA', 'ARQUERO_CELESTE', 'ARQUERO_NEGRA']);
   if (tipoKey) tipoCols.add(tipoKey);
@@ -323,6 +339,7 @@ function nuevoPedido(data) {
     if (key === 'Tanda') return data.tanda || 'SEGUNDA';
     if (key === 'Retirado') return 0;
     if (key === 'Regalo') return Number(data.regalo) || 0;
+    if (key === 'Fecha Alta') return ahoraAR();
     return '';
   });
 

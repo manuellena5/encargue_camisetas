@@ -16,7 +16,7 @@ Webapp para controlar pedidos, retiros y stock de prendas del club. Los datos se
 ## Google Sheet
 
 El Sheet tiene estas hojas:
-- **Pedidos**: todos los pedidos con columnas Nombre, BLANCA, AZUL, SHORT, CHOMBA, Talle, Seña, Total, Resta, Notas, Total Transferencia, Total Efectivo, Tanda, Retirado
+- **Pedidos**: todos los pedidos con columnas Nombre, BLANCA, AZUL, SHORT, CHOMBA, Talle, Seña, Total, Resta, Notas, Total Transferencia, Total Efectivo, Tanda, Retirado, Regalo, Fecha Alta
 - **Retiros**: log de cada retiro realizado
 - **Stock**: stock por tipo y talle (`Tipo | Talle | Stock | Última Actualización`)
 - **Movimientos**: historial de actividad, una fila por acción (`Fecha | Tipo | Pedido ID | Nombre | Prenda | Talle | Monto | Medio | Detalle`). Se crea sola la primera vez que se registra algo.
@@ -32,6 +32,8 @@ Cada acción sobre la app deja una fila en la hoja **Movimientos**:
 | `RETIRO` | Se marca un pedido como retirado |
 | `RETIRO_REVERTIDO` | Se desmarca un retiro |
 | `STOCK` | Se edita el stock de un tipo de prenda (guarda el antes → después de cada talle) |
+
+La columna **Fecha Alta** de la hoja Pedidos se crea sola con el primer pedido nuevo y guarda cuándo se cargó cada uno. Las listas de Pedidos y Retiros ordenan por ese dato, del más reciente al más viejo. Los pedidos anteriores a este cambio no la tienen y quedan al final, ordenados por su posición en la hoja; si querés, se puede completar a mano en el Sheet con el formato `yyyy-MM-dd HH:mm:ss`.
 
 Las fechas se guardan siempre en huso horario de Argentina (`America/Argentina/Buenos_Aires`), con formato `yyyy-MM-dd HH:mm:ss`, sin importar la zona horaria del dispositivo.
 
