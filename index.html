@@ -2028,13 +2028,14 @@ function updateBadges() {
 
 function renderList() {
   const items = getFiltered();
-  // Ordenar: pendientes primero, retirados al final
+  // Ordenar: pendientes primero, retirados al final.
+  // Dentro de cada grupo, los pedidos más recientes arriba (_id sigue el orden de la hoja).
   items.sort((a, b) => {
     const aRetirado = isRetirado(a);
     const bRetirado = isRetirado(b);
     if (aRetirado && !bRetirado) return 1;  // a retirado va después
     if (!aRetirado && bRetirado) return -1; // a pendiente va primero
-    return 0; // mantener orden original si ambos están en el mismo estado
+    return (Number(b._id) || 0) - (Number(a._id) || 0); // más nuevo primero
   });
   const container = document.getElementById('listContainer');
   // Refrescar stock al cambiar filtros (por tanda o tipo)
@@ -2316,7 +2317,7 @@ function renderRetiros() {
     if (currentRetirosFilter === 'sin-deuda' &&  tieneDeuda(p)) return false;
     if (currentRetirosFilter === 'con-deuda' && !tieneDeuda(p)) return false;
     return true;
-  });
+  }).sort((a, b) => (Number(b._id) || 0) - (Number(a._id) || 0)); // más nuevo primero
 
   const container = document.getElementById('retirosListContainer');
   if (!container) return;
