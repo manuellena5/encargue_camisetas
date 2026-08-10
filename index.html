@@ -67,6 +67,35 @@
     .sub-tab.active { color: #1a1a2e; border-bottom-color: #3498db; }
     .sub-tab .badge { display: inline-block; background: #e0e0e0; color: #555; font-size: 0.65rem; padding: 1px 6px; border-radius: 10px; margin-left: 3px; }
 
+    /* MOVIMIENTOS */
+    .mov-filter-tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; overflow-x: auto; }
+    .mov-filter-tab { padding: 10px 12px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.78rem; border-bottom: 3px solid transparent; color: #888; white-space: nowrap; flex-shrink: 0; }
+    .mov-filter-tab.active { color: #1a1a2e; border-bottom-color: #3498db; }
+    .mov-filter-tab .badge { display: inline-block; background: #e0e0e0; color: #555; font-size: 0.65rem; padding: 1px 6px; border-radius: 10px; margin-left: 3px; }
+    .mov-day { font-size: 0.68rem; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 12px 0 6px 4px; }
+    .mov-day:first-child { margin-top: 2px; }
+    .mov-card { background: white; border-radius: 10px; padding: 10px 12px; margin-bottom: 7px; display: flex; gap: 10px; align-items: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.06); border-left: 4px solid #bbb; }
+    .mov-card .mov-ico { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.85rem; }
+    .mov-card .mov-body { flex: 1; min-width: 0; }
+    .mov-card .mov-title { font-size: 0.85rem; color: #1a1a2e; }
+    .mov-card .mov-title b { font-weight: 700; }
+    .mov-card .mov-sub { font-size: 0.76rem; color: #666; margin-top: 2px; word-break: break-word; }
+    .mov-card .mov-meta { font-size: 0.7rem; color: #aaa; margin-top: 3px; }
+    .mov-card .mov-monto { font-size: 0.85rem; font-weight: 700; color: #27ae60; white-space: nowrap; }
+    .mov-card.pedido  { border-left-color: #2980b9; }
+    .mov-card.pedido  .mov-ico { background: #eaf2fa; color: #1b4f72; }
+    .mov-card.pago    { border-left-color: #27ae60; }
+    .mov-card.pago    .mov-ico { background: #eafaf1; color: #1e8449; }
+    .mov-card.retiro  { border-left-color: #8e44ad; }
+    .mov-card.retiro  .mov-ico { background: #f4ecf7; color: #6c3483; }
+    .mov-card.revert  { border-left-color: #e74c3c; }
+    .mov-card.revert  .mov-ico { background: #fdeded; color: #922b21; }
+    .mov-card.stock   { border-left-color: #7f8c8d; }
+    .mov-card.stock   .mov-ico { background: #f1f1f1; color: #515a5a; }
+    .mov-pendiente { opacity: 0.65; }
+    .mov-pendiente .mov-meta::after { content: ' · sincronizando'; color: #e67e22; }
+    .mov-empty { text-align: center; color: #999; font-size: 0.85rem; padding: 40px 20px; }
+
     /* SEARCH */
     .search-bar { padding: 10px 16px; background: white; border-bottom: 1px solid #eee; }
     .search-bar input { width: 100%; padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; }
@@ -323,6 +352,7 @@
   <div class="main-tab" onclick="switchSection('nuevo')">Nuevo Pedido</div>
   <div class="main-tab" onclick="switchSection('resumen')">Resumen</div>
   <div class="main-tab" onclick="switchSection('tipos')">Tipos</div>
+  <div class="main-tab" onclick="switchSection('movimientos')">Movim.</div>
 </div>
 
 <div id="configPanel" class="config-panel" style="display:none;">
@@ -554,6 +584,42 @@
   <div class="list" id="retirosListContainer"></div>
 </div>
 
+<!-- ========== SECTION: MOVIMIENTOS ========== -->
+<div class="section" id="sectionMovimientos">
+  <div class="kpi-section">
+    <h4>Actividad</h4>
+    <div class="kpi-row">
+      <div class="kpi-item"><div class="num" id="mTotal">0</div><div class="label">Movimientos</div></div>
+      <div class="kpi-item blue"><div class="num" id="mHoy">0</div><div class="label">Hoy</div></div>
+      <div class="kpi-divider"></div>
+      <div class="kpi-item green"><div class="num" id="mCobradoHoy">$0</div><div class="label">Cobrado hoy</div></div>
+      <div class="kpi-item orange"><div class="num" id="mRetirosHoy">0</div><div class="label">Retiros hoy</div></div>
+    </div>
+  </div>
+
+  <div class="mov-filter-tabs">
+    <div class="mov-filter-tab active" data-mf="todos"   onclick="switchMovFilter('todos')">TODOS <span class="badge" id="mfBadgeTodos">0</span></div>
+    <div class="mov-filter-tab" data-mf="pedidos"  onclick="switchMovFilter('pedidos')">PEDIDOS <span class="badge" id="mfBadgePedidos">0</span></div>
+    <div class="mov-filter-tab" data-mf="pagos"    onclick="switchMovFilter('pagos')">PAGOS <span class="badge" id="mfBadgePagos">0</span></div>
+    <div class="mov-filter-tab" data-mf="retiros"  onclick="switchMovFilter('retiros')">RETIROS <span class="badge" id="mfBadgeRetiros">0</span></div>
+    <div class="mov-filter-tab" data-mf="stock"    onclick="switchMovFilter('stock')">STOCK <span class="badge" id="mfBadgeStock">0</span></div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-line">
+      <input type="text" id="movSearch" placeholder="Buscar por nombre o detalle..." oninput="renderMovimientos()">
+      <select id="movRango" onchange="cambiarRangoMov()" style="max-width:140px;">
+        <option value="7">Últimos 7 días</option>
+        <option value="30" selected>Últimos 30 días</option>
+        <option value="90">Últimos 90 días</option>
+        <option value="0">Todo el historial</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="list" id="movListContainer"></div>
+</div>
+
 <!-- ========== SECTION: PEDIDO PROVEEDOR ========== -->
 <div class="section" id="sectionPedidoProveedor">
   <div class="pp-header">
@@ -670,8 +736,13 @@ const TALLES_EXTENDIDOS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '9', '10'
 
 // ============ STATE ============
 let PEDIDOS = [];
+let MOVIMIENTOS = [];
 let currentSection = 'pedidos';
 let currentFilter = 'todos';
+let currentMovFilter = 'todos';
+// Rango de días que se pide al backend. 0 = todo el historial.
+let MOV_RANGO_DIAS = Number(localStorage.getItem('movRangoDias') ?? 30);
+const MOV_LIMITE = 500;
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwS9y-drmhJvXVjtJssBtsYgsrxaYQjbj0R1gxymyUaHbVi8un5rurOXYf7ZtcQ_UTRug/exec';
 let SCRIPT_URL = localStorage.getItem('gasUrl') || DEFAULT_SCRIPT_URL;
 let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}');
@@ -762,7 +833,8 @@ function switchSection(section) {
       (i === 1 && section === 'retiros') ||
       (i === 2 && section === 'nuevo') ||
       (i === 3 && section === 'resumen') ||
-      (i === 4 && section === 'tipos')
+      (i === 4 && section === 'tipos') ||
+      (i === 5 && section === 'movimientos')
     );
   });
   document.getElementById('sectionPedidos').classList.toggle('active', section === 'pedidos');
@@ -770,10 +842,12 @@ function switchSection(section) {
   document.getElementById('sectionNuevo').classList.toggle('active', section === 'nuevo');
   document.getElementById('sectionResumen').classList.toggle('active', section === 'resumen');
   document.getElementById('sectionTipos').classList.toggle('active', section === 'tipos');
+  document.getElementById('sectionMovimientos').classList.toggle('active', section === 'movimientos');
   document.getElementById('sectionPedidoProveedor').classList.toggle('active', section === 'pedidoproveedor');
   document.querySelector('.main-tabs').style.display = section === 'pedidoproveedor' ? 'none' : '';
   if (section === 'resumen') renderResumen();
   if (section === 'retiros') renderRetiros();
+  if (section === 'movimientos') renderMovimientos();
   if (section === 'pedidoproveedor') renderPedidoProveedor();
 }
 
@@ -842,7 +916,7 @@ async function loadFromSheets() {
   if (!SCRIPT_URL) return;
   try {
     showLoading(true);
-    const res = await fetch(SCRIPT_URL + '?action=getAll');
+    const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams());
     const data = await res.json();
     
     console.log('Datos recibidos:', data); // Debug
@@ -911,6 +985,10 @@ async function loadFromSheets() {
         }, 100);
       }
       
+      // Movimientos: el backend ya los devuelve del más reciente al más antiguo
+      MOVIMIENTOS = Array.isArray(data.movimientos) ? data.movimientos : [];
+      localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
+
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
       showToast('Datos actualizados (' + PEDIDOS.length + ' pedidos)');
@@ -921,14 +999,16 @@ async function loadFromSheets() {
     console.error('Error loading:', e);
     showToast('Error: ' + e.message);
     const backup = localStorage.getItem('pedidos_backup');
-    if (backup) { 
-      try { 
-        PEDIDOS = JSON.parse(backup); 
+    if (backup) {
+      try {
+        PEDIDOS = JSON.parse(backup);
+        const movBackup = localStorage.getItem('movimientos_backup');
+        if (movBackup) { try { MOVIMIENTOS = JSON.parse(movBackup); } catch(e2) {} }
         renderAll();
         showToast('Usando datos locales (' + PEDIDOS.length + ' pedidos)');
       } catch(ex) {
         console.error('Error cargando backup:', ex);
-      } 
+      }
     } else {
       showToast('No hay datos guardados. Verificá la conexión.');
     }
@@ -963,6 +1043,17 @@ async function savePagoSeña(pedido, pagoSeña, medioPago) {
     } else {
       pedido['Total Efectivo'] = (Number(pedido['Total Efectivo']) || 0) + pagoSeña;
     }
+    const restaFinal = Number(pedido['Resta']) || 0;
+    pushMovLocal({
+      tipo: 'PAGO_SEÑA',
+      pedidoId: pedido._id,
+      nombre: pedido['Nombre'] || '',
+      prenda: getTipoLabel(getTipo(pedido)),
+      talle: pedido['Talle'] || '',
+      monto: pagoSeña,
+      medio: medioPago,
+      detalle: restaFinal > 0 ? 'resta ' + restaFinal : 'saldado'
+    });
     localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
     renderAll();
     showToast('Pago registrado');
@@ -1038,6 +1129,25 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, 
         pedido['Total Efectivo'] = (Number(pedido['Total Efectivo']) || 0) + pago;
       }
     }
+    const pagoRet = Number(pagoRetiro) || 0;
+    const detRetiro = [];
+    if (talleEfectivo && pedido['Talle'] && talleEfectivo !== pedido['Talle']) {
+      detRetiro.push('retiró talle ' + talleEfectivo + ' (pidió ' + pedido['Talle'] + ')');
+    }
+    if (pagoRet > 0) detRetiro.push('pagó ' + pagoRet + (medioPago ? ' por ' + medioPago : ''));
+    const restaRet = Number(pedido['Resta']) || 0;
+    detRetiro.push(restaRet > 0 ? 'queda debiendo ' + restaRet : 'saldado');
+    if (observacion) detRetiro.push(observacion);
+    pushMovLocal({
+      tipo: retirado ? 'RETIRO' : 'RETIRO_REVERTIDO',
+      pedidoId: pedido._id,
+      nombre: pedido['Nombre'] || '',
+      prenda: getTipoLabel(tipo),
+      talle: retirado ? talleEfectivo : (pedido['Talle'] || ''),
+      monto: retirado ? pagoRet : 0,
+      medio: retirado ? (medioPago || '') : '',
+      detalle: retirado ? detRetiro.join(' · ') : 'Se revirtió el retiro'
+    });
     localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
     renderAll();
     showToast('Retiro guardado');
@@ -1091,6 +1201,18 @@ async function submitNuevoPedido() {
     document.getElementById('np_total').value = '';
     document.getElementById('np_nota').value = '';
     document.getElementById('np_regalo').checked = false;
+    const detNP = [];
+    if (regalo) detNP.push('regalo del club');
+    if (Number(seña) > 0) detNP.push('seña ' + Number(seña) + ' de ' + Number(total));
+    else if (Number(total) > 0) detNP.push('sin seña, total ' + Number(total));
+    if (nota) detNP.push(nota);
+    pushMovLocal({
+      tipo: 'PEDIDO_NUEVO',
+      nombre, prenda: tipo, talle,
+      monto: Number(seña) || 0,
+      medio: modoPago,
+      detalle: tanda + (detNP.length ? ' · ' + detNP.join(' · ') : '')
+    });
     showToast('Pedido registrado en Google Sheets');
     setTimeout(() => loadFromSheets(), 1500);
   } catch (e) {
@@ -1320,6 +1442,12 @@ function saveStockTipo(key, tandaTarget = 'PRIMERA') {
     updated[talle] = el ? (Number(el.value) || 0) : 0;
   });
   
+  // Diff contra los valores previos, para el log de movimientos
+  const previo = (tandaTarget === 'SEGUNDA' ? STOCK_INICIAL_SEGUNDA[tipo] : STOCK_INICIAL[tipo]) || {};
+  const cambios = TALLES_ORDER
+    .filter(t => (Number(previo[t]) || 0) !== (Number(updated[t]) || 0))
+    .map(t => `${t}: ${Number(previo[t]) || 0} → ${Number(updated[t]) || 0}`);
+
   if (tandaTarget === 'SEGUNDA') {
     STOCK_INICIAL_SEGUNDA[tipo] = updated;
     localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
@@ -1327,7 +1455,15 @@ function saveStockTipo(key, tandaTarget = 'PRIMERA') {
     STOCK_INICIAL[tipo] = updated;
     localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
   }
-  
+
+  if (cambios.length) {
+    pushMovLocal({
+      tipo: 'STOCK',
+      prenda: getTipoLabel(tipo),
+      detalle: (tandaTarget === 'SEGUNDA' ? '2da tanda · ' : '1era tanda · ') + cambios.join(' · ')
+    });
+  }
+
   renderStock();
   showToast(`Stock de ${key} (${tandaTarget}) guardado`);
 
@@ -1494,8 +1630,10 @@ function renderAll() {
   updateKPIs();
   updateBadges();
   updateRetirosKPIs();
+  updateMovKPIs();
   if (currentSection === 'resumen') renderResumen();
   if (currentSection === 'retiros') renderRetiros();
+  if (currentSection === 'movimientos') renderMovimientos();
 }
 
 // ============ RESUMEN POR TIPO ============
@@ -2262,11 +2400,188 @@ async function pagarDeudaRetiro(id) {
   await savePagoSeña(pedido, pago, medio);
 }
 
+// ============ MOVIMIENTOS ============
+// Todas las fechas se manejan en huso horario de Argentina, sin importar
+// la zona horaria del dispositivo que abre la app.
+const TZ_AR = 'America/Argentina/Buenos_Aires';
+
+// 'yyyy-mm-dd' del día de hoy en Argentina
+function hoyAR() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_AR, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+}
+
+// 'yyyy-mm-dd HH:mm:ss' del momento actual en Argentina
+function ahoraAR() {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_AR, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(new Date()).reduce((a, x) => (a[x.type] = x.value, a), {});
+  const hh = p.hour === '24' ? '00' : p.hour;
+  return `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
+}
+
+// Resta días a un 'yyyy-mm-dd' y devuelve otro 'yyyy-mm-dd'
+function restarDias(fechaISO, dias) {
+  const d = new Date(fechaISO + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - dias);
+  return d.toISOString().slice(0, 10);
+}
+
+// Query string para pedirle al backend solo el rango elegido
+function movQueryParams() {
+  let q = '&limitMov=' + MOV_LIMITE;
+  if (MOV_RANGO_DIAS > 0) q += '&desde=' + restarDias(hoyAR(), MOV_RANGO_DIAS - 1);
+  return q;
+}
+
+function cambiarRangoMov() {
+  MOV_RANGO_DIAS = Number(document.getElementById('movRango').value) || 0;
+  localStorage.setItem('movRangoDias', String(MOV_RANGO_DIAS));
+  loadFromSheets();
+}
+
+function switchMovFilter(filter) {
+  currentMovFilter = filter;
+  document.querySelectorAll('.mov-filter-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mf === filter);
+  });
+  renderMovimientos();
+}
+
+// Metadatos visuales por tipo de movimiento
+const MOV_META = {
+  PEDIDO_NUEVO:     { cls: 'pedido', ico: '+',  label: 'Pedido nuevo',      grupo: 'pedidos' },
+  PAGO_SEÑA:        { cls: 'pago',   ico: '$',  label: 'Pago de seña',      grupo: 'pagos'   },
+  RETIRO:           { cls: 'retiro', ico: '↑',  label: 'Retiro marcado',    grupo: 'retiros' },
+  RETIRO_REVERTIDO: { cls: 'revert', ico: '↩',  label: 'Retiro desmarcado', grupo: 'retiros' },
+  STOCK:            { cls: 'stock',  ico: '▦',  label: 'Stock actualizado', grupo: 'stock'   }
+};
+function movMeta(tipo) {
+  return MOV_META[tipo] || { cls: '', ico: '•', label: String(tipo || 'Movimiento'), grupo: 'otros' };
+}
+
+// 'Hoy · lunes 10 ago' / 'Ayer · domingo 9 ago' / 'sábado 8 ago'
+function etiquetaDia(dia) {
+  const hoy = hoyAR();
+  const d = new Date(dia + 'T12:00:00Z');
+  const txt = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'short'
+  }).format(d);
+  if (dia === hoy) return 'Hoy · ' + txt;
+  if (dia === restarDias(hoy, 1)) return 'Ayer · ' + txt;
+  return txt;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Minúsculas y sin tildes, para que "martin" encuentre "Martín"
+function sinTildes(str) {
+  return String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function getMovFiltrados() {
+  const q = sinTildes(document.getElementById('movSearch')?.value || '').trim();
+  return MOVIMIENTOS.filter(m => {
+    if (currentMovFilter !== 'todos' && movMeta(m.tipo).grupo !== currentMovFilter) return false;
+    if (!q) return true;
+    return sinTildes(m.nombre + ' ' + m.prenda + ' ' + m.detalle + ' ' + m.talle).includes(q);
+  });
+}
+
+function updateMovKPIs() {
+  const hoy = hoyAR();
+  const deHoy = MOVIMIENTOS.filter(m => String(m.fecha).slice(0, 10) === hoy);
+  const cobradoHoy = deHoy.reduce((s, m) => s + (Number(m.monto) || 0), 0);
+  const retirosHoy = deHoy.filter(m => m.tipo === 'RETIRO').length;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('mTotal', MOVIMIENTOS.length);
+  set('mHoy', deHoy.length);
+  set('mCobradoHoy', fmt(cobradoHoy));
+  set('mRetirosHoy', retirosHoy);
+
+  const porGrupo = g => MOVIMIENTOS.filter(m => movMeta(m.tipo).grupo === g).length;
+  set('mfBadgeTodos',   MOVIMIENTOS.length);
+  set('mfBadgePedidos', porGrupo('pedidos'));
+  set('mfBadgePagos',   porGrupo('pagos'));
+  set('mfBadgeRetiros', porGrupo('retiros'));
+  set('mfBadgeStock',   porGrupo('stock'));
+}
+
+function renderMovimientos() {
+  updateMovKPIs();
+  const container = document.getElementById('movListContainer');
+  if (!container) return;
+
+  const items = getMovFiltrados()
+    .slice()
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+
+  if (!items.length) {
+    container.innerHTML = '<div class="mov-empty">No hay movimientos en este período.</div>';
+    return;
+  }
+
+  const html = [];
+  let diaActual = null;
+
+  items.forEach(m => {
+    const dia = String(m.fecha).slice(0, 10);
+    if (dia !== diaActual) {
+      diaActual = dia;
+      html.push(`<div class="mov-day">${escapeHtml(etiquetaDia(dia))}</div>`);
+    }
+
+    const meta  = movMeta(m.tipo);
+    const hora  = String(m.fecha).slice(11, 16);
+    const monto = Number(m.monto) || 0;
+
+    const metaLine = [hora, m.prenda, m.talle ? 'T. ' + m.talle : '']
+      .filter(Boolean).map(escapeHtml).join(' · ');
+
+    html.push(
+      `<div class="mov-card ${meta.cls}${m._pendiente ? ' mov-pendiente' : ''}">
+        <div class="mov-ico">${meta.ico}</div>
+        <div class="mov-body">
+          <div class="mov-title"><b>${escapeHtml(meta.label)}</b>${m.nombre ? ' · ' + escapeHtml(m.nombre) : ''}</div>
+          ${m.detalle ? `<div class="mov-sub">${escapeHtml(m.detalle)}${m.medio ? ' · ' + escapeHtml(m.medio) : ''}</div>` : ''}
+          <div class="mov-meta">${metaLine}</div>
+        </div>
+        ${monto > 0 ? `<div class="mov-monto">+${fmt(monto)}</div>` : ''}
+      </div>`
+    );
+  });
+
+  container.innerHTML = html.join('');
+}
+
+// Registro optimista: los POST usan mode 'no-cors' y no devuelven respuesta,
+// así que el movimiento se agrega localmente para que se vea al instante.
+// En el próximo loadFromSheets() se reemplaza por la versión real del Sheet.
+function pushMovLocal(m) {
+  MOVIMIENTOS.unshift(Object.assign({
+    fecha: ahoraAR(), tipo: '', pedidoId: '', nombre: '',
+    prenda: '', talle: '', monto: 0, medio: '', detalle: '', _pendiente: true
+  }, m));
+  if (MOVIMIENTOS.length > MOV_LIMITE) MOVIMIENTOS.length = MOV_LIMITE;
+  localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
+  if (currentSection === 'movimientos') renderMovimientos();
+}
+
 // ============ INIT ============
 initSubTabs();
 initNuevoPedidoTipos();
 renderTipos();
 checkConfig();
+const selRango = document.getElementById('movRango');
+if (selRango) selRango.value = String(MOV_RANGO_DIAS);
+const movBackupInit = localStorage.getItem('movimientos_backup');
+if (movBackupInit) { try { MOVIMIENTOS = JSON.parse(movBackupInit); } catch(e) {} }
 const backup = localStorage.getItem('pedidos_backup');
 if (backup) { try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
 if (SCRIPT_URL) { loadFromSheets(); }

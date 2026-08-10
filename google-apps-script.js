@@ -16,6 +16,11 @@ const SPREADSHEET_ID = '1EVLGu97_2A_TRx6-udU2tOIaE_tVXULGCJ_rMpP1UeM';
 const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_RETIROS = 'Retiros';
 const SHEET_STOCK   = 'Stock';
+const SHEET_MOVIMIENTOS = 'Movimientos';
+
+// Huso horario de Argentina: todas las fechas del log se guardan en esta zona
+const TZ_AR = 'America/Argentina/Buenos_Aires';
+const MOV_HEADERS = ['Fecha', 'Tipo', 'Pedido ID', 'Nombre', 'Prenda', 'Talle', 'Monto', 'Medio', 'Detalle'];
 
 // ============ HELPERS ============
 
@@ -49,6 +54,95 @@ function sheetToObjects(sheet) {
   return rows;
 }
 
+// ============ MOVIMIENTOS: log de actividad ============
+
+// Fecha/hora actual en huso horario de Argentina, formato 'yyyy-MM-dd HH:mm:ss'
+function ahoraAR() {
+  return Utilities.formatDate(new Date(), TZ_AR, 'yyyy-MM-dd HH:mm:ss');
+}
+
+// Normaliza el valor de la celda Fecha a string 'yyyy-MM-dd HH:mm:ss' en hora AR.
+// Contempla que Sheets pueda devolver un Date en vez del string guardado.
+function fechaMovToStr(val) {
+  if (val instanceof Date) return Utilities.formatDate(val, TZ_AR, 'yyyy-MM-dd HH:mm:ss');
+  return String(val || '').trim();
+}
+
+// Registra un movimiento. Nunca debe romper la operación principal.
+// m: { tipo, pedidoId, nombre, prenda, talle, monto, medio, detalle }
+function logMovimiento(m) {
+  try {
+    const sheet = getOrCreateSheet(SHEET_MOVIMIENTOS, MOV_HEADERS);
+    sheet.appendRow([
+      ahoraAR(),
+      m.tipo     || '',
+      m.pedidoId || '',
+      m.nombre   || '',
+      m.prenda   || '',
+      m.talle    || '',
+      Number(m.monto) || 0,
+      m.medio    || '',
+      m.detalle  || ''
+    ]);
+  } catch (err) {
+    // Silencioso a propósito: si falla el log, el pedido/pago/retiro igual se guarda
+    console.error('logMovimiento falló: ' + err);
+  }
+}
+
+// Lee movimientos filtrando por rango de fechas, de más reciente a más antiguo.
+// desde / hasta: 'yyyy-MM-dd' (inclusive ambos). limit: máximo de filas a devolver.
+// Recorre la hoja de abajo hacia arriba en bloques y corta apenas pasa el 'desde',
+// así no carga toda la hoja cuando el historial crece.
+function leerMovimientos(desde, hasta, limit) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_MOVIMIENTOS);
+  if (!sheet) return [];
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  const max = Number(limit) > 0 ? Number(limit) : 500;
+  const desdeD = desde ? String(desde).slice(0, 10) : '';
+  const hastaD = hasta ? String(hasta).slice(0, 10) : '';
+
+  const CHUNK = 300;
+  const out = [];
+  let end = lastRow;
+  let cortar = false;
+
+  while (end >= 2 && out.length < max && !cortar) {
+    const start = Math.max(2, end - CHUNK + 1);
+    const values = sheet.getRange(start, 1, end - start + 1, MOV_HEADERS.length).getValues();
+
+    for (let i = values.length - 1; i >= 0; i--) {
+      const fecha = fechaMovToStr(values[i][0]);
+      if (!fecha) continue;
+      const dia = fecha.slice(0, 10);
+
+      if (desdeD && dia < desdeD) { cortar = true; break; }
+      if (hastaD && dia > hastaD) continue;
+
+      out.push({
+        fecha:    fecha,
+        tipo:     String(values[i][1] || ''),
+        pedidoId: String(values[i][2] || ''),
+        nombre:   String(values[i][3] || ''),
+        prenda:   String(values[i][4] || ''),
+        talle:    String(values[i][5] || ''),
+        monto:    Number(values[i][6]) || 0,
+        medio:    String(values[i][7] || ''),
+        detalle:  String(values[i][8] || '')
+      });
+
+      if (out.length >= max) break;
+    }
+    end = start - 1;
+  }
+
+  return out;
+}
+
 // ============ GET: Read all data ============
 
 function doGet(e) {
@@ -61,8 +155,14 @@ function doGet(e) {
     if (action === 'getRetiros') {
       return getRetiros();
     }
+    if (action === 'getMovimientos') {
+      return jsonResponse({
+        status: 'ok',
+        movimientos: leerMovimientos(e.parameter.desde, e.parameter.hasta, e.parameter.limitMov)
+      });
+    }
     if (action === 'getAll') {
-      return getAll();
+      return getAll(e.parameter.desde, e.parameter.hasta, e.parameter.limitMov);
     }
 
     return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
@@ -71,7 +171,7 @@ function doGet(e) {
   }
 }
 
-function getAll() {
+function getAll(desde, hasta, limitMov) {
   const pedidosSheet = getOrCreateSheet(SHEET_PEDIDOS);
   const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
     'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
@@ -81,8 +181,9 @@ function getAll() {
   const pedidos = sheetToObjects(pedidosSheet);
   const retiros = sheetToObjects(retirosSheet);
   const stock = getStock();
+  const movimientos = leerMovimientos(desde, hasta, limitMov);
 
-  return jsonResponse({ status: 'ok', pedidos, retiros, stock });
+  return jsonResponse({ status: 'ok', pedidos, retiros, stock, movimientos, hoyAR: ahoraAR().slice(0, 10) });
 }
 
 // Leer stock desde la hoja Stock (formato: Tipo | Talle | Stock | Última Actualización)
@@ -226,6 +327,24 @@ function nuevoPedido(data) {
   });
 
   sheet.appendRow(row);
+
+  const esRegalo = Number(data.regalo) === 1;
+  const detalles = [];
+  if (esRegalo) detalles.push('regalo del club');
+  if (seña > 0) detalles.push('seña ' + seña + ' de ' + total);
+  else if (total > 0) detalles.push('sin seña, total ' + total);
+  if (data.notas) detalles.push(String(data.notas));
+
+  logMovimiento({
+    tipo:    'PEDIDO_NUEVO',
+    nombre:  data.nombre || '',
+    prenda:  data.tipo || tipoKey,
+    talle:   data.talle || '',
+    monto:   seña,
+    medio:   data.modoPago || '',
+    detalle: (data.tanda || 'SEGUNDA') + (detalles.length ? ' · ' + detalles.join(' · ') : '')
+  });
+
   return jsonResponse({ status: 'ok', message: 'Pedido registrado' });
 }
 
@@ -322,6 +441,29 @@ function registrarRetiro(data) {
     retirosSheet.appendRow(retiroValues);
   }
 
+  // 3. Log de movimiento
+  const pagoRet = Number(data.pagoRetiro) || 0;
+  const talleRet = data.talleRetiro || data.talle || '';
+  const detRetiro = [];
+  if (talleRet && data.talle && talleRet !== data.talle) {
+    detRetiro.push('retiró talle ' + talleRet + ' (pidió ' + data.talle + ')');
+  }
+  if (pagoRet > 0) detRetiro.push('pagó ' + pagoRet + (data.medioPago ? ' por ' + data.medioPago : ''));
+  const restaFinal = Math.max(0, (Number(data.resta) || 0) - pagoRet);
+  detRetiro.push(restaFinal > 0 ? 'queda debiendo ' + restaFinal : 'saldado');
+  if (data.observacion) detRetiro.push(String(data.observacion));
+
+  logMovimiento({
+    tipo:     data.retirado ? 'RETIRO' : 'RETIRO_REVERTIDO',
+    pedidoId: data.id,
+    nombre:   data.nombre || '',
+    prenda:   data.tipo || '',
+    talle:    talleRet,
+    monto:    data.retirado ? pagoRet : 0,
+    medio:    data.retirado ? (data.medioPago || '') : '',
+    detalle:  data.retirado ? detRetiro.join(' · ') : 'Se revirtió el retiro'
+  });
+
   return jsonResponse({ status: 'ok', message: 'Retiro registrado' });
 }
 
@@ -388,6 +530,34 @@ function registrarSeña(data) {
     }
   }
 
+  // Datos del pedido para el log (el front no los manda en este payload)
+  const colNombre = headers.indexOf('Nombre');
+  const colTalle  = headers.indexOf('Talle');
+  const nombrePed = colNombre >= 0 ? String(rowData[colNombre] || '') : '';
+  const tallePed  = colTalle  >= 0 ? String(rowData[colTalle]  || '') : '';
+
+  // Deducir la prenda: primera columna de tipo (flag binario) con valor 1
+  let prendaPed = '';
+  const noTipoCols = ['NOMBRE','TALLE','SEÑA','TOTAL','RESTA','NOTAS','TOTAL TRANSFERENCIA',
+                      'TOTAL EFECTIVO','TANDA','RETIRADO','REGALO','TALLE RETIRO',
+                      'MEDIO DE PAGO RETIRO','MONTO RETIRO','NOTAS RETIRO'];
+  for (let c = 0; c < headers.length; c++) {
+    const h = String(headers[c] || '').trim();
+    if (!h || noTipoCols.indexOf(h.toUpperCase()) >= 0) continue;
+    if (Number(rowData[c]) === 1) { prendaPed = h; break; }
+  }
+
+  logMovimiento({
+    tipo:     'PAGO_SEÑA',
+    pedidoId: data.pedidoId || '',
+    nombre:   nombrePed,
+    prenda:   prendaPed,
+    talle:    tallePed,
+    monto:    pagoSeña,
+    medio:    data.medioPago || '',
+    detalle:  newResta > 0 ? 'resta ' + newResta : 'saldado'
+  });
+
   return jsonResponse({ status: 'ok', message: 'Pago registrado' });
 }
 
@@ -414,20 +584,29 @@ function guardarStock(data) {
   // Obtener todos los datos existentes
   const allData = sheet.getDataRange().getValues();
   const existingRows = {}; // Map de "TIPO_TALLE" -> rowIndex
-  
+  const valoresPrevios = {}; // Map de "TIPO_TALLE" -> cantidad anterior
+
   for (let i = 1; i < allData.length; i++) {
     const rowTipo = String(allData[i][0] || '').trim().toUpperCase();
     const rowTalle = String(allData[i][1] || '').trim().toUpperCase();
     const key = `${rowTipo}_${rowTalle}`;
     existingRows[key] = i + 1; // 1-indexed
+    valoresPrevios[key] = Number(allData[i][2]) || 0;
   }
-  
+
+  const cambios = []; // para el log: solo los talles que efectivamente cambiaron
+
   // Actualizar o crear filas para cada talle
   Object.keys(stock).forEach(talle => {
     const key = `${tipo}_${talle.toUpperCase()}`;
     const cantidad = Number(stock[talle]) || 0;
     const rowValues = [tipo, talle.toUpperCase(), cantidad, timestamp];
-    
+    const previo = existingRows[key] ? valoresPrevios[key] : 0;
+
+    if (cantidad !== previo) {
+      cambios.push(`${talle.toUpperCase()}: ${previo} → ${cantidad}`);
+    }
+
     if (existingRows[key]) {
       // Actualizar fila existente
       sheet.getRange(existingRows[key], 1, 1, 4).setValues([rowValues]);
@@ -436,6 +615,15 @@ function guardarStock(data) {
       sheet.appendRow(rowValues);
     }
   });
+
+  if (cambios.length) {
+    logMovimiento({
+      tipo:    'STOCK',
+      prenda:  data.tipo || tipo,
+      detalle: tanda === 'SEGUNDA' ? '2da tanda · ' + cambios.join(' · ')
+                                   : '1era tanda · ' + cambios.join(' · ')
+    });
+  }
 
   return jsonResponse({ status: 'ok', message: `Stock de ${tipo} guardado` });
 }
