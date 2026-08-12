@@ -146,6 +146,10 @@
     .stock-editor-cell { display: flex; flex-direction: column; gap: 2px; }
     .stock-editor-cell label { font-size: 0.65rem; font-weight: 700; color: #888; text-align: center; }
     .stock-editor-cell input { width: 100%; padding: 5px 4px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; text-align: center; }
+    /* Tandas ya cerradas: el editor arranca de sólo lectura y se abre con doble clic */
+    .stock-editor-grid.bloqueado { opacity: 0.6; cursor: not-allowed; }
+    .stock-editor-grid.bloqueado input { background: #f0f0f0; color: #888; pointer-events: none; }
+    .stock-editor-cell input:disabled { cursor: not-allowed; }
 
     /* TIPOS DE PRENDAS SECTION */
     .tipos-section { padding: 16px; max-width: 600px; margin: 0 auto; }
@@ -442,6 +446,7 @@
         <option value="14">14</option>
         <option value="15">15</option>
         <option value="16">16</option>
+        <option value="Talle unico">Talle único</option>
       </select>
     </div>
     <div class="filter-line">
@@ -750,8 +755,13 @@ const STOCK_INICIAL_SEGUNDA = {
   }
 })();
 
-const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '12'];
-const TALLES_EXTENDIDOS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
+// 'TALLE UNICO' es el talle normalizado a mayúsculas de la opción "Talle único" del formulario
+// (String(p['Talle']).toUpperCase()). Va en TALLES_ORDER porque esa lista no es sólo un orden:
+// calcStock la usa como filtro y descarta los pedidos cuyo talle no esté ahí, y además define
+// las celdas de la grilla de stock y de los editores por tanda.
+const TALLE_UNICO = 'TALLE UNICO';
+const TALLES_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '12', TALLE_UNICO];
+const TALLES_EXTENDIDOS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '9', '10', '11', '12', '13', '14', '15', '16', TALLE_UNICO];
 
 // ============ STATE ============
 let PEDIDOS = [];
@@ -798,6 +808,14 @@ function fmtFechaAlta(val) {
 
 
 // Normaliza un string: mayúsculas, sin tildes, ñ->n, sin diacríticos
+// Internamente el talle único se guarda en mayúsculas ('TALLE UNICO') como cualquier otro
+// talle; en pantalla se muestra prolijo. Las celdas de stock son angostas, así que ahí va
+// abreviado.
+function labelTalle(t, corto) {
+  if (String(t).toUpperCase() !== TALLE_UNICO) return t;
+  return corto ? 'ÚNICO' : 'Talle único';
+}
+
 function normalizeKey(str) {
   return String(str || '')
     .normalize('NFD')
@@ -1509,7 +1527,7 @@ function renderStock() {
             // Gris si no hay stock ni pendientes, rojo si hay problema, naranja si bajo, verde si ok
             const cls  = (r <= 0 && pend === 0) ? 'empty' : (pend > r || r <= 0) ? 'out' : (r <= 2 || pend === r) ? 'low' : 'ok';
             return `<div class="stock-cell ${cls}">
-              <div class="talle-label">${talle}</div>
+              <div class="talle-label">${labelTalle(talle, true)}</div>
               <div class="stock-actual">${r}</div>
               <div class="stock-orig">Orig: ${orig}</div>
               <div class="stock-pend">${ret} Ret / ${pend} Pend</div>
@@ -1536,35 +1554,50 @@ function renderTipos() {
   ].join('');
 }
 
+// Qué editores de stock se destrabaron en esta sesión. A propósito no se persiste: al recargar
+// la app vuelven a quedar bloqueados, que es el punto — las dos tandas ya cerraron y editarlas
+// tiene que ser un acto deliberado, no algo que pase de un dedazo.
+const stockDesbloqueado = new Set();
+
+function desbloquearStock(key, tandaTarget) {
+  const clave = key + '|' + tandaTarget;
+  if (stockDesbloqueado.has(clave)) return;
+  stockDesbloqueado.add(clave);
+  renderTipos();
+  showToast('Stock de ' + key + ' (' + tandaTarget + ') habilitado para editar');
+}
+
 function renderTipoCard(t, isDeletable) {
   const tipo = t.key.toLowerCase();
   const stk = STOCK_INICIAL[tipo] || {};
   const stk2 = STOCK_INICIAL_SEGUNDA[tipo] || {};
+  // Las dos tandas ya pasaron: el stock queda de sólo lectura para no pisarlo sin querer, y
+  // se habilita con doble clic sobre el bloque (ver desbloquearStock).
+  const editorTanda = (tandaTarget, titulo, stkTanda, prefix, btnCls, btnTxt) => {
+    const abierto = stockDesbloqueado.has(t.key + '|' + tandaTarget);
+    return `
+      <div class="stock-editor-title" ondblclick="desbloquearStock('${t.key}','${tandaTarget}')">
+        📦 ${titulo}
+        <span style="font-size:0.6rem;color:${abierto ? '#e67e22' : '#aaa'};">
+          ${abierto ? '· 🔓 editable' : '· 🔒 doble clic para editar'}
+        </span>
+      </div>
+      <div class="stock-editor-grid ${abierto ? '' : 'bloqueado'}" ondblclick="desbloquearStock('${t.key}','${tandaTarget}')">
+        ${TALLES_ORDER.map(talle => `
+          <div class="stock-editor-cell">
+            <label>${labelTalle(talle, true)}</label>
+            <input type="number" min="0" id="${prefix}-${t.key}-${talle}" value="${stkTanda[talle] || 0}" ${abierto ? '' : 'disabled'}>
+          </div>`).join('')}
+      </div>
+      <button class="btn ${btnCls} btn-sm" style="margin-top:8px;width:100%;" ${abierto ? '' : 'disabled'}
+        onclick="saveStockTipo('${t.key}', '${tandaTarget}')">${btnTxt}</button>`;
+  };
+
   const stockEditorHtml = t.hasStock ? `
     <div class="stock-editor">
-      <div class="stock-editor-title" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'">
-        📦 Stock 1ra Tanda &nbsp;<span style="font-size:0.6rem;color:#aaa;">(tap para editar)</span>
-      </div>
-      <div class="stock-editor-grid">
-        ${TALLES_ORDER.map(talle => `
-          <div class="stock-editor-cell">
-            <label>${talle}</label>
-            <input type="number" min="0" id="stk-${t.key}-${talle}" value="${stk[talle] || 0}">
-          </div>`).join('')}
-      </div>
-      <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%;" onclick="saveStockTipo('${t.key}', 'PRIMERA')">Guardar stock 1ra tanda</button>
-      
-      <div class="stock-editor-title" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'" style="margin-top:12px;">
-        📦 Stock 2da Tanda &nbsp;<span style="font-size:0.6rem;color:#aaa;">(tap para editar)</span>
-      </div>
-      <div class="stock-editor-grid">
-        ${TALLES_ORDER.map(talle => `
-          <div class="stock-editor-cell">
-            <label>${talle}</label>
-            <input type="number" min="0" id="stk2-${t.key}-${talle}" value="${stk2[talle] || 0}">
-          </div>`).join('')}
-      </div>
-      <button class="btn btn-warning btn-sm" style="margin-top:8px;width:100%;" onclick="saveStockTipo('${t.key}', 'SEGUNDA')">Guardar stock 2da tanda</button>
+      ${editorTanda('PRIMERA', 'Stock 1ra Tanda', stk,  'stk',  'btn-primary', 'Guardar stock 1ra tanda')}
+      <div style="margin-top:12px;"></div>
+      ${editorTanda('SEGUNDA', 'Stock 2da Tanda', stk2, 'stk2', 'btn-warning', 'Guardar stock 2da tanda')}
     </div>` : '';
 
   return `<div class="tipo-card-config">
@@ -1599,6 +1632,12 @@ function deleteTipo(key) {
 }
 
 function saveStockTipo(key, tandaTarget = 'PRIMERA') {
+  // Red de seguridad: los inputs están disabled cuando el bloque está trabado, así que sin
+  // esto se guardarían todos ceros si el botón se disparara igual (Enter, autofill, etc.).
+  if (!stockDesbloqueado.has(key + '|' + tandaTarget)) {
+    showToast('Doble clic sobre el bloque para habilitar la edición');
+    return;
+  }
   const tipo = key.toLowerCase();
   const updated = {};
   const prefix = tandaTarget === 'SEGUNDA' ? 'stk2' : 'stk';
@@ -1859,7 +1898,7 @@ function renderResumen() {
     tallesOrdenados.forEach(talle => {
       const d = talleMap[talle];
       html += `<tr>
-        <td style="padding-left:28px;">${talle}</td>
+        <td style="padding-left:28px;">${labelTalle(talle)}</td>
         <td><span class="resumen-count">${d.cantidad}</span></td>
         <td><span class="resumen-cobrado">${fmt(d.pagado)}</span></td>
         <td><span class="resumen-resta">${fmt(d.resta)}</span></td>
@@ -1908,7 +1947,7 @@ function renderResumen() {
     tallesOrdenados.forEach(talle => {
       const d = talleMap[talle];
       htmlRegalos += `<tr>
-        <td style="padding-left:28px;">${talle}</td>
+        <td style="padding-left:28px;">${labelTalle(talle)}</td>
         <td><span class="resumen-count">${d.cantidad}</span></td>
         <td><span style="color:#8e44ad;font-weight:600;">${fmt(d.costo)}</span></td>
       </tr>`;
@@ -2059,7 +2098,7 @@ function ppAgregarTalle(tipoKey, selectId) {
   if (!tbody) return;
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td class="talle-label">${talle}</td>
+    <td class="talle-label">${labelTalle(talle)}</td>
     <td>0</td>
     <td>
       <div class="pp-adj">
@@ -2113,14 +2152,14 @@ function renderPedidoProveedor() {
     grandTotal += subtotal;
 
     // Opciones del selector de talles (todos menos los que ya aparecen)
+    // TALLE UNICO ya viene dentro de TALLES_EXTENDIDOS; antes se concatenaba aparte
     const tallesDisponibles = TALLES_EXTENDIDOS
-      .concat(['Talle unico'])
       .filter(tl => !talleMap[tl.toUpperCase()] && !talleMap[tl]);
     const addSelectId = 'pp-add-sel-' + key;
 
     let filasTalles = tallesOrdenados.map(talle => `
   <tr>
-    <td class="talle-label">${talle}</td>
+    <td class="talle-label">${labelTalle(talle)}</td>
     <td class="print-hide">${talleMap[talle]}</td>
     <td class="print-hide">
       <div class="pp-adj">
@@ -2239,7 +2278,7 @@ function renderList() {
     const savedTalleRetiroStr = String(savedTalleRetiro || '');
     const tallePedidoStr = String(tallePedido || '');
     const talleOptions = TALLES_EXTENDIDOS.map(t =>
-      `<option value="${t}" ${t === savedTalleRetiroStr.toUpperCase() ? 'selected' : ''}>${t}</option>`
+      `<option value="${t}" ${t === savedTalleRetiroStr.toUpperCase() ? 'selected' : ''}>${labelTalle(t)}</option>`
     ).join('');
 
     const deuda = tieneDeuda(p);
