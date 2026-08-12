@@ -950,10 +950,34 @@ function saveConfig() {
 }
 
 // ============ GOOGLE SHEETS: LOAD ============
-async function loadFromSheets() {
-  if (!SCRIPT_URL) return;
+
+// Los refrescos que salen después de guardar algo van en segundo plano: no deben tapar la
+// pantalla con el overlay "Sincronizando" ni pisar el toast de la operación recién hecha.
+// Para eso está { silent: true }.
+let _cargaEnCurso     = null;
+let _recargaPendiente = false;
+
+function loadFromSheets(opts) {
+  if (!SCRIPT_URL) return Promise.resolve();
+  if (_cargaEnCurso) {
+    // Ya hay un getAll en vuelo. No alcanza con colgarse de él: puede haber salido ANTES
+    // de la escritura que motivó esta llamada, así que traería datos viejos. Se marca UNA
+    // sola recarga para cuando termine — no una por llamada, que es lo que pasaba al
+    // cargar varios pedidos seguidos: cada uno encolaba su propio getAll en un Apps Script
+    // que ejecuta de a uno por vez, y los últimos tardaban una eternidad.
+    _recargaPendiente = true;
+    return _cargaEnCurso;
+  }
+  _cargaEnCurso = _loadFromSheets(!!(opts && opts.silent)).finally(() => {
+    _cargaEnCurso = null;
+    if (_recargaPendiente) { _recargaPendiente = false; loadFromSheets({ silent: true }); }
+  });
+  return _cargaEnCurso;
+}
+
+async function _loadFromSheets(silent) {
   try {
-    showLoading(true);
+    if (!silent) showLoading(true);
     const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams());
     const data = await res.json();
     
@@ -1030,12 +1054,16 @@ async function loadFromSheets() {
 
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       renderAll();
-      showToast('Datos actualizados (' + PEDIDOS.length + ' pedidos)');
+      if (!silent) showToast('Datos actualizados (' + PEDIDOS.length + ' pedidos)');
     } else {
       throw new Error(data.message || 'Error desconocido');
     }
   } catch (e) {
     console.error('Error loading:', e);
+    // En un refresco de fondo no pisamos lo que ya está en pantalla con el backup de
+    // localStorage: el pedido recién cargado vive sólo en memoria hasta que llega este
+    // getAll, y restaurar el backup lo haría desaparecer. Se reintenta en el próximo.
+    if (silent) return;
     showToast('Error: ' + e.message);
     const backup = localStorage.getItem('pedidos_backup');
     if (backup) {
@@ -1052,13 +1080,16 @@ async function loadFromSheets() {
       showToast('No hay datos guardados. Verificá la conexión.');
     }
   } finally {
-    showLoading(false);
+    if (!silent) showLoading(false);
   }
 }
 
 // ============ GOOGLE SHEETS: SAVE PAGO SEÑA ============
 async function savePagoSeña(pedido, pagoSeña, medioPago) {
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+  // Un pedido recién cargado todavía no tiene fila asignada — la asigna la hoja y llega en
+  // el refresco de fondo. Escribir con sheetRow vacío pisaría la fila equivocada.
+  if (!pedido._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
   try {
     showLoading(true);
     const payload = {
@@ -1121,6 +1152,8 @@ async function registrarPagoSeña(id) {
 // ============ GOOGLE SHEETS: SAVE RETIRO ============
 async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, talleRetiro) {
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+  // Ver la nota en savePagoSeña: sin _sheetRow no se puede escribir en la hoja todavía.
+  if (!pedido._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
   try {
     showLoading(true);
     const tipo = getTipo(pedido);
@@ -1252,8 +1285,39 @@ async function submitNuevoPedido() {
       medio: modoPago,
       detalle: tanda + (detNP.length ? ' · ' + detNP.join(' · ') : '')
     });
-    showToast('Pedido registrado en Google Sheets');
-    setTimeout(() => loadFromSheets(), 1500);
+    // El await de arriba ya esperó la respuesta del servidor: la fila está escrita. Antes,
+    // encima de eso, se esperaban 1500 ms de nada y después un getAll completo (pedidos +
+    // retiros + stock + movimientos) con el overlay "Sincronizando" tapando la pantalla —
+    // otra ejecución entera de Apps Script antes de poder cargar el pedido siguiente.
+    // Ahora el pedido se agrega a la lista en memoria y aparece en el acto; el getAll va
+    // por detrás y en silencio, sólo para reconciliar y asignarle su _sheetRow real.
+    const ahora = ahoraAR();
+    const señaN  = Number(seña)  || 0;
+    const totalN = Number(total) || 0;
+    PEDIDOS.push({
+      'Nombre': nombre,
+      'Talle':  talle,
+      'Seña':   señaN,
+      'Total':  totalN,
+      'Resta':  Math.max(0, totalN - señaN),
+      'Notas':  nota,
+      'Tanda':  tanda,
+      'Retirado': 0,
+      'Regalo':   regalo ? 1 : 0,
+      'Total Efectivo':      modoPago === 'Efectivo'      ? señaN : 0,
+      'Total Transferencia': modoPago === 'Transferencia' ? señaN : 0,
+      'Fecha Alta': ahora,
+      [tipoKey]: 1,                 // la columna de flag que usa getTipo()
+      _id: PEDIDOS.length + 1,
+      _sheetRow: null,              // hasta que llegue el refresco no se puede operar sobre él
+      _pendiente: true,
+      _fechaAlta: ahora,
+      _talleRetiro: '', _medioPagoRetiro: '', _montoRetiro: 0, _notasRetiro: ''
+    });
+    localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
+    renderAll();
+    showToast('Pedido registrado');
+    loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error:', e);
     showToast('Error al registrar pedido');
@@ -2121,6 +2185,7 @@ function renderList() {
         <div class="card-header" onclick="toggleCard(${id})">
           <div class="check">${ret ? '✓' : ''}</div>
           <span class="name">${p['Nombre'] || '—'}</span>
+          ${p._pendiente ? '<span class="tanda-badge" title="Se está sincronizando con la planilla">⏳ SINCRONIZANDO</span>' : ''}
           ${sinStock ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
           ${deuda ? '<span class="deuda-badge">DEUDA</span>' : ''}
           ${regalo ? '<span class="regalo-badge">🎁 REGALO</span>' : ''}
