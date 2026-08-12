@@ -887,6 +887,14 @@ function getTanda(p) {
   return (p['Tanda'] || '').toUpperCase();
 }
 
+// La tanda reducida a las dos únicas que maneja el stock. Hay filas viejas con la columna
+// Tanda vacía o con otro texto; el resto de la app ya las trata como primera (ver el filtro
+// de tanda en getFiltered), así que acá se hace lo mismo. Sin esto, calcStock indexaba
+// entregadasPorTanda[''] y reventaba con un TypeError, tumbando todo el render.
+function tandaDe(p) {
+  return getTanda(p) === 'SEGUNDA' ? 'SEGUNDA' : 'PRIMERA';
+}
+
 function showLoading(show) {
   document.getElementById('loading').style.display = show ? 'flex' : 'none';
 }
@@ -1410,17 +1418,22 @@ async function submitNuevoPedido() {
 }
 
 // ============ STOCK ============
+// El stock es UNA sola bolsa. Las dos tandas son dos compras distintas (dos formas de meter
+// mercadería), pero lo disponible no le pertenece a ninguna: una camiseta que quedó pendiente
+// de la 1ra tanda se entrega con lo que llegó en la 2da y listo. Por eso `remaining` suma los
+// dos stocks y resta TODAS las entregas, sin mirar a qué tanda pertenece el pedido.
+// La tanda sigue siendo una propiedad del pedido, y como tal filtra los contadores
+// Ret/Pend — pero no el stock disponible.
 function calcStock(tandaFilter) {
   const stockTypes = getPrendaTypes().filter(t => t.hasStock).map(t => t.key.toLowerCase());
-  const pendientes        = {};  // no-retirados por talle PEDIDO, filtrados por tanda
-  const retirados         = {};  // retirados por talle RETIRO, filtrados por tanda
-  const entregadasPorTanda = { PRIMERA: {}, SEGUNDA: {} }; // Separar entregas por tanda
-  
+  const pendientes = {};  // no-retirados por talle PEDIDO, filtrados por tanda
+  const retirados  = {};  // retirados por talle RETIRO, filtrados por tanda
+  const entregadas = {};  // todas las entregas por talle RETIRO, SIN filtrar por tanda
+
   stockTypes.forEach(k => {
-    pendientes[k] = {}; 
-    retirados[k] = {};
-    entregadasPorTanda.PRIMERA[k] = {};
-    entregadasPorTanda.SEGUNDA[k] = {};
+    pendientes[k] = {};
+    retirados[k]  = {};
+    entregadas[k] = {};
   });
 
   PEDIDOS.forEach(p => {
@@ -1428,15 +1441,14 @@ function calcStock(tandaFilter) {
     if (!stockTypes.includes(tipo)) return;
     const t = String(p['Talle'] || '').toUpperCase();  // talle pedido
     if (!TALLES_ORDER.includes(t)) return;
-    
-    const tanda = getTanda(p); // 'PRIMERA' o 'SEGUNDA'
 
-    // Contar entregas separadas por tanda
+    const tanda = tandaDe(p); // siempre 'PRIMERA' o 'SEGUNDA', nunca vacío
+
+    // Entregas: se cuentan todas, de cualquier tanda, porque descuentan de la bolsa común
     if (isRetirado(p)) {
       const tr = String(p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
       if (TALLES_ORDER.includes(tr)) {
-        if (!entregadasPorTanda[tanda][tipo]) entregadasPorTanda[tanda][tipo] = {};
-        entregadasPorTanda[tanda][tipo][tr] = (entregadasPorTanda[tanda][tipo][tr] || 0) + 1;
+        entregadas[tipo][tr] = (entregadas[tipo][tr] || 0) + 1;
       }
     }
 
@@ -1454,31 +1466,22 @@ function calcStock(tandaFilter) {
     }
   });
 
-  // Calcular remaining según la tanda filtrada
-  const remaining = {};
+  // Disponible = todo lo comprado (las dos tandas) menos todo lo entregado. No depende de
+  // tandaFilter a propósito: filtrar la vista por tanda cambia qué PEDIDOS mirás, no cuántas
+  // prendas te quedan en la caja. Antes, con el filtro puesto, una entrega de la 1ra tanda
+  // cubierta con mercadería de la 2da dejaba la 1ra en negativo y la 2da inflada.
+  const remaining = {}, comprado = {};
   stockTypes.forEach(tipo => {
     remaining[tipo] = {};
+    comprado[tipo]  = {};
     TALLES_ORDER.forEach(t => {
-      let stockDisponible = 0;
-      
-      if (tandaFilter === 'SEGUNDA') {
-        // Solo stock de segunda tanda
-        stockDisponible = (STOCK_INICIAL_SEGUNDA[tipo]?.[t] || 0) - ((entregadasPorTanda.SEGUNDA[tipo] || {})[t] || 0);
-      } else if (tandaFilter === 'PRIMERA') {
-        // Solo stock de primera tanda
-        stockDisponible = (STOCK_INICIAL[tipo]?.[t] || 0) - ((entregadasPorTanda.PRIMERA[tipo] || {})[t] || 0);
-      } else {
-        // Todos: sumar ambas tandas
-        const stock1 = (STOCK_INICIAL[tipo]?.[t] || 0) - ((entregadasPorTanda.PRIMERA[tipo] || {})[t] || 0);
-        const stock2 = (STOCK_INICIAL_SEGUNDA[tipo]?.[t] || 0) - ((entregadasPorTanda.SEGUNDA[tipo] || {})[t] || 0);
-        stockDisponible = stock1 + stock2;
-      }
-      
-      remaining[tipo][t] = stockDisponible;
+      const total = (STOCK_INICIAL[tipo]?.[t] || 0) + (STOCK_INICIAL_SEGUNDA[tipo]?.[t] || 0);
+      comprado[tipo][t]  = total;
+      remaining[tipo][t] = total - (entregadas[tipo][t] || 0);
     });
   });
-  
-  return { remaining, pendientes, retirados };
+
+  return { remaining, pendientes, retirados, comprado, entregadas };
 }
 
 function hasStockForPedido(p) {
@@ -1508,19 +1511,23 @@ function renderStock() {
   titleEl.textContent = typesToShow.length === 1 ? `Stock ${typesToShow[0].label}` : 'Stock de Prendas';
 
   const tandaFilter = document.getElementById('filterTanda')?.value || '';
-  const { remaining, pendientes, retirados } = calcStock(tandaFilter);
-  const tandaLabel = tandaFilter === 'PRIMERA' ? ' — 1era Tanda' : tandaFilter === 'SEGUNDA' ? ' — 2da Tanda' : '';
+  const { remaining, pendientes, retirados, comprado } = calcStock(tandaFilter);
+  // El rótulo de tanda aclara que aplica a los contadores Ret/Pend, no al disponible: el
+  // stock es uno solo y no cambia con el filtro.
+  const tandaLabel = tandaFilter === 'PRIMERA' ? ' — Ret/Pend de 1era Tanda'
+                   : tandaFilter === 'SEGUNDA' ? ' — Ret/Pend de 2da Tanda' : '';
   if (tandaLabel) titleEl.textContent = titleEl.textContent.replace(/ — .*$/, '') + tandaLabel;
 
   contentDiv.innerHTML = `<div class="stock-tables">` +
     typesToShow.map(t => {
       const tipo = t.key.toLowerCase();
-      const stk = STOCK_INICIAL[tipo] || {};
       return `<div class="stock-table">
         <h4 style="background:${t.color};color:white;font-size:0.75rem;margin-bottom:4px;padding:3px 8px;border-radius:4px;">${t.label.toUpperCase()}</h4>
         <div class="stock-grid">${
           TALLES_ORDER.map(talle => {
-            const orig = stk[talle] || 0;
+            // "Orig" mostraba sólo el stock de la 1ra tanda, así que con mercadería de la 2da
+            // el disponible podía ser mayor que el original y no cerraba a la vista.
+            const orig = (comprado[tipo] || {})[talle] || 0;
             const r    = (remaining[tipo] || {})[talle] ?? orig;
             const ret  = (retirados[tipo]  || {})[talle] || 0;
             const pend = (pendientes[tipo] || {})[talle] || 0;
