@@ -97,6 +97,14 @@
     .mov-estado.retirado  { background: #e8f6ee; color: #1e8449; border: 1px solid #a9dfbf; }
     .mov-estado.deuda     { background: #fdecea; color: #c0392b; border: 1px solid #f5b7b1; }
     .mov-estado.pendiente { background: #f4f6f7; color: #7f8c8d; border: 1px solid #dfe4e6; }
+    /* Agrupado por pedido: la tarjeta visible es el último estado y esconde las anteriores */
+    .mov-clickeable { cursor: pointer; }
+    .mov-clickeable:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .mov-toggle { font-size: 0.68rem; font-weight: 700; color: #888; background: #f1f1f1; border-radius: 10px; padding: 2px 7px; align-self: center; white-space: nowrap; flex-shrink: 0; }
+    .mov-previos { margin: -3px 0 7px 16px; border-left: 2px dashed #d5d8dc; padding-left: 8px; }
+    .mov-previos .mov-card { margin-bottom: 5px; padding: 7px 10px; opacity: 0.8; box-shadow: none; background: #fafbfc; }
+    .mov-previos .mov-card .mov-title { font-size: 0.78rem; }
+    .mov-previos .mov-card .mov-ico { width: 21px; height: 21px; font-size: 0.72rem; }
     .mov-pendiente { opacity: 0.65; }
     .mov-pendiente .mov-meta::after { content: ' · sincronizando'; color: #e67e22; }
     .mov-empty { text-align: center; color: #999; font-size: 0.85rem; padding: 40px 20px; }
@@ -1028,6 +1036,7 @@ async function _loadFromSheets(silent) {
     console.log('Datos recibidos:', data); // Debug
     
     if (data.status === 'ok') {
+      invalidarCachePedidoDeMov();   // cambió PEDIDOS: los vínculos mov→pedido se recalculan
       PEDIDOS = (data.pedidos || []).map((p, i) => {
         // Normalizar Retirado a 0/1 sin importar qué devuelve Sheets
         const rawRet = p['Retirado'];
@@ -1112,6 +1121,7 @@ async function _loadFromSheets(silent) {
     const backup = localStorage.getItem('pedidos_backup');
     if (backup) {
       try {
+        invalidarCachePedidoDeMov();
         PEDIDOS = JSON.parse(backup);
         const movBackup = localStorage.getItem('movimientos_backup');
         if (movBackup) { try { MOVIMIENTOS = JSON.parse(movBackup); } catch(e2) {} }
@@ -1376,6 +1386,7 @@ async function submitNuevoPedido() {
     // otra ejecución entera de Apps Script antes de poder cargar el pedido siguiente.
     // Ahora el pedido se agrega a la lista en memoria y aparece en el acto; el getAll va
     // por detrás y en silencio, sólo para reconciliar y asignarle su _sheetRow real.
+    invalidarCachePedidoDeMov();
     PEDIDOS.push({
       'Nombre': nombre,
       'Talle':  talle,
@@ -2701,7 +2712,21 @@ function msFecha(s) {
 // así que hay un fallback por nombre + talle + prenda. Si esa persona tiene varios pedidos
 // iguales gana el de "Fecha Alta" más cercana al movimiento: el alta y su log salen de la
 // misma ejecución de Apps Script, con segundos de diferencia como mucho.
+// Buscar el pedido de cada movimiento recorre PEDIDOS con normalizeKey por medio, y ahora se
+// hace en cada render de la lista (incluido cada clic para desplegar un grupo). Se memoiza
+// por movimiento; el caché se tira cuando cambia PEDIDOS.
+let _cachePedidoDeMov = new WeakMap();
+function invalidarCachePedidoDeMov() { _cachePedidoDeMov = new WeakMap(); }
+
 function pedidoDeMov(m) {
+  if (!m || typeof m !== 'object') return null;
+  if (_cachePedidoDeMov.has(m)) return _cachePedidoDeMov.get(m);
+  const r = _pedidoDeMovCalc(m);
+  _cachePedidoDeMov.set(m, r);
+  return r;
+}
+
+function _pedidoDeMovCalc(m) {
   if (m.pedidoId) {
     const porId = PEDIDOS.find(p => String(p._id) === String(m.pedidoId));
     if (porId) return porId;
@@ -2793,6 +2818,54 @@ function updateMovKPIs() {
   set('mfBadgeStock',   porGrupo('stock'));
 }
 
+// Clave de agrupación de un movimiento: el pedido al que pertenece. Los que no son de un
+// pedido (STOCK) o que no se pudieron atar a ninguno quedan sueltos, cada uno en su propio
+// grupo, para no meterlos todos en una misma bolsa "sin pedido".
+function claveGrupoMov(m, i) {
+  const p = pedidoDeMov(m);
+  return p ? 'ped-' + p._id : 'solo-' + i;
+}
+
+// Qué grupos dejó abiertos el usuario. Vive fuera del render porque renderMovimientos() se
+// vuelve a llamar en cada refresco y no queremos que se cierren solos mientras los mira.
+const movGruposAbiertos = new Set();
+
+function toggleGrupoMov(clave) {
+  if (movGruposAbiertos.has(clave)) movGruposAbiertos.delete(clave);
+  else movGruposAbiertos.add(clave);
+  renderMovimientos();
+}
+
+// Dibuja una tarjeta de movimiento. `cabecera` marca la que se ve siempre (el último estado
+// del pedido); las anteriores van dentro del desplegable, más chicas y apagadas.
+function movCardHtml(m, opts) {
+  const o = opts || {};
+  const meta  = movMeta(m.tipo);
+  const hora  = String(m.fecha).slice(11, 16);
+  const monto = Number(m.monto) || 0;
+  const fechaCorta = o.conFecha ? String(m.fecha).slice(8, 10) + '/' + String(m.fecha).slice(5, 7) : '';
+
+  const metaLine = [fechaCorta, hora, m.prenda, m.talle ? 'T. ' + m.talle : '']
+    .filter(Boolean).map(escapeHtml).join(' · ');
+
+  // En el alta se muestra en qué estado quedó ese pedido hoy: leyendo el historial no se
+  // sabía si la prenda ya se había entregado sin ir a buscarla a la lista de pedidos.
+  const chipEstado = m.tipo === 'PEDIDO_NUEVO' ? estadoPedidoChip(m) : '';
+
+  return `<div class="mov-card ${meta.cls}${m._pendiente ? ' mov-pendiente' : ''}${o.previo ? ' mov-previo' : ''}${o.clickeable ? ' mov-clickeable' : ''}"
+      ${o.clickeable ? `onclick="toggleGrupoMov('${o.clave}')"` : ''}>
+      <div class="mov-ico">${meta.ico}</div>
+      <div class="mov-body">
+        <div class="mov-title"><b>${escapeHtml(meta.label)}</b>${m.nombre ? ' · ' + escapeHtml(m.nombre) : ''}</div>
+        ${m.detalle ? `<div class="mov-sub">${escapeHtml(m.detalle)}${m.medio ? ' · ' + escapeHtml(m.medio) : ''}</div>` : ''}
+        <div class="mov-meta">${metaLine}</div>
+        ${chipEstado}
+      </div>
+      ${monto > 0 ? `<div class="mov-monto">+${fmt(monto)}</div>` : ''}
+      ${o.cuantosPrevios ? `<div class="mov-toggle">${o.abierto ? '▲' : '▼'} ${o.cuantosPrevios}</div>` : ''}
+    </div>`;
+}
+
 function renderMovimientos() {
   updateMovKPIs();
   const container = document.getElementById('movListContainer');
@@ -2807,39 +2880,45 @@ function renderMovimientos() {
     return;
   }
 
+  // Un grupo por pedido. Como `items` viene de más nuevo a más viejo, el primero que aparece
+  // de cada grupo es su último estado: ése queda de cabecera y el resto (los anteriores) se
+  // esconden detrás. El grupo se ubica en el día de su movimiento más reciente.
+  const grupos = [];
+  const porClave = new Map();
+  items.forEach((m, i) => {
+    const clave = claveGrupoMov(m, i);
+    if (porClave.has(clave)) { porClave.get(clave).previos.push(m); return; }
+    const g = { clave, ultimo: m, previos: [] };
+    porClave.set(clave, g);
+    grupos.push(g);
+  });
+
   const html = [];
   let diaActual = null;
 
-  items.forEach(m => {
-    const dia = String(m.fecha).slice(0, 10);
+  grupos.forEach(g => {
+    const dia = String(g.ultimo.fecha).slice(0, 10);
     if (dia !== diaActual) {
       diaActual = dia;
       html.push(`<div class="mov-day">${escapeHtml(etiquetaDia(dia))}</div>`);
     }
 
-    const meta  = movMeta(m.tipo);
-    const hora  = String(m.fecha).slice(11, 16);
-    const monto = Number(m.monto) || 0;
+    const abierto = movGruposAbiertos.has(g.clave);
+    const n = g.previos.length;
 
-    const metaLine = [hora, m.prenda, m.talle ? 'T. ' + m.talle : '']
-      .filter(Boolean).map(escapeHtml).join(' · ');
+    html.push(movCardHtml(g.ultimo, {
+      clave: g.clave,
+      clickeable: n > 0,
+      abierto,
+      cuantosPrevios: n > 0 ? n : 0
+    }));
 
-    // En el alta se muestra en qué estado quedó ese pedido hoy: leyendo el historial no se
-    // sabía si la prenda ya se había entregado sin ir a buscarla a la lista de pedidos.
-    const chipEstado = m.tipo === 'PEDIDO_NUEVO' ? estadoPedidoChip(m) : '';
-
-    html.push(
-      `<div class="mov-card ${meta.cls}${m._pendiente ? ' mov-pendiente' : ''}">
-        <div class="mov-ico">${meta.ico}</div>
-        <div class="mov-body">
-          <div class="mov-title"><b>${escapeHtml(meta.label)}</b>${m.nombre ? ' · ' + escapeHtml(m.nombre) : ''}</div>
-          ${m.detalle ? `<div class="mov-sub">${escapeHtml(m.detalle)}${m.medio ? ' · ' + escapeHtml(m.medio) : ''}</div>` : ''}
-          <div class="mov-meta">${metaLine}</div>
-          ${chipEstado}
-        </div>
-        ${monto > 0 ? `<div class="mov-monto">+${fmt(monto)}</div>` : ''}
-      </div>`
-    );
+    if (n > 0 && abierto) {
+      // Los anteriores pueden ser de otros días, así que acá sí se muestra la fecha.
+      html.push(`<div class="mov-previos">${
+        g.previos.map(p => movCardHtml(p, { previo: true, conFecha: true })).join('')
+      }</div>`);
+    }
   });
 
   container.innerHTML = html.join('');
@@ -2868,7 +2947,7 @@ if (selRango) selRango.value = String(MOV_RANGO_DIAS);
 const movBackupInit = localStorage.getItem('movimientos_backup');
 if (movBackupInit) { try { MOVIMIENTOS = JSON.parse(movBackupInit); } catch(e) {} }
 const backup = localStorage.getItem('pedidos_backup');
-if (backup) { try { PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
+if (backup) { try { invalidarCachePedidoDeMov(); PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
 if (SCRIPT_URL) { loadFromSheets(); }
 </script>
 </body>
