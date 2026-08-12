@@ -250,12 +250,16 @@
     .regalo-checkbox-row label { font-size: 0.9rem; font-weight: 600; color: #6c3483; cursor: pointer; }
 
     /* SECCION RETIROS */
-    .retiros-filter-tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; }
-    .retiros-filter-tab { flex: 1; padding: 10px 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.8rem; border-bottom: 3px solid transparent; color: #888; transition: all 0.2s; white-space: nowrap; }
+    /* Con la pestaña de regalos ya son cuatro: en pantallas angostas se desplazan en vez
+       de apretujarse (flex-shrink:0), pero siguen ocupando todo el ancho cuando entran. */
+    .retiros-filter-tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; overflow-x: auto; }
+    .retiros-filter-tab { flex: 1 0 auto; padding: 10px 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.8rem; border-bottom: 3px solid transparent; color: #888; transition: all 0.2s; white-space: nowrap; }
     .retiros-filter-tab:hover { background: #f8f9fa; }
     .retiros-filter-tab.active { color: #1a1a2e; border-bottom-color: #e67e22; }
     .retiros-filter-tab .badge { display: inline-block; background: #e0e0e0; color: #555; font-size: 0.65rem; padding: 1px 6px; border-radius: 10px; margin-left: 3px; }
     .retiros-filter-tab.active.deuda-tab .badge { background: #e67e22; color: white; }
+    .retiros-filter-tab.active.regalo-tab { border-bottom-color: #8e44ad; }
+    .retiros-filter-tab.active.regalo-tab .badge { background: #8e44ad; color: white; }
 
     /* RESUMEN */
     .resumen-section { padding: 16px; max-width: 600px; margin: 0 auto; }
@@ -446,6 +450,7 @@
         <option value="pendiente">Pendientes</option>
         <option value="retirado">Retirados</option>
         <option value="deuda">Deuda pendiente</option>
+        <option value="regalo">🎁 Regalos del club</option>
       </select>
       <select id="filterTanda" onchange="renderList()">
         <option value="">Todas las tandas</option>
@@ -590,6 +595,7 @@
     <div class="retiros-filter-tab active" data-rf="todos" onclick="switchRetirosFilter('todos')">TODOS <span class="badge" id="rfBadgeTodos">0</span></div>
     <div class="retiros-filter-tab" data-rf="sin-deuda" onclick="switchRetirosFilter('sin-deuda')">SIN DEUDA <span class="badge" id="rfBadgeSinDeuda">0</span></div>
     <div class="retiros-filter-tab deuda-tab" data-rf="con-deuda" onclick="switchRetirosFilter('con-deuda')">CON DEUDA <span class="badge" id="rfBadgeConDeuda">0</span></div>
+    <div class="retiros-filter-tab regalo-tab" data-rf="regalo" onclick="switchRetirosFilter('regalo')">🎁 REGALO <span class="badge" id="rfBadgeRegalo">0</span></div>
   </div>
   <div class="search-bar">
     <input type="text" id="retirosSearch" placeholder="Buscar por nombre..." oninput="renderRetiros()">
@@ -1763,6 +1769,7 @@ function getFiltered() {
     if (filterEstado === 'retirado'  && !isRetirado(p)) return false;
     if (filterEstado === 'pendiente' &&  isRetirado(p)) return false;
     if (filterEstado === 'deuda'     && !tieneDeuda(p)) return false;
+    if (filterEstado === 'regalo'    && !isRegalo(p))   return false;
     if (filterTanda) {
       const tanda = getTanda(p);
       if (filterTanda === 'PRIMERA' && tanda === 'SEGUNDA') return false;
@@ -2446,6 +2453,7 @@ function updateRetirosKPIs() {
   // los regalos no cuentan como deuda
   const conDeuda  = retirados.filter(p => tieneDeuda(p));
   const sinDeuda  = retirados.filter(p => !tieneDeuda(p));
+  const regalos   = retirados.filter(p => isRegalo(p));
   const montoDeuda = conDeuda.reduce((s, p) => s + (Number(p['Resta']) || 0), 0);
 
   const el = id => document.getElementById(id);
@@ -2457,6 +2465,7 @@ function updateRetirosKPIs() {
   if (el('rfBadgeTodos'))     el('rfBadgeTodos').textContent     = retirados.length;
   if (el('rfBadgeSinDeuda'))  el('rfBadgeSinDeuda').textContent  = sinDeuda.length;
   if (el('rfBadgeConDeuda'))  el('rfBadgeConDeuda').textContent  = conDeuda.length;
+  if (el('rfBadgeRegalo'))    el('rfBadgeRegalo').textContent    = regalos.length;
 
   // Colorear badge deuda
   const badgeDeuda = el('rfBadgeConDeuda');
@@ -2478,6 +2487,7 @@ function renderRetiros() {
     if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
     if (currentRetirosFilter === 'sin-deuda' &&  tieneDeuda(p)) return false;
     if (currentRetirosFilter === 'con-deuda' && !tieneDeuda(p)) return false;
+    if (currentRetirosFilter === 'regalo'    && !isRegalo(p))   return false;
     return true;
   }).sort(cmpMasNuevo);
 
@@ -2501,21 +2511,30 @@ function renderRetiros() {
     const savedMedio    = (p['_medioPagoRetiro'] || p['Medio de Pago Retiro'] || '').toLowerCase();
     const savedMonto    = p['_montoRetiro'] || p['Monto Retiro'] || 0;
     const savedObs      = p['_notasRetiro'] || p['Notas Retiro'] || '';
+    const regalo        = isRegalo(p);
     const cobrado       = (Number(p['Total']) || 0) - (Number(p['Resta']) || 0);
 
+    // En un regalo no se cobró nada: el número que importa es lo que la prenda le costó al
+    // club, o sea el Total. Mostrar "Cobrado" ahí daba $0 (o el saldo, si quedó cargado)
+    // y se leía como si la persona debiera plata.
+    const lineaMonto = regalo
+      ? `<span>Costo: <span class="val">${fmt(p['Total'] || 0)}</span></span>`
+      : `<span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
+         <span>Cobrado: <span class="val">${fmt(cobrado)}</span></span>`;
+
     return `
-    <div class="card retirado ${deuda ? 'deuda-pendiente' : ''}" id="retiro-card-${id}">
+    <div class="card retirado ${deuda ? 'deuda-pendiente' : ''} ${regalo ? 'regalo' : ''}" id="retiro-card-${id}">
       <div class="card-header" onclick="toggleRetirosCard(${id})">
         <div class="check">✓</div>
         <span class="name">${p['Nombre'] || '—'}</span>
         ${deuda ? '<span class="deuda-badge">DEUDA</span>' : ''}
+        ${regalo ? '<span class="regalo-badge">🎁 REGALO</span>' : ''}
         <span class="tipo-badge" style="background:${getTipoColor(tipo)}">${getTipoLabel(tipo)}</span>
         <span class="talle">${talleRetiro || tallePedido}</span>
         <span class="arrow">▼</span>
       </div>
       <div class="card-info">
-        <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
-        <span>Cobrado: <span class="val">${fmt(cobrado)}</span></span>
+        ${lineaMonto}
         ${deuda ? `<span>Resta: <span class="val" style="color:#e74c3c;font-weight:700;">${fmt(p['Resta'] || 0)}</span></span>` : ''}
         ${savedMedio ? `<span>Medio: <span class="val">${savedMedio}</span></span>` : ''}
       </div>
