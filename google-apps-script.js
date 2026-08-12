@@ -274,6 +274,16 @@ function doPost(e) {
 
 // --- Nuevo pedido: agrega fila a hoja Pedidos ---
 // Acepta 'tipoKey' (ej: 'ARQUERO_CELESTE') y crea la columna en la hoja si no existe.
+// Agrega una columna al final de la hoja si todavía no existe. Devuelve los headers
+// actualizados. Se usa para las columnas de retiro, que en hojas viejas pueden faltar.
+function asegurarColumna_(sheet, headers, nombre) {
+  if (headers.map(h => h.toString().trim().toUpperCase()).includes(nombre.toUpperCase())) return headers;
+  const lastCol = sheet.getLastColumn();
+  sheet.insertColumnAfter(lastCol);
+  sheet.getRange(1, lastCol + 1).setValue(nombre).setFontWeight('bold');
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+}
+
 function nuevoPedido(data) {
   // Validar que la seña no supere el total
   const seña  = Number(data.seña)  || 0;
@@ -281,6 +291,14 @@ function nuevoPedido(data) {
   if (total > 0 && seña > total) {
     return jsonResponse({ status: 'error', message: `La seña (${seña}) no puede superar el total (${total})` });
   }
+
+  // Alta + retiro en un solo paso (el cliente manda retirado:1 desde el formulario).
+  // Si se lo lleva en el acto nunca hubo seña: el monto del formulario es el pago hecho al
+  // retirar. Va a 'Monto Retiro' y además suma a 'Seña', que es la columna que acumula todo
+  // lo pagado — mismo criterio que usa registrarRetiro().
+  const retiraAhora = Number(data.retirado) === 1;
+  const pagoRetiro  = retiraAhora ? seña : 0;
+  const medioRetiro = String(data.modoPago || '').toLowerCase();
 
   const sheet = getOrCreateSheet(SHEET_PEDIDOS);
   let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -320,6 +338,14 @@ function nuevoPedido(data) {
     headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   }
 
+  // Columnas de retiro: sólo se crean si hacen falta, para no ensanchar hojas que nunca
+  // usaron el alta con retiro.
+  if (retiraAhora) {
+    ['Talle Retiro', 'Medio de Pago Retiro', 'Monto Retiro', 'Notas Retiro'].forEach(c => {
+      headers = asegurarColumna_(sheet, headers, c);
+    });
+  }
+
   // Conjunto de columnas de tipo (flags binarios)
   const tipoCols = new Set(['BLANCA', 'AZUL', 'SHORT', 'CHOMBA', 'ARQUERO_CELESTE', 'ARQUERO_NEGRA']);
   if (tipoKey) tipoCols.add(tipoKey);
@@ -337,7 +363,11 @@ function nuevoPedido(data) {
     if (key === 'Total Transferencia') return data.modoPago === 'Transferencia' ? (Number(data.seña) || 0) : 0;
     if (key === 'Total Efectivo') return data.modoPago === 'Efectivo' ? (Number(data.seña) || 0) : 0;
     if (key === 'Tanda') return data.tanda || 'SEGUNDA';
-    if (key === 'Retirado') return 0;
+    if (key === 'Retirado') return retiraAhora ? 1 : 0;
+    if (key === 'Talle Retiro')         return retiraAhora ? (data.talle    || '') : '';
+    if (key === 'Medio de Pago Retiro') return retiraAhora ? medioRetiro          : '';
+    if (key === 'Monto Retiro')         return retiraAhora ? pagoRetiro           : '';
+    if (key === 'Notas Retiro')         return retiraAhora ? (data.notas    || '') : '';
     if (key === 'Regalo') return Number(data.regalo) || 0;
     if (key === 'Fecha Alta') return ahoraAR();
     return '';
@@ -345,24 +375,64 @@ function nuevoPedido(data) {
 
   sheet.appendRow(row);
 
+  // El cliente identifica cada pedido por su posición entre las filas de datos (fila 2 = id 1),
+  // así que el id se deduce de la fila recién agregada. Hasta ahora el log de PEDIDO_NUEVO iba
+  // sin pedidoId y no había forma de atarlo a su pedido.
+  const pedidoId = sheet.getLastRow() - 1;
+
   const esRegalo = Number(data.regalo) === 1;
   const detalles = [];
   if (esRegalo) detalles.push('regalo del club');
-  if (seña > 0) detalles.push('seña ' + seña + ' de ' + total);
+  if (retiraAhora) detalles.push(seña > 0 ? 'pagó ' + seña + ' de ' + total : 'sin pago, total ' + total);
+  else if (seña > 0) detalles.push('seña ' + seña + ' de ' + total);
   else if (total > 0) detalles.push('sin seña, total ' + total);
   if (data.notas) detalles.push(String(data.notas));
 
   logMovimiento({
-    tipo:    'PEDIDO_NUEVO',
-    nombre:  data.nombre || '',
-    prenda:  data.tipo || tipoKey,
-    talle:   data.talle || '',
-    monto:   seña,
-    medio:   data.modoPago || '',
-    detalle: (data.tanda || 'SEGUNDA') + (detalles.length ? ' · ' + detalles.join(' · ') : '')
+    tipo:     'PEDIDO_NUEVO',
+    pedidoId: pedidoId,
+    nombre:   data.nombre || '',
+    prenda:   data.tipo || tipoKey,
+    talle:    data.talle || '',
+    monto:    seña,
+    medio:    data.modoPago || '',
+    detalle:  (data.tanda || 'SEGUNDA') + (detalles.length ? ' · ' + detalles.join(' · ') : '')
   });
 
-  return jsonResponse({ status: 'ok', message: 'Pedido registrado' });
+  // Alta con retiro: se completa la hoja Retiros y se loguea el RETIRO aparte, para que el
+  // historial quede igual que si se hubiera hecho en dos pasos (y los filtros de retiro lo vean).
+  if (retiraAhora) {
+    const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
+      'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
+      'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
+    ]);
+    // 'Seña' y 'Resta' se guardan como estaban ANTES del pago del retiro — misma convención
+    // que registrarRetiro(): dejan ver cuánto se debía al momento de venir a buscarlo.
+    retirosSheet.appendRow([
+      pedidoId, data.nombre || '', data.tipo || tipoKey, data.talle || '', data.talle || '',
+      0, total, total, 'TRUE', pagoRetiro, medioRetiro, data.notas || '', ahoraAR()
+    ]);
+
+    const detRetiro = [];
+    if (pagoRetiro > 0) detRetiro.push('pagó ' + pagoRetiro + (medioRetiro ? ' por ' + medioRetiro : ''));
+    const restaFinal = Math.max(0, total - pagoRetiro);
+    detRetiro.push(restaFinal > 0 ? 'queda debiendo ' + restaFinal : 'saldado');
+    detRetiro.push('retirado al registrar el pedido');
+    if (data.notas) detRetiro.push(String(data.notas));
+
+    logMovimiento({
+      tipo:     'RETIRO',
+      pedidoId: pedidoId,
+      nombre:   data.nombre || '',
+      prenda:   data.tipo || tipoKey,
+      talle:    data.talle || '',
+      monto:    pagoRetiro,
+      medio:    medioRetiro,
+      detalle:  detRetiro.join(' · ')
+    });
+  }
+
+  return jsonResponse({ status: 'ok', message: 'Pedido registrado', pedidoId: pedidoId });
 }
 
 // --- Registrar retiro: actualiza hoja Pedidos (Retirado=1) + agrega a hoja Retiros ---

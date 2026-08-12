@@ -92,6 +92,11 @@
     .mov-card.revert  .mov-ico { background: #fdeded; color: #922b21; }
     .mov-card.stock   { border-left-color: #7f8c8d; }
     .mov-card.stock   .mov-ico { background: #f1f1f1; color: #515a5a; }
+    /* Estado actual del pedido al que pertenece un movimiento de alta */
+    .mov-estado { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.3px; }
+    .mov-estado.retirado  { background: #e8f6ee; color: #1e8449; border: 1px solid #a9dfbf; }
+    .mov-estado.deuda     { background: #fdecea; color: #c0392b; border: 1px solid #f5b7b1; }
+    .mov-estado.pendiente { background: #f4f6f7; color: #7f8c8d; border: 1px solid #dfe4e6; }
     .mov-pendiente { opacity: 0.65; }
     .mov-pendiente .mov-meta::after { content: ' · sincronizando'; color: #e67e22; }
     .mov-empty { text-align: center; color: #999; font-size: 0.85rem; padding: 40px 20px; }
@@ -492,7 +497,7 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Seña</label>
+        <label id="np_señaLabel">Seña</label>
         <input type="number" id="np_seña" placeholder="0">
       </div>
       <div class="form-group">
@@ -519,6 +524,13 @@
       <input type="checkbox" id="np_regalo">
       <label for="np_regalo">🎁 Es regalo del club (gasto del club, no se cobra)</label>
     </div>
+    <div class="regalo-checkbox-row">
+      <input type="checkbox" id="np_retirado" onchange="toggleRetiradoAlta()">
+      <label for="np_retirado">📦 Se lo lleva ahora (queda registrado como retirado)</label>
+    </div>
+    <p id="np_retiradoHint" style="display:none; font-size:0.78rem; color:#e67e22; margin:-6px 0 10px 4px;">
+      El monto que cargues se registra como pago al retirar, no como seña.
+    </p>
     <button class="btn btn-blue" id="btnNuevoPedido" onclick="submitNuevoPedido()">Registrar Pedido</button>
     <div class="success-msg" id="successMsg">Pedido registrado correctamente</div>
   </div>
@@ -1232,6 +1244,18 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, 
 }
 
 // ============ NUEVO PEDIDO ============
+
+// Con "se lo lleva ahora" tildado, el monto del formulario deja de ser una seña y pasa a ser
+// el pago hecho al retirar (nunca hubo seña: fue un pago único). Se renombra el campo para
+// que no haya que adivinarlo.
+function toggleRetiradoAlta() {
+  const on = !!document.getElementById('np_retirado')?.checked;
+  const lbl = document.getElementById('np_señaLabel');
+  const hint = document.getElementById('np_retiradoHint');
+  if (lbl)  lbl.textContent = on ? 'Pago' : 'Seña';
+  if (hint) hint.style.display = on ? 'block' : 'none';
+}
+
 async function submitNuevoPedido() {
   const nombre = document.getElementById('np_nombre').value.trim();
   const tipo = document.getElementById('np_tipo').value;
@@ -1242,12 +1266,14 @@ async function submitNuevoPedido() {
   const nota = document.getElementById('np_nota').value.trim();
   const tanda = document.getElementById('np_tanda').value;
   const regalo = document.getElementById('np_regalo').checked;
+  const retirado = document.getElementById('np_retirado').checked;
   if (!nombre) { showToast('Ingresá el nombre'); return; }
   if (!tipo) { showToast('Seleccioná el tipo de prenda'); return; }
   if (!talle) { showToast('Seleccioná el talle'); return; }
-  // Validar que la seña no supere el total
+  // Validar que lo pagado no supere el total
   if (Number(total) > 0 && Number(seña) > Number(total)) {
-    showToast(`⚠️ La seña ($${Number(seña).toLocaleString('es-AR')}) no puede superar el total ($${Number(total).toLocaleString('es-AR')})`);
+    const etiqueta = retirado ? 'El pago' : 'La seña';
+    showToast(`⚠️ ${etiqueta} ($${Number(seña).toLocaleString('es-AR')}) no puede superar el total ($${Number(total).toLocaleString('es-AR')})`);
     return;
   }
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
@@ -1262,7 +1288,7 @@ async function submitNuevoPedido() {
     await fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'nuevoPedido', nombre, tipo, tipoKey, talle, seña, total, modoPago, notas: nota, tanda, regalo: regalo ? 1 : 0 })
+      body: JSON.stringify({ action: 'nuevoPedido', nombre, tipo, tipoKey, talle, seña, total, modoPago, notas: nota, tanda, regalo: regalo ? 1 : 0, retirado: retirado ? 1 : 0 })
     });
     document.getElementById('successMsg').style.display = 'block';
     setTimeout(() => { document.getElementById('successMsg').style.display = 'none'; }, 3000);
@@ -1273,50 +1299,81 @@ async function submitNuevoPedido() {
     document.getElementById('np_total').value = '';
     document.getElementById('np_nota').value = '';
     document.getElementById('np_regalo').checked = false;
+    document.getElementById('np_retirado').checked = false;
+    toggleRetiradoAlta();
+
+    const ahora = ahoraAR();
+    const señaN  = Number(seña)  || 0;
+    const totalN = Number(total) || 0;
+    const restaN = Math.max(0, totalN - señaN);
+    const medioRetiro = modoPago.toLowerCase();
+
     const detNP = [];
     if (regalo) detNP.push('regalo del club');
-    if (Number(seña) > 0) detNP.push('seña ' + Number(seña) + ' de ' + Number(total));
-    else if (Number(total) > 0) detNP.push('sin seña, total ' + Number(total));
+    if (retirado) detNP.push(señaN > 0 ? 'pagó ' + señaN + ' de ' + totalN : 'sin pago, total ' + totalN);
+    else if (señaN > 0) detNP.push('seña ' + señaN + ' de ' + totalN);
+    else if (totalN > 0) detNP.push('sin seña, total ' + totalN);
     if (nota) detNP.push(nota);
     pushMovLocal({
       tipo: 'PEDIDO_NUEVO',
       nombre, prenda: tipo, talle,
-      monto: Number(seña) || 0,
+      monto: señaN,
       medio: modoPago,
       detalle: tanda + (detNP.length ? ' · ' + detNP.join(' · ') : '')
     });
+    // Alta con retiro: el backend loguea dos movimientos, así que acá también van dos —
+    // si no, el de RETIRO recién aparecería después del refresco.
+    if (retirado) {
+      const detRet = [];
+      if (señaN > 0) detRet.push('pagó ' + señaN + (medioRetiro ? ' por ' + medioRetiro : ''));
+      detRet.push(restaN > 0 ? 'queda debiendo ' + restaN : 'saldado');
+      detRet.push('retirado al registrar el pedido');
+      if (nota) detRet.push(nota);
+      pushMovLocal({
+        tipo: 'RETIRO',
+        nombre, prenda: tipo, talle,
+        monto: señaN,
+        medio: medioRetiro,
+        detalle: detRet.join(' · ')
+      });
+    }
+
     // El await de arriba ya esperó la respuesta del servidor: la fila está escrita. Antes,
     // encima de eso, se esperaban 1500 ms de nada y después un getAll completo (pedidos +
     // retiros + stock + movimientos) con el overlay "Sincronizando" tapando la pantalla —
     // otra ejecución entera de Apps Script antes de poder cargar el pedido siguiente.
     // Ahora el pedido se agrega a la lista en memoria y aparece en el acto; el getAll va
     // por detrás y en silencio, sólo para reconciliar y asignarle su _sheetRow real.
-    const ahora = ahoraAR();
-    const señaN  = Number(seña)  || 0;
-    const totalN = Number(total) || 0;
     PEDIDOS.push({
       'Nombre': nombre,
       'Talle':  talle,
       'Seña':   señaN,
       'Total':  totalN,
-      'Resta':  Math.max(0, totalN - señaN),
+      'Resta':  restaN,
       'Notas':  nota,
       'Tanda':  tanda,
-      'Retirado': 0,
+      'Retirado': retirado ? 1 : 0,
       'Regalo':   regalo ? 1 : 0,
       'Total Efectivo':      modoPago === 'Efectivo'      ? señaN : 0,
       'Total Transferencia': modoPago === 'Transferencia' ? señaN : 0,
+      'Talle Retiro':         retirado ? talle       : '',
+      'Medio de Pago Retiro': retirado ? medioRetiro : '',
+      'Monto Retiro':         retirado ? señaN       : 0,
+      'Notas Retiro':         retirado ? nota        : '',
       'Fecha Alta': ahora,
       [tipoKey]: 1,                 // la columna de flag que usa getTipo()
       _id: PEDIDOS.length + 1,
       _sheetRow: null,              // hasta que llegue el refresco no se puede operar sobre él
       _pendiente: true,
       _fechaAlta: ahora,
-      _talleRetiro: '', _medioPagoRetiro: '', _montoRetiro: 0, _notasRetiro: ''
+      _talleRetiro:     retirado ? talle       : '',
+      _medioPagoRetiro: retirado ? medioRetiro : '',
+      _montoRetiro:     retirado ? señaN       : 0,
+      _notasRetiro:     retirado ? nota        : ''
     });
     localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
     renderAll();
-    showToast('Pedido registrado');
+    showToast(retirado ? 'Pedido registrado y retirado' : 'Pedido registrado');
     loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error:', e);
@@ -2568,6 +2625,58 @@ function movMeta(tipo) {
   return MOV_META[tipo] || { cls: '', ico: '•', label: String(tipo || 'Movimiento'), grupo: 'otros' };
 }
 
+// 'yyyy-mm-dd HH:mm:ss' → milisegundos, para comparar fechas entre sí. Devuelve null si no parsea.
+function msFecha(s) {
+  const t = Date.parse(String(s || '').replace(' ', 'T'));
+  return isNaN(t) ? null : t;
+}
+
+// Busca el pedido al que pertenece un movimiento, para poder mostrar en qué estado quedó.
+// Los PEDIDO_NUEVO viejos se registraron sin pedidoId (recién ahora el backend lo guarda),
+// así que hay un fallback por nombre + talle + prenda. Si esa persona tiene varios pedidos
+// iguales gana el de "Fecha Alta" más cercana al movimiento: el alta y su log salen de la
+// misma ejecución de Apps Script, con segundos de diferencia como mucho.
+function pedidoDeMov(m) {
+  if (m.pedidoId) {
+    const porId = PEDIDOS.find(p => String(p._id) === String(m.pedidoId));
+    if (porId) return porId;
+  }
+  const nombre = normalizeKey(m.nombre);
+  if (!nombre) return null;
+  const talle = normalizeKey(m.talle);
+  let cand = PEDIDOS.filter(p =>
+    normalizeKey(p['Nombre']) === nombre && (!talle || normalizeKey(p['Talle']) === talle));
+  if (!cand.length) return null;
+  // La prenda es un filtro blando: si las etiquetas de tipo cambiaron con el tiempo, los
+  // movimientos viejos ya no matchean y es preferible caer al desempate por fecha.
+  const prenda = normalizeKey(m.prenda);
+  if (prenda && cand.length > 1) {
+    const porPrenda = cand.filter(p => normalizeKey(getTipoLabel(getTipo(p))) === prenda);
+    if (porPrenda.length) cand = porPrenda;
+  }
+  if (cand.length === 1) return cand[0];
+  const ref = msFecha(m.fecha);
+  if (ref === null) return cand[0];
+  return cand.reduce((mejor, p) => {
+    const t = msFecha(p._fechaAlta || p['Fecha Alta']);
+    if (t === null) return mejor;
+    const tMejor = msFecha(mejor._fechaAlta || mejor['Fecha Alta']);
+    if (tMejor === null) return p;
+    return Math.abs(t - ref) < Math.abs(tMejor - ref) ? p : mejor;
+  }, cand[0]);
+}
+
+// Chip con el estado ACTUAL del pedido, para que un alta vieja muestre si ya se entregó.
+function estadoPedidoChip(m) {
+  const p = pedidoDeMov(m);
+  if (!p) return '';
+  if (!isRetirado(p)) return '<span class="mov-estado pendiente">Pendiente de retiro</span>';
+  const debe = tieneDeuda(p) ? (Number(p['Resta']) || 0) : 0;
+  return debe > 0
+    ? `<span class="mov-estado deuda">✓ Retirado · debe ${escapeHtml(fmt(debe))}</span>`
+    : '<span class="mov-estado retirado">✓ Retirado</span>';
+}
+
 // 'Hoy · lunes 10 ago' / 'Ayer · domingo 9 ago' / 'sábado 8 ago'
 function etiquetaDia(dia) {
   const hoy = hoyAR();
@@ -2650,6 +2759,10 @@ function renderMovimientos() {
     const metaLine = [hora, m.prenda, m.talle ? 'T. ' + m.talle : '']
       .filter(Boolean).map(escapeHtml).join(' · ');
 
+    // En el alta se muestra en qué estado quedó ese pedido hoy: leyendo el historial no se
+    // sabía si la prenda ya se había entregado sin ir a buscarla a la lista de pedidos.
+    const chipEstado = m.tipo === 'PEDIDO_NUEVO' ? estadoPedidoChip(m) : '';
+
     html.push(
       `<div class="mov-card ${meta.cls}${m._pendiente ? ' mov-pendiente' : ''}">
         <div class="mov-ico">${meta.ico}</div>
@@ -2657,6 +2770,7 @@ function renderMovimientos() {
           <div class="mov-title"><b>${escapeHtml(meta.label)}</b>${m.nombre ? ' · ' + escapeHtml(m.nombre) : ''}</div>
           ${m.detalle ? `<div class="mov-sub">${escapeHtml(m.detalle)}${m.medio ? ' · ' + escapeHtml(m.medio) : ''}</div>` : ''}
           <div class="mov-meta">${metaLine}</div>
+          ${chipEstado}
         </div>
         ${monto > 0 ? `<div class="mov-monto">+${fmt(monto)}</div>` : ''}
       </div>`
