@@ -265,6 +265,9 @@ function doPost(e) {
     if (action === 'registrarSeña') {
       return registrarSeña(data);
     }
+    if (action === 'editarPedido') {
+      return editarPedido(data);
+    }
 
     return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
   } catch (err) {
@@ -581,6 +584,54 @@ function registrarRetiro(data) {
 // Legacy support
 function updateRetiro(data) {
   return registrarRetiro(data);
+}
+
+// --- Corregir datos de un pedido ya cargado (errores de tipeo) ---
+// Sólo toca Nombre, Talle y Notas: nada que participe de la plata ni del retiro. En particular
+// NO toca 'Talle Retiro' — el talle pedido y el que se entregó son cosas distintas a propósito.
+function editarPedido(data) {
+  const sheet  = getOrCreateSheet(SHEET_PEDIDOS);
+  const nCols   = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0];
+
+  const fila = Number(data.sheetRow);
+  if (!(fila > 1) || fila > sheet.getLastRow()) {
+    return jsonResponse({ status: 'error', message: 'Fila inválida: ' + data.sheetRow });
+  }
+
+  // Sólo se escriben las claves que el cliente mandó explícitamente, así un campo ausente
+  // no borra lo que había en la hoja.
+  const editables = { 'Nombre': 'nombre', 'Talle': 'talle', 'Notas': 'notas' };
+  const previo = sheet.getRange(fila, 1, 1, nCols).getValues()[0];
+  const cambios = [];
+  let escribioAlgo = false;
+
+  headers.forEach((h, i) => {
+    const col = h.toString().trim();
+    const clave = editables[col];
+    if (!clave || !Object.prototype.hasOwnProperty.call(data, clave)) return;
+    const nuevo = String(data[clave] == null ? '' : data[clave]);
+    const viejo = String(previo[i] == null ? '' : previo[i]);
+    if (nuevo === viejo) return;
+    sheet.getRange(fila, i + 1).setValue(nuevo);
+    cambios.push(col + ': "' + viejo + '" → "' + nuevo + '"');
+    escribioAlgo = true;
+  });
+
+  if (!escribioAlgo) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
+
+  logMovimiento({
+    tipo:     'PEDIDO_EDITADO',
+    pedidoId: fila - 1,
+    nombre:   data.nombre || String(previo[headers.indexOf('Nombre')] || ''),
+    prenda:   data.tipo || '',
+    talle:    data.talle || '',
+    monto:    0,
+    medio:    '',
+    detalle:  cambios.join(' · ')
+  });
+
+  return jsonResponse({ status: 'ok', message: 'Pedido actualizado', cambios: cambios });
 }
 
 // --- Registrar pago/seña adicional sin marcar como retirado ---
