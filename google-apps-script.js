@@ -284,6 +284,25 @@ function asegurarColumna_(sheet, headers, nombre) {
   return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 }
 
+// Escribe una fila en la hoja Retiros mapeando por NOMBRE de columna en vez de por posición.
+// Antes se mandaban 13 valores en orden fijo: alcanzaba con mover o insertar una columna en
+// la hoja para que todo quedara corrido una casilla, en silencio.
+// filaExistente > 0 actualiza esa fila (conservando el valor de cualquier columna propia que
+// no manejemos acá); si no, agrega una nueva al final.
+function escribirRetiro_(sheet, filaExistente, valores) {
+  const nCols   = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0];
+  const fila = filaExistente > 0
+    ? sheet.getRange(filaExistente, 1, 1, nCols).getValues()[0]
+    : new Array(nCols).fill('');
+  headers.forEach((h, i) => {
+    const k = h.toString().trim();
+    if (Object.prototype.hasOwnProperty.call(valores, k)) fila[i] = valores[k];
+  });
+  if (filaExistente > 0) sheet.getRange(filaExistente, 1, 1, nCols).setValues([fila]);
+  else sheet.appendRow(fila);
+}
+
 function nuevoPedido(data) {
   // Validar que la seña no supere el total
   const seña  = Number(data.seña)  || 0;
@@ -408,10 +427,21 @@ function nuevoPedido(data) {
     ]);
     // 'Seña' y 'Resta' se guardan como estaban ANTES del pago del retiro — misma convención
     // que registrarRetiro(): dejan ver cuánto se debía al momento de venir a buscarlo.
-    retirosSheet.appendRow([
-      pedidoId, data.nombre || '', data.tipo || tipoKey, data.talle || '', data.talle || '',
-      0, total, total, 'TRUE', pagoRetiro, medioRetiro, data.notas || '', ahoraAR()
-    ]);
+    escribirRetiro_(retirosSheet, -1, {
+      'ID':              pedidoId,
+      'Nombre':          data.nombre || '',
+      'Tipo':            data.tipo || tipoKey,
+      'Talle Pedido':    data.talle || '',
+      'Talle Retiro':    data.talle || '',
+      'Seña':            0,
+      'Total':           total,
+      'Resta':           total,
+      'Retirado':        'TRUE',
+      'Pago al Retirar': pagoRetiro,
+      'Medio de Pago':   medioRetiro,
+      'Observación':     data.notas || '',
+      'Fecha Retiro':    ahoraAR()
+    });
 
     const detRetiro = [];
     if (pagoRetiro > 0) detRetiro.push('pagó ' + pagoRetiro + (medioRetiro ? ' por ' + medioRetiro : ''));
@@ -506,27 +536,21 @@ function registrarRetiro(data) {
     }
   }
 
-  const retiroValues = [
-    data.id,
-    data.nombre,
-    data.tipo,
-    data.talle,
-    data.talleRetiro || data.talle,
-    data.seña,
-    data.total,
-    data.resta,
-    data.retirado ? 'TRUE' : 'FALSE',
-    data.pagoRetiro || 0,
-    data.medioPago || '',
-    data.observacion || '',
-    data.fecha || ''
-  ];
-
-  if (retiroRow > 0) {
-    retirosSheet.getRange(retiroRow, 1, 1, 13).setValues([retiroValues]);
-  } else {
-    retirosSheet.appendRow(retiroValues);
-  }
+  escribirRetiro_(retirosSheet, retiroRow, {
+    'ID':              data.id,
+    'Nombre':          data.nombre,
+    'Tipo':            data.tipo,
+    'Talle Pedido':    data.talle,
+    'Talle Retiro':    data.talleRetiro || data.talle,
+    'Seña':            data.seña,
+    'Total':           data.total,
+    'Resta':           data.resta,
+    'Retirado':        data.retirado ? 'TRUE' : 'FALSE',
+    'Pago al Retirar': data.pagoRetiro || 0,
+    'Medio de Pago':   data.medioPago || '',
+    'Observación':     data.observacion || '',
+    'Fecha Retiro':    data.fecha || ''
+  });
 
   // 3. Log de movimiento
   const pagoRet = Number(data.pagoRetiro) || 0;
