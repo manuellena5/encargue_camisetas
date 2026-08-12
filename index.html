@@ -198,6 +198,11 @@
     .card-info span { white-space: nowrap; }
     .card-info .val { font-weight: 600; color: #333; }
     .card-info .fecha-alta { color: #aaa; font-size: 0.72rem; margin-left: auto; }
+    /* Cómo se cobró: se deduce de las columnas Total Efectivo / Total Transferencia */
+    .medio-chip { font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 9px; letter-spacing: 0.2px; }
+    .medio-chip.efectivo { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+    .medio-chip.transf   { background: #eaf2fa; color: #21618c; border: 1px solid #aed6f1; }
+    .medio-chip.mixto    { background: #fef5e7; color: #9c640c; border: 1px solid #f8d7a3; }
     .card-body { display: none; padding: 0 14px 14px 14px; border-top: 1px solid #f0f0f0; }
     .card.expanded .card-body { display: block; }
 
@@ -928,6 +933,24 @@ function cmpMasNuevo(a, b) {
   if (fa && !fb) return -1;
   if (!fa && fb) return 1;
   return (Number(b._id) || 0) - (Number(a._id) || 0);
+}
+
+// El pedido no guarda un campo "medio de pago": se deduce de las columnas 'Total Efectivo' y
+// 'Total Transferencia', que acumulan lo cobrado por cada vía (seña + pagos posteriores +
+// lo que se haya pagado al retirar). Por eso puede haber de las dos.
+function medioPagoPedido(p) {
+  const ef = Number(p['Total Efectivo'])      || 0;
+  const tr = Number(p['Total Transferencia']) || 0;
+  if (ef > 0 && tr > 0) return { txt: 'Ef.+Transf.', cls: 'mixto',
+                                 detalle: 'Efectivo ' + fmt(ef) + ' · Transferencia ' + fmt(tr) };
+  if (ef > 0) return { txt: 'Ef.',     cls: 'efectivo', detalle: 'Cobrado en efectivo: ' + fmt(ef) };
+  if (tr > 0) return { txt: 'Transf.', cls: 'transf',   detalle: 'Cobrado por transferencia: ' + fmt(tr) };
+  return null;   // todavía no se cobró nada
+}
+
+function chipMedioPago(p) {
+  const m = medioPagoPedido(p);
+  return m ? `<span class="medio-chip ${m.cls}" title="${escapeHtml(m.detalle)}">${m.txt}</span>` : '';
 }
 
 function tieneDeuda(p) {
@@ -2470,7 +2493,8 @@ function renderList() {
             ? `<span style="color:#8e44ad;font-weight:600;">🎁 Regalo del club — Costo: <span class="val">${fmt(p['Total'] || 0)}</span></span>`
             : `<span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
                <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
-               <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>`
+               <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
+               ${chipMedioPago(p)}`
           }
           ${ret && savedTalleRetiroStr && savedTalleRetiroStr.toUpperCase() !== tallePedidoStr.toUpperCase() ? `<span>Talle retiro: <span class="val">${savedTalleRetiroStr}</span></span>` : ''}
           ${fmtFechaAlta(p._fechaAlta || p['Fecha Alta']) ? `<span class="fecha-alta">Alta: ${fmtFechaAlta(p._fechaAlta || p['Fecha Alta'])}</span>` : ''}
