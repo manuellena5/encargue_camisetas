@@ -137,6 +137,7 @@
     .tipo-badge.chomba { background: #e67e22; }
     .tipo-badge.short { background: #27ae60; }
     .tanda-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; background: #f39c12; color: white; letter-spacing: 0.5px; }
+    .tanda-badge.tanda-3 { background: #16a085; }
     /* Lápiz para corregir el pedido original. flex-shrink:0 para que no lo aplasten los badges */
     .btn-editar { background: none; border: none; padding: 2px 4px; font-size: 0.9rem; cursor: pointer; opacity: 0.45; line-height: 1; flex-shrink: 0; border-radius: 6px; }
     .btn-editar:hover { opacity: 1; background: rgba(0,0,0,0.06); }
@@ -427,6 +428,16 @@
       <div class="kpi-item green"><div class="num" id="k2Recaudado">$0</div><div class="label">Recaudado</div></div>
       <div class="kpi-item red"><div class="num" id="k2PorCobrar">$0</div><div class="label">Por cobrar</div></div>
     </div>
+    <!-- Se oculta entero mientras no haya ningún pedido de 3ra tanda, para no sumar ruido -->
+    <div id="kpiTanda3" style="display:none;">
+      <h4 style="margin-top:8px;">3ra Tanda</h4>
+      <div class="kpi-row">
+        <div class="kpi-item"><div class="num" id="k3Pedidos">0</div><div class="label">Pedidos</div></div>
+        <div class="kpi-item green"><div class="num" id="k3Retirados">0</div><div class="label">Retirados</div></div>
+        <div class="kpi-item green"><div class="num" id="k3Recaudado">$0</div><div class="label">Recaudado</div></div>
+        <div class="kpi-item red"><div class="num" id="k3PorCobrar">$0</div><div class="label">Por cobrar</div></div>
+      </div>
+    </div>
   </div>
 
   <div class="sub-tabs" id="subTabs">
@@ -474,6 +485,7 @@
         <option value="">Todas las tandas</option>
         <option value="PRIMERA">1era Tanda</option>
         <option value="SEGUNDA">2da Tanda</option>
+        <option value="TERCERA">3ra Tanda</option>
       </select>
     </div>
   </div>
@@ -541,7 +553,10 @@
     </div>
     <div class="form-group">
       <label>Tanda</label>
-      <input type="text" id="np_tanda" value="SEGUNDA" readonly style="background:#f0f0f0;">
+      <select id="np_tanda">
+        <option value="SEGUNDA" selected>2da Tanda (hay stock)</option>
+        <option value="TERCERA">3ra Tanda (se manda a pedir)</option>
+      </select>
     </div>
     <div class="regalo-checkbox-row">
       <input type="checkbox" id="np_regalo">
@@ -924,12 +939,25 @@ function getTanda(p) {
   return (p['Tanda'] || '').toUpperCase();
 }
 
-// La tanda reducida a las dos únicas que maneja el stock. Hay filas viejas con la columna
-// Tanda vacía o con otro texto; el resto de la app ya las trata como primera (ver el filtro
-// de tanda en getFiltered), así que acá se hace lo mismo. Sin esto, calcStock indexaba
-// entregadasPorTanda[''] y reventaba con un TypeError, tumbando todo el render.
+// La tanda normalizada a una de las tres conocidas. Hay filas viejas con la columna Tanda
+// vacía o con otro texto; el resto de la app ya las trata como primera, así que acá se hace
+// lo mismo. Sin esto, calcStock indexaba entregadasPorTanda[''] y reventaba con un TypeError.
+const TANDAS = ['PRIMERA', 'SEGUNDA', 'TERCERA'];
 function tandaDe(p) {
-  return getTanda(p) === 'SEGUNDA' ? 'SEGUNDA' : 'PRIMERA';
+  const t = getTanda(p);
+  return TANDAS.includes(t) ? t : 'PRIMERA';
+}
+
+// La 3ra tanda es la de las prendas que no había en stock y se mandaron a pedir. No tiene
+// stock propio cargado (los editores siguen siendo 1ra y 2da): es una etiqueta de origen.
+function badgeTanda(tandaNorm) {
+  if (tandaNorm === 'SEGUNDA') return '<span class="tanda-badge">2da TANDA</span>';
+  if (tandaNorm === 'TERCERA') return '<span class="tanda-badge tanda-3">3ra TANDA</span>';
+  return '';
+}
+
+function labelTanda(tandaNorm) {
+  return tandaNorm === 'SEGUNDA' ? '2da Tanda' : tandaNorm === 'TERCERA' ? '3ra Tanda' : '1era Tanda';
 }
 
 function showLoading(show) {
@@ -1493,10 +1521,7 @@ function calcStock(tandaFilter) {
     }
 
     // KPI Ret/Pend: respetan el filtro de tanda; retirados indexados por talle RETIRO, pendientes por talle PEDIDO
-    if (tandaFilter) {
-      if (tandaFilter === 'PRIMERA' && tanda === 'SEGUNDA') return;
-      if (tandaFilter === 'SEGUNDA' && tanda !== 'SEGUNDA') return;
-    }
+    if (tandaFilter && tanda !== tandaFilter) return;
     if (isRetirado(p)) {
       const tr = String(p['_talleRetiro'] || p['Talle'] || '').toUpperCase();
       const talleEfectivo = TALLES_ORDER.includes(tr) ? tr : t;
@@ -1554,8 +1579,7 @@ function renderStock() {
   const { remaining, pendientes, retirados, comprado } = calcStock(tandaFilter);
   // El rótulo de tanda aclara que aplica a los contadores Ret/Pend, no al disponible: el
   // stock es uno solo y no cambia con el filtro.
-  const tandaLabel = tandaFilter === 'PRIMERA' ? ' — Ret/Pend de 1era Tanda'
-                   : tandaFilter === 'SEGUNDA' ? ' — Ret/Pend de 2da Tanda' : '';
+  const tandaLabel = tandaFilter ? ' — Ret/Pend de ' + labelTanda(tandaFilter) : '';
   if (tandaLabel) titleEl.textContent = titleEl.textContent.replace(/ — .*$/, '') + tandaLabel;
 
   contentDiv.innerHTML = `<div class="stock-tables">` +
@@ -1953,11 +1977,9 @@ function getFiltered() {
     if (filterEstado === 'pendiente' &&  isRetirado(p)) return false;
     if (filterEstado === 'deuda'     && !tieneDeuda(p)) return false;
     if (filterEstado === 'regalo'    && !isRegalo(p))   return false;
-    if (filterTanda) {
-      const tanda = getTanda(p);
-      if (filterTanda === 'PRIMERA' && tanda === 'SEGUNDA') return false;
-      if (filterTanda === 'SEGUNDA' && tanda !== 'SEGUNDA') return false;
-    }
+    // Antes esto era binario ("es SEGUNDA o es todo lo demás"), así que al agregar TERCERA los
+    // pedidos de 3ra aparecían dentro del filtro de 1era. Ahora se compara contra la normalizada.
+    if (filterTanda && tandaDe(p) !== filterTanda) return false;
     if (filterTalle) {
       const t = String(filterTalle).toUpperCase();
       if (isRetirado(p)) {
@@ -2407,7 +2429,7 @@ function renderList() {
       const ret = isRetirado(p);
     const tipo = getTipo(p);
     const sinStock = !ret && !hasStockForPedido(p);
-    const tanda = getTanda(p);
+    const tanda = tandaDe(p);
     const bloqueado = isBloqueado(p);
     const is2da = tanda === 'SEGUNDA';
     const tallePedido = p['Talle'] || '—';
@@ -2437,7 +2459,7 @@ function renderList() {
           ${deuda ? '<span class="deuda-badge">DEUDA</span>' : ''}
           ${regalo ? '<span class="regalo-badge">🎁 REGALO</span>' : ''}
           ${currentFilter === 'todos' ? `<span class="tipo-badge" style="background:${getTipoColor(tipo)}">${getTipoLabel(tipo)}</span>` : ''}
-          ${is2da ? '<span class="tanda-badge">2da TANDA</span>' : ''}
+          ${badgeTanda(tanda)}
           <span class="talle">${labelTalle(tallePedido, true)}</span>
           <button class="btn-editar" title="Corregir el pedido"
             onclick="event.stopPropagation(); openModalEditar(${id});">✏️</button>
@@ -2593,9 +2615,11 @@ function updateKPIs() {
   document.getElementById('kRegalos').textContent = cantRegalos;
   document.getElementById('kGastoRegalos').textContent = fmt(gastoRegalos);
 
-  // Per-tanda KPIs (always on full PEDIDOS, not filtered)
-  const t1 = PEDIDOS.filter(p => getTanda(p) !== 'SEGUNDA');
-  const t2 = PEDIDOS.filter(p => getTanda(p) === 'SEGUNDA');
+  // Per-tanda KPIs (always on full PEDIDOS, not filtered).
+  // Con tandaDe() en vez del viejo "!== SEGUNDA": si no, los pedidos de 3ra caían en la 1era.
+  const t1 = PEDIDOS.filter(p => tandaDe(p) === 'PRIMERA');
+  const t2 = PEDIDOS.filter(p => tandaDe(p) === 'SEGUNDA');
+  const t3 = PEDIDOS.filter(p => tandaDe(p) === 'TERCERA');
 
   function tandaStats(arr) {
     const ped = arr.length;
@@ -2608,18 +2632,17 @@ function updateKPIs() {
     return { ped, ret, rec, pc };
   }
 
-  const s1 = tandaStats(t1);
-  const s2 = tandaStats(t2);
+  [[1, tandaStats(t1)], [2, tandaStats(t2)], [3, tandaStats(t3)]].forEach(([n, s]) => {
+    const set = (id, v) => { const el = document.getElementById('k' + n + id); if (el) el.textContent = v; };
+    set('Pedidos', s.ped);
+    set('Retirados', s.ret);
+    set('Recaudado', fmt(s.rec));
+    set('PorCobrar', fmt(s.pc));
+  });
 
-  document.getElementById('k1Pedidos').textContent = s1.ped;
-  document.getElementById('k1Retirados').textContent = s1.ret;
-  document.getElementById('k1Recaudado').textContent = fmt(s1.rec);
-  document.getElementById('k1PorCobrar').textContent = fmt(s1.pc);
-
-  document.getElementById('k2Pedidos').textContent = s2.ped;
-  document.getElementById('k2Retirados').textContent = s2.ret;
-  document.getElementById('k2Recaudado').textContent = fmt(s2.rec);
-  document.getElementById('k2PorCobrar').textContent = fmt(s2.pc);
+  // El bloque de 3ra tanda sólo aparece cuando hay algo que mostrar
+  const bloque3 = document.getElementById('kpiTanda3');
+  if (bloque3) bloque3.style.display = t3.length ? '' : 'none';
 }
 
 // ============ RETIROS ============
