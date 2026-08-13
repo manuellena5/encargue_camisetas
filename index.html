@@ -730,6 +730,34 @@
   </div>
 </div>
 
+<!-- ========== MODAL: EDITAR RETIRO ========== -->
+<div class="modal-overlay" id="modalRetiro" style="display:none;" onclick="cerrarModalRetiro(event)">
+  <div class="modal" style="text-align:left;max-width:360px;">
+    <h3 style="text-align:center;">✏️ Corregir retiro</h3>
+    <p id="erSub" style="text-align:center;font-size:0.82rem;color:#666;margin-bottom:16px;"></p>
+    <div class="form-group">
+      <label>Talle retirado</label>
+      <select id="er_talle"></select>
+    </div>
+    <div class="form-group">
+      <label>Medio de pago</label>
+      <select id="er_medio">
+        <option value="efectivo">Efectivo</option>
+        <option value="transferencia">Transferencia</option>
+      </select>
+    </div>
+    <p id="erAvisoMonto" style="display:none;font-size:0.75rem;color:#9c640c;background:#fef5e7;border-radius:8px;padding:8px 10px;margin-bottom:12px;"></p>
+    <div class="form-group">
+      <label>Observación del retiro</label>
+      <textarea id="er_obs" placeholder="Observaciones..."></textarea>
+    </div>
+    <div class="modal-buttons" style="margin-top:16px;">
+      <button class="btn btn-danger btn-sm" onclick="closeModalRetiro()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="btnGuardarRetiroEdit" onclick="guardarEdicionRetiro()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="loading-overlay" id="loading" style="display:none;">
   <div class="spinner">Sincronizando<span class="dots"></span></div>
@@ -1939,6 +1967,126 @@ async function guardarEdicionPedido() {
   }
 }
 
+// ============ EDITAR RETIRO ============
+// Corrige el talle que se entregó, el medio de pago y la observación. Los importes se tocan
+// sólo indirectamente: al cambiar el medio, el backend mueve el Monto Retiro de un acumulador
+// al otro para que los totales de efectivo/transferencia sigan cerrando.
+let erPedidoId = null;
+
+function openModalRetiro(id) {
+  const p = PEDIDOS.find(x => x._id === id);
+  if (!p) return;
+  if (!p._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
+  erPedidoId = id;
+
+  const tallePedido = String(p['Talle'] || '');
+  const talleRetiro = String(p['_talleRetiro'] || p['Talle Retiro'] || tallePedido || '').toUpperCase();
+  const medio = String(p['_medioPagoRetiro'] || p['Medio de Pago Retiro'] || 'efectivo').toLowerCase();
+  const monto = Number(p['_montoRetiro'] || p['Monto Retiro']) || 0;
+
+  document.getElementById('erSub').textContent =
+    (p['Nombre'] || '—') + ' · ' + getTipoLabel(getTipo(p)) + ' · pidió talle ' + (labelTalle(tallePedido) || '—');
+
+  const opciones = TALLES_EXTENDIDOS.slice();
+  if (talleRetiro && !opciones.some(t => t.toUpperCase() === talleRetiro)) opciones.unshift(p['Talle Retiro']);
+  document.getElementById('er_talle').innerHTML = opciones.map(t =>
+    `<option value="${escapeHtml(t)}" ${String(t).toUpperCase() === talleRetiro ? 'selected' : ''}>${escapeHtml(labelTalle(t))}</option>`
+  ).join('');
+
+  document.getElementById('er_medio').value = medio === 'transferencia' ? 'transferencia' : 'efectivo';
+  document.getElementById('er_obs').value = p['_notasRetiro'] || p['Notas Retiro'] || '';
+
+  // Si hubo pago al retirar, avisar que cambiar el medio reasigna esa plata
+  const aviso = document.getElementById('erAvisoMonto');
+  if (monto > 0) {
+    aviso.style.display = '';
+    aviso.textContent = 'Se cobraron ' + fmt(monto) + ' al retirar. Si cambiás el medio, ese monto se ' +
+      'reasigna al total de efectivo o de transferencia según corresponda.';
+  } else {
+    aviso.style.display = 'none';
+  }
+
+  document.getElementById('modalRetiro').style.display = 'flex';
+}
+
+function closeModalRetiro() {
+  document.getElementById('modalRetiro').style.display = 'none';
+  erPedidoId = null;
+}
+
+function cerrarModalRetiro(e) {
+  if (e.target === document.getElementById('modalRetiro')) closeModalRetiro();
+}
+
+async function guardarEdicionRetiro() {
+  const p = PEDIDOS.find(x => x._id === erPedidoId);
+  if (!p) { closeModalRetiro(); return; }
+  if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+
+  const talle = document.getElementById('er_talle').value;
+  const medio = document.getElementById('er_medio').value;
+  const obs   = document.getElementById('er_obs').value.trim();
+
+  const talleAnt = String(p['_talleRetiro'] || p['Talle Retiro'] || '');
+  const medioAnt = String(p['_medioPagoRetiro'] || p['Medio de Pago Retiro'] || '').toLowerCase();
+  const obsAnt   = String(p['_notasRetiro'] || p['Notas Retiro'] || '');
+  const monto    = Number(p['_montoRetiro'] || p['Monto Retiro']) || 0;
+
+  const cambios = [];
+  if (talle !== talleAnt) cambios.push('talle retirado: ' + (labelTalle(talleAnt) || '—') + ' → ' + labelTalle(talle));
+  if (medio !== medioAnt) cambios.push('medio de pago: ' + (medioAnt || '—') + ' → ' + medio);
+  if (obs   !== obsAnt)   cambios.push('observación actualizada');
+  if (!cambios.length) { showToast('No cambiaste nada'); closeModalRetiro(); return; }
+
+  const btn = document.getElementById('btnGuardarRetiroEdit');
+  btn.disabled = true;
+  try {
+    showLoading(true);
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'editarRetiro', sheetRow: p._sheetRow,
+        talleRetiro: talle, medioPago: medio, observacion: obs,
+        tipo: getTipoLabel(getTipo(p))
+      })
+    });
+
+    p['Talle Retiro']         = talle;  p['_talleRetiro']     = talle;
+    p['Medio de Pago Retiro'] = medio;  p['_medioPagoRetiro'] = medio;
+    p['Notas Retiro']         = obs;    p['_notasRetiro']     = obs;
+    // Mismo movimiento de plata que hace el backend, para que la pantalla no muestre otra
+    // cosa que la planilla hasta el próximo refresco.
+    if (medio !== medioAnt && monto > 0 && medioAnt) {
+      const de = medioAnt === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
+      const a  = medio    === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
+      if (de !== a) {
+        p[de] = Math.max(0, (Number(p[de]) || 0) - monto);
+        p[a]  = (Number(p[a]) || 0) + monto;
+      }
+    }
+
+    pushMovLocal({
+      tipo: 'RETIRO_EDITADO',
+      pedidoId: p._id,
+      nombre: p['Nombre'] || '', prenda: getTipoLabel(getTipo(p)), talle,
+      medio, detalle: cambios.join(' · ')
+    });
+    invalidarCachePedidoDeMov();
+    localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
+    closeModalRetiro();
+    renderAll();
+    showToast('Retiro corregido');
+    loadFromSheets({ silent: true });
+  } catch (e) {
+    console.error('Error editando retiro:', e);
+    showToast('Error al guardar los cambios');
+  } finally {
+    showLoading(false);
+    btn.disabled = false;
+  }
+}
+
 // ============ BLOQUEO 2DA TANDA ============
 // Los pedidos de segunda tanda ya no están bloqueados
 function isBloqueado(p) {
@@ -2762,7 +2910,9 @@ function renderRetiros() {
         ${deuda ? '<span class="deuda-badge">DEUDA</span>' : ''}
         ${regalo ? '<span class="regalo-badge">🎁 REGALO</span>' : ''}
         <span class="tipo-badge" style="background:${getTipoColor(tipo)}">${getTipoLabel(tipo)}</span>
-        <span class="talle">${talleRetiro || tallePedido}</span>
+        <span class="talle">${labelTalle(talleRetiro || tallePedido, true)}</span>
+        <button class="btn-editar" title="Corregir los datos del retiro"
+          onclick="event.stopPropagation(); openModalRetiro(${id});">✏️</button>
         <span class="arrow">▼</span>
       </div>
       <div class="card-info">
@@ -2871,7 +3021,8 @@ const MOV_META = {
   RETIRO:           { cls: 'retiro', ico: '↑',  label: 'Retiro marcado',    grupo: 'retiros' },
   RETIRO_REVERTIDO: { cls: 'revert', ico: '↩',  label: 'Retiro desmarcado', grupo: 'retiros' },
   STOCK:            { cls: 'stock',  ico: '▦',  label: 'Stock actualizado', grupo: 'stock'   },
-  PEDIDO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Pedido corregido',  grupo: 'pedidos' }
+  PEDIDO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Pedido corregido',  grupo: 'pedidos' },
+  RETIRO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Retiro corregido',  grupo: 'retiros' }
 };
 function movMeta(tipo) {
   return MOV_META[tipo] || { cls: '', ico: '•', label: String(tipo || 'Movimiento'), grupo: 'otros' };

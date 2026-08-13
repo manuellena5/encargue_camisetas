@@ -268,6 +268,9 @@ function doPost(e) {
     if (action === 'editarPedido') {
       return editarPedido(data);
     }
+    if (action === 'editarRetiro') {
+      return editarRetiro(data);
+    }
 
     return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
   } catch (err) {
@@ -632,6 +635,89 @@ function editarPedido(data) {
   });
 
   return jsonResponse({ status: 'ok', message: 'Pedido actualizado', cambios: cambios });
+}
+
+// --- Corregir los datos de un retiro ya registrado ---
+// Toca talle retirado, medio de pago y observación. NO toca los importes... con una excepción
+// necesaria: si cambia el medio de pago, hay que mover el 'Monto Retiro' de un acumulador al
+// otro ('Total Efectivo' <-> 'Total Transferencia'). Si no, corregir el medio sería cosmético
+// y los totales de efectivo/transferencia quedarían mal para siempre.
+function editarRetiro(data) {
+  const sheet   = getOrCreateSheet(SHEET_PEDIDOS);
+  const nCols   = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0];
+
+  const fila = Number(data.sheetRow);
+  if (!(fila > 1) || fila > sheet.getLastRow()) {
+    return jsonResponse({ status: 'error', message: 'Fila inválida: ' + data.sheetRow });
+  }
+
+  const row = sheet.getRange(fila, 1, 1, nCols).getValues()[0];
+  const idx = n => headers.findIndex(h => h.toString().trim() === n);
+  const get = n => { const i = idx(n); return i >= 0 ? row[i] : ''; };
+  const set = (n, v) => { const i = idx(n); if (i >= 0) sheet.getRange(fila, i + 1).setValue(v); };
+
+  const talleViejo = String(get('Talle Retiro') || '');
+  const medioViejo = String(get('Medio de Pago Retiro') || '').toLowerCase();
+  const notasViejo = String(get('Notas Retiro') || '');
+  const montoRet   = Number(get('Monto Retiro')) || 0;
+
+  const talleNuevo = data.talleRetiro != null ? String(data.talleRetiro) : talleViejo;
+  const medioNuevo = data.medioPago   != null ? String(data.medioPago).toLowerCase() : medioViejo;
+  const notasNuevo = data.observacion != null ? String(data.observacion) : notasViejo;
+
+  const cambios = [];
+  if (talleNuevo !== talleViejo) { set('Talle Retiro', talleNuevo); cambios.push('talle retirado: ' + (talleViejo || '—') + ' → ' + talleNuevo); }
+  if (notasNuevo !== notasViejo) { set('Notas Retiro', notasNuevo); cambios.push('observación actualizada'); }
+
+  if (medioNuevo !== medioViejo) {
+    set('Medio de Pago Retiro', medioNuevo);
+    cambios.push('medio de pago: ' + (medioViejo || '—') + ' → ' + medioNuevo);
+    // Sin medio anterior (filas viejas) no se sabe en qué acumulador se había cargado, así que
+    // no se mueve nada: se avisa para que se revise a mano en vez de descuadrar los totales.
+    if (montoRet > 0 && medioViejo) {
+      const colDe = medioViejo === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
+      const colA  = medioNuevo === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
+      if (colDe !== colA) {
+        set(colDe, Math.max(0, (Number(get(colDe)) || 0) - montoRet));
+        set(colA,  (Number(get(colA)) || 0) + montoRet);
+        cambios.push('se movieron ' + montoRet + ' de ' + colDe + ' a ' + colA);
+      }
+    } else if (montoRet > 0) {
+      cambios.push('⚠ revisar totales: no había medio anterior registrado');
+    }
+  }
+
+  if (!cambios.length) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
+
+  // Espejar en la hoja Retiros la fila de este pedido, si existe
+  const pedidoId = fila - 1;
+  const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
+    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
+    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
+  ]);
+  const retirosData = retirosSheet.getDataRange().getValues();
+  for (let i = 1; i < retirosData.length; i++) {
+    if (String(retirosData[i][0]) === String(pedidoId)) {
+      escribirRetiro_(retirosSheet, i + 1, {
+        'Talle Retiro': talleNuevo, 'Medio de Pago': medioNuevo, 'Observación': notasNuevo
+      });
+      break;
+    }
+  }
+
+  logMovimiento({
+    tipo:     'RETIRO_EDITADO',
+    pedidoId: pedidoId,
+    nombre:   String(get('Nombre') || ''),
+    prenda:   data.tipo || '',
+    talle:    talleNuevo,
+    monto:    0,
+    medio:    medioNuevo,
+    detalle:  cambios.join(' · ')
+  });
+
+  return jsonResponse({ status: 'ok', message: 'Retiro actualizado', cambios: cambios });
 }
 
 // --- Registrar pago/seña adicional sin marcar como retirado ---
