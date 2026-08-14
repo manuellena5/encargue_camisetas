@@ -590,10 +590,11 @@ function updateRetiro(data) {
 }
 
 // --- Corregir datos de un pedido ya cargado (errores de tipeo) ---
-// Sólo toca Nombre, Talle y Notas: nada que participe de la plata ni del retiro. En particular
-// NO toca 'Talle Retiro' — el talle pedido y el que se entregó son cosas distintas a propósito.
+// Toca Nombre, Talle, Notas y Total. NO toca 'Talle Retiro' — el talle pedido y el que se
+// entregó son cosas distintas a propósito — ni 'Seña', que es el acumulador de lo cobrado.
+// El Total sí arrastra a 'Resta', que se recalcula contra lo ya pagado.
 function editarPedido(data) {
-  const sheet  = getOrCreateSheet(SHEET_PEDIDOS);
+  const sheet   = getOrCreateSheet(SHEET_PEDIDOS);
   const nCols   = sheet.getLastColumn();
   const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0];
 
@@ -602,31 +603,60 @@ function editarPedido(data) {
     return jsonResponse({ status: 'error', message: 'Fila inválida: ' + data.sheetRow });
   }
 
-  // Sólo se escriben las claves que el cliente mandó explícitamente, así un campo ausente
-  // no borra lo que había en la hoja.
-  const editables = { 'Nombre': 'nombre', 'Talle': 'talle', 'Notas': 'notas' };
   const previo = sheet.getRange(fila, 1, 1, nCols).getValues()[0];
+  const idx = n => headers.findIndex(h => h.toString().trim() === n);
+  const get = n => { const i = idx(n); return i >= 0 ? previo[i] : ''; };
+  const set = (n, v) => { const i = idx(n); if (i >= 0) sheet.getRange(fila, i + 1).setValue(v); };
   const cambios = [];
-  let escribioAlgo = false;
 
-  headers.forEach((h, i) => {
-    const col = h.toString().trim();
-    const clave = editables[col];
-    if (!clave || !Object.prototype.hasOwnProperty.call(data, clave)) return;
+  // Campos de texto. Sólo se escriben las claves que el cliente mandó explícitamente, así un
+  // campo ausente no borra lo que había en la hoja.
+  [['Nombre', 'nombre'], ['Talle', 'talle'], ['Notas', 'notas']].forEach(function (par) {
+    const col = par[0], clave = par[1];
+    if (!Object.prototype.hasOwnProperty.call(data, clave) || idx(col) < 0) return;
     const nuevo = String(data[clave] == null ? '' : data[clave]);
-    const viejo = String(previo[i] == null ? '' : previo[i]);
+    const viejo = String(get(col) == null ? '' : get(col));
     if (nuevo === viejo) return;
-    sheet.getRange(fila, i + 1).setValue(nuevo);
+    set(col, nuevo);
     cambios.push(col + ': "' + viejo + '" → "' + nuevo + '"');
-    escribioAlgo = true;
   });
 
-  if (!escribioAlgo) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
+  // Total: además de escribirlo hay que recalcular 'Resta' contra lo ya cobrado. Sin esto la
+  // deuda quedaría calculada sobre el total viejo y el pedido mostraría plata que no debe.
+  if (Object.prototype.hasOwnProperty.call(data, 'total') && idx('Total') >= 0) {
+    const nuevoTotal = Number(data.total) || 0;
+    const viejoTotal = Number(get('Total')) || 0;
+    if (nuevoTotal !== viejoTotal) {
+      const pagado = Number(get('Seña')) || 0;   // 'Seña' acumula todo lo cobrado
+
+      // Se valida acá y no sólo en el cliente: el navegador puede estar con datos viejos (la
+      // seña pudo subir desde otro dispositivo entre que abrió el modal y guardó), y dejarlo
+      // pasar generaría plata a favor que la app no sabe devolver.
+      if (nuevoTotal < pagado) {
+        return jsonResponse({ status: 'error',
+          message: 'El total no puede quedar por debajo de lo ya cobrado (' + pagado + ').' });
+      }
+
+      set('Total', nuevoTotal);
+      cambios.push('Total: ' + viejoTotal + ' → ' + nuevoTotal);
+
+      if (idx('Resta') >= 0) {
+        const viejaResta = Number(get('Resta')) || 0;
+        const nuevaResta = nuevoTotal - pagado;   // nunca negativo: lo garantiza la validación
+        if (nuevaResta !== viejaResta) {
+          set('Resta', nuevaResta);
+          cambios.push('Resta recalculada: ' + viejaResta + ' → ' + nuevaResta);
+        }
+      }
+    }
+  }
+
+  if (!cambios.length) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
 
   logMovimiento({
     tipo:     'PEDIDO_EDITADO',
     pedidoId: fila - 1,
-    nombre:   data.nombre || String(previo[headers.indexOf('Nombre')] || ''),
+    nombre:   data.nombre || String(get('Nombre') || ''),
     prenda:   data.tipo || '',
     talle:    data.talle || '',
     monto:    0,

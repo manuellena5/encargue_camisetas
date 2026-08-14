@@ -720,6 +720,11 @@
       <select id="ed_talle"></select>
     </div>
     <div class="form-group">
+      <label>Total</label>
+      <input type="number" id="ed_total" min="0" placeholder="0" oninput="previewRestaEdicion()">
+    </div>
+    <p id="edResta" style="font-size:0.75rem;color:#666;margin:-8px 0 12px 2px;"></p>
+    <div class="form-group">
       <label>Nota</label>
       <textarea id="ed_nota" placeholder="Observaciones..."></textarea>
     </div>
@@ -1882,6 +1887,7 @@ function openModalEditar(id) {
 
   document.getElementById('ed_nombre').value = p['Nombre'] || '';
   document.getElementById('ed_nota').value   = p['Notas']  || '';
+  document.getElementById('ed_total').value  = Number(p['Total']) || 0;
 
   // El talle guardado puede no estar en la lista (filas viejas con algo escrito a mano): se
   // agrega como opción para no perderlo al abrir el modal.
@@ -1902,7 +1908,29 @@ function openModalEditar(id) {
     aviso.style.display = 'none';
   }
 
+  previewRestaEdicion();
   document.getElementById('modalEditar').style.display = 'flex';
+}
+
+// Muestra en vivo cómo queda la deuda al tocar el Total, para no tener que guardar y ver qué pasó.
+function previewRestaEdicion() {
+  const p = PEDIDOS.find(x => x._id === edPedidoId);
+  const el = document.getElementById('edResta');
+  if (!p || !el) return;
+  const pagado = Number(p['Seña']) || 0;          // 'Seña' acumula todo lo cobrado
+  const total  = Number(document.getElementById('ed_total').value) || 0;
+  const btn    = document.getElementById('btnGuardarEdicion');
+  const invalido = total < pagado;
+  if (invalido) {
+    el.style.color = '#c0392b';
+    el.textContent = `⚠ No se puede: ya se cobraron ${fmt(pagado)}. El total no puede ser menor.`;
+  } else {
+    el.style.color = '#666';
+    el.textContent = `Cobrado ${fmt(pagado)} · Resta quedaría en ${fmt(total - pagado)}`;
+  }
+  // Se deshabilita Guardar mientras el valor sea inválido, para que el bloqueo se vea antes
+  // de intentar guardar y no como un rechazo después.
+  if (btn) { btn.disabled = invalido; btn.style.opacity = invalido ? 0.5 : ''; }
 }
 
 function closeModalEditar() {
@@ -1922,12 +1950,25 @@ async function guardarEdicionPedido() {
   const nombre = document.getElementById('ed_nombre').value.trim();
   const talle  = document.getElementById('ed_talle').value;
   const nota   = document.getElementById('ed_nota').value.trim();
+  const total  = Number(document.getElementById('ed_total').value) || 0;
   if (!nombre) { showToast('El nombre no puede quedar vacío'); return; }
+  if (total < 0) { showToast('El total no puede ser negativo'); return; }
 
+  const totalAnt = Number(p['Total']) || 0;
+  const pagado   = Number(p['Seña'])  || 0;
   const cambios = [];
   if (nombre !== (p['Nombre'] || '')) cambios.push('nombre: ' + (p['Nombre'] || '—') + ' → ' + nombre);
   if (talle  !== (p['Talle']  || '')) cambios.push('talle: ' + labelTalle(p['Talle'] || '—') + ' → ' + labelTalle(talle));
+  if (total  !== totalAnt)            cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
   if (nota   !== (p['Notas']  || '')) cambios.push('nota actualizada');
+  // El total no puede quedar por debajo de lo ya cobrado: dejaría plata a favor de la persona
+  // y la app no tiene forma de devolverla. El backend valida lo mismo.
+  if (total !== totalAnt && total < pagado) {
+    showToast('El total no puede ser menor a lo ya cobrado (' + fmt(pagado) + ')');
+    document.getElementById('ed_total').focus();
+    return;
+  }
+
   if (!cambios.length) { showToast('No cambiaste nada'); closeModalEditar(); return; }
 
   const btn = document.getElementById('btnGuardarEdicion');
@@ -1939,12 +1980,18 @@ async function guardarEdicionPedido() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         action: 'editarPedido', sheetRow: p._sheetRow,
-        nombre, talle, notas: nota, tipo: getTipoLabel(getTipo(p))
+        nombre, talle, notas: nota, total, tipo: getTipoLabel(getTipo(p))
       })
     });
     p['Nombre'] = nombre;
     p['Talle']  = talle;
     p['Notas']  = nota;
+    // Misma recalculación que hace el backend, para que la tarjeta no muestre otra cosa que
+    // la planilla hasta que llegue el refresco.
+    if (total !== totalAnt) {
+      p['Total'] = total;
+      p['Resta'] = Math.max(0, total - pagado);
+    }
     pushMovLocal({
       tipo: 'PEDIDO_EDITADO',
       pedidoId: p._id,
