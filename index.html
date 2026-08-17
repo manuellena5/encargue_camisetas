@@ -439,6 +439,9 @@
     .acc .talle-original { font-size: 0.68rem; color: #8d97a3; margin-top: 3px; }
     .acc-foot { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
 
+    /* Encabezados largos en escritorio, abreviados en celular (ver el media query) */
+    .hshort { display: none; }
+
     /* Tablas de la pantalla Stock */
     table.dt { width: 100%; border-collapse: collapse; background: #fff; }
     table.dt th, table.dt td { padding: 6px 9px; font-size: 0.8rem;
@@ -527,9 +530,12 @@
       /* La columna de la etiqueta ("sin stock", "entregaste N de más") se saca: la fila ya
          viene pintada de rojo o naranja, así que la información no se pierde. */
       #tblStock th:last-child, #tblStock td:last-child { display: none; }
-      #tblCompras { white-space: nowrap; display: block; overflow-x: auto; }
+      /* Estas dos tienen demasiadas columnas para forzarlas a entrar: scrollean solas,
+         dentro de su propio recuadro, sin arrastrar el ancho de la página. */
+      #tblCompras, #tblTandas { white-space: nowrap; display: block; overflow-x: auto; }
+      #tblTandas th, #tblTandas td { padding: 6px 9px; font-size: 0.76rem; }
+      #tblTandas th { font-size: 0.6rem; }
     }
-    .hshort { display: none; }
   </style>
 </head>
 <body>
@@ -1051,7 +1057,9 @@ let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}');
 let pendingUnlockId = null;
 
 // ============ HELPERS ============
-function fmt(n) { return '$' + Number(n).toLocaleString('es-AR'); }
+// Redondea siempre: los costos unitarios son promedios ponderados y si no se colaban
+// decimales en pantalla ($2.529.795,784).
+function fmt(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-AR'); }
 
 // Devuelve la fecha de alta como 'yyyy-mm-dd HH:mm:ss' (hora de Argentina).
 // Contempla que Sheets pueda mandarla como texto o como fecha ISO en UTC.
@@ -3497,11 +3505,14 @@ function updateKPIs() {
 }
 
 // ═══ RECAUDADO vs COSTO vs GANANCIA ═══
-// Son dos ganancias distintas y conviene ver las dos:
-//  · Margen        = recaudado − costo de lo ENTREGADO. Dice si el precio está bien puesto.
-//  · Result. caja  = recaudado − TODO lo comprado. Incluye la plata inmovilizada en el armario.
-// Con costos sin cargar el margen mentiría (daría igual al recaudado), así que en ese caso se
-// avisa en vez de mostrar un número inventado.
+// El margen tiene que comparar ingreso y costo de LAS MISMAS prendas. Antes hacía
+// "recaudado total − costo de lo entregado", y ahí se colaban dos distorsiones que lo inflaban:
+//   · la plata cobrada por pedidos que todavía NO se entregaron (las señas de la 3ra tanda, por
+//     ejemplo) sumaba como ingreso sin ningún costo del otro lado;
+//   · las prendas entregadas cuya compra todavía no tiene costo cargado sumaban ingreso con
+//     costo cero.
+// Ahora el margen se calcula sólo sobre pedidos entregados Y con costo conocido. El resto se
+// informa aparte, para que se vea qué quedó afuera y por qué.
 function renderGanancia() {
   const box = document.getElementById('kstripGanancia');
   if (!box) return;
@@ -3514,45 +3525,59 @@ function renderGanancia() {
     costoTotal += n * (Number(c.costo) || 0);
   });
 
-  // Costo de lo entregado: unidades retiradas × costo promedio de su prenda
-  let costoEntregado = 0, entregadasSinCosto = 0, entregadas = 0;
-  PEDIDOS.filter(p => isRetirado(p)).forEach(p => {
+  let cobradoEnt = 0, costoEnt = 0, entregadas = 0;
+  let sinCostoN = 0, sinCostoCobrado = 0, cobradoPend = 0, pendientes = 0;
+  PEDIDOS.forEach(p => {
+    const pagado = Number(p['Seña']) || 0;
+    if (!isRetirado(p)) {          // todavía no se entregó: no participa del margen
+      pendientes++; cobradoPend += pagado; return;
+    }
     entregadas++;
     const cu = costoUnitPrenda(getTipo(p));
-    if (cu === null) entregadasSinCosto++; else costoEntregado += cu;
+    if (cu === null) {             // entregada pero sin costo cargado: queda afuera de los dos lados
+      sinCostoN++; sinCostoCobrado += pagado; return;
+    }
+    cobradoEnt += pagado;
+    costoEnt   += cu;
   });
 
+  const margen   = cobradoEnt - costoEnt;
+  const pct      = cobradoEnt ? (margen / cobradoEnt * 100) : 0;
+  const caja     = S.recaudado - costoTotal;
   const sinCosto = unidadesSinCosto();
-  const hayCosto = costoTotal > 0;
-  const margen = S.recaudado - costoEntregado;
-  const caja   = S.recaudado - costoTotal;
-  const pct    = S.recaudado ? (margen / S.recaudado * 100) : 0;
-  const nd     = '<span class="zz">sin cargar</span>';
+  const hayMargen = cobradoEnt > 0 || costoEnt > 0;
+  const nd = '<span class="zz">sin cargar</span>';
 
   box.innerHTML =
-    `<div class="kbox g"><b>${fmt(S.recaudado)}</b><span>Recaudado</span><u>cobrado de verdad</u></div>` +
-    `<div class="kbox r"><b>${hayCosto ? fmt(costoEntregado) : nd}</b><span>Costo entregado</span>` +
-      `<u>${entregadas} prendas</u></div>` +
-    `<div class="kbox ${hayCosto ? 'g' : ''}"><b>${hayCosto ? fmt(margen) : nd}</b><span>Margen</span>` +
-      `<u>${hayCosto ? pct.toFixed(1) + '% s/ recaudado' : 'falta el costo'}</u></div>` +
-    `<div class="kbox r"><b>${hayCosto ? fmt(costoTotal) : nd}</b><span>Costo comprado</span>` +
+    `<div class="kbox g"><b>${fmt(S.recaudado)}</b><span>Recaudado</span>` +
+      `<u>todo lo cobrado</u></div>` +
+    `<div class="kbox g"><b>${fmt(cobradoEnt)}</b><span>Cobrado entregado</span>` +
+      `<u>${entregadas - sinCostoN} prendas con costo</u></div>` +
+    `<div class="kbox r"><b>${hayMargen ? fmt(costoEnt) : nd}</b><span>Costo entregado</span>` +
+      `<u>esas mismas prendas</u></div>` +
+    `<div class="kbox ${hayMargen ? 'g' : ''}"><b>${hayMargen ? fmt(margen) : nd}</b>` +
+      `<span>Margen</span><u>${hayMargen ? pct.toFixed(1) + '% de lo entregado' : 'falta el costo'}</u></div>` +
+    `<div class="kbox r"><b>${costoTotal ? fmt(costoTotal) : nd}</b><span>Costo comprado</span>` +
       `<u>${unidComp} unidades</u></div>` +
-    `<div class="kbox"><b>${hayCosto ? fmt(caja) : nd}</b><span>Resultado de caja</span>` +
+    `<div class="kbox"><b>${costoTotal ? fmt(caja) : nd}</b><span>Resultado de caja</span>` +
       `<u>recaudado − todo lo comprado</u></div>`;
 
   const av = document.getElementById('avisoGanancia');
   if (!av) return;
   const partes = [];
-  if (sinCosto) partes.push(`<b>Faltan cargar ${sinCosto} costos.</b> Las filas que vinieron de la ` +
-    `hoja Stock entraron con costo 0. Cargalos desde Stock → Compras (clic en el costo) y estos ` +
-    `números pasan a ser reales.`);
-  if (hayCosto && entregadasSinCosto) partes.push(`${entregadasSinCosto} prendas entregadas son de ` +
-    `una prenda sin ningún costo cargado, así que no suman al costo entregado.`);
-  if (hayCosto && !sinCosto) partes.push(`El <b>margen</b> (${fmt(margen)}) mide sólo lo entregado: ` +
-    `dice si el precio está bien puesto. El <b>resultado de caja</b> (${fmt(caja)}) resta además las ` +
-    `<b>${unidComp - entregadas} prendas que siguen en el armario</b> — plata gastada que se ` +
-    `recupera cuando se vendan. Los ${S.reg} regalos están en el costo entregado con ingreso cero, ` +
-    `así que bajan el margen a propósito.`);
+  if (cobradoPend > 0) partes.push(`<b>${fmt(cobradoPend)} cobrados de ${pendientes} pedidos que ` +
+    `todavía no se entregaron</b> quedan fuera del margen: es plata en mano pero la prenda no salió, ` +
+    `y su costo tampoco está del otro lado. Entra en Recaudado y en el resultado de caja, no en el margen.`);
+  if (sinCostoN) partes.push(`<b>${sinCostoN} prendas entregadas quedan fuera del margen</b> porque ` +
+    `su compra todavía no tiene costo cargado (${fmt(sinCostoCobrado)} cobrados). Cargá el costo en ` +
+    `Stock → Compras y entran solas.`);
+  if (sinCosto) partes.push(`Faltan cargar los costos de <b>${sinCosto} unidades compradas</b>. ` +
+    `Las que vinieron de la hoja Stock entraron con costo 0.`);
+  if (hayMargen) partes.push(`El <b>margen</b> (${fmt(margen)}) compara ingreso y costo de las mismas ` +
+    `prendas: dice si el precio está bien puesto. El <b>resultado de caja</b> (${fmt(caja)}) es toda la ` +
+    `plata cobrada menos todo lo comprado, incluidas las <b>${unidComp - entregadas} prendas que siguen ` +
+    `en el armario</b>. Los ${S.reg} regalos están en el costo entregado con ingreso cero, así que ` +
+    `bajan el margen a propósito.`);
   av.style.display = partes.length ? '' : 'none';
   av.innerHTML = partes.join('<br><br>');
 }
