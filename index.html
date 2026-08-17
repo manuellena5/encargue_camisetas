@@ -725,6 +725,14 @@
       <input type="number" id="ed_total" min="0" placeholder="0" oninput="previewRestaEdicion()">
     </div>
     <p id="edResta" style="font-size:0.75rem;color:#666;margin:-8px 0 12px 2px;"></p>
+    <div class="form-group" id="edMedioWrap" style="display:none;">
+      <label>Medio de pago de la seña</label>
+      <select id="ed_medio">
+        <option value="efectivo">Efectivo</option>
+        <option value="transferencia">Transferencia</option>
+      </select>
+      <p id="edMedioNota" style="font-size:0.72rem;color:#9c640c;margin:6px 0 0 2px;"></p>
+    </div>
     <div class="form-group">
       <label>Nota</label>
       <textarea id="ed_nota" placeholder="Observaciones..."></textarea>
@@ -1914,6 +1922,27 @@ function agregarTipo() {
 // Corrige errores de tipeo en el pedido: nombre, talle y nota. Nada de plata ni de retiro.
 let edPedidoId = null;
 
+// Desglosa lo cobrado de un pedido separando la parte de la seña (y pagos parciales) de la que
+// se cobró al retirar. Hace falta porque el medio de pago no se guarda por pago: sólo existen
+// los acumuladores 'Total Efectivo' y 'Total Transferencia', y el retiro tiene el suyo aparte
+// ('Monto Retiro' + 'Medio de Pago Retiro'). Restando ese, queda lo que le toca a la seña.
+function desglosePagos(p) {
+  const pagado   = Number(p['Seña']) || 0;
+  const montoRet = Number(p['_montoRetiro'] || p['Monto Retiro']) || 0;
+  const medioRet = String(p['_medioPagoRetiro'] || p['Medio de Pago Retiro'] || '').toLowerCase();
+  const ef = Number(p['Total Efectivo'])      || 0;
+  const tr = Number(p['Total Transferencia']) || 0;
+  const retEf = medioRet === 'efectivo'      ? montoRet : 0;
+  const retTr = medioRet === 'transferencia' ? montoRet : 0;
+  const señaEf = Math.max(0, ef - retEf);
+  const señaTr = Math.max(0, tr - retTr);
+  let medio = '';
+  if (señaEf > 0 && señaTr > 0) medio = 'mixto';
+  else if (señaEf > 0)          medio = 'efectivo';
+  else if (señaTr > 0)          medio = 'transferencia';
+  return { pagadoSeña: Math.max(0, pagado - montoRet), señaEf, señaTr, medio, montoRet, medioRet };
+}
+
 function openModalEditar(id) {
   const p = PEDIDOS.find(x => x._id === id);
   if (!p) return;
@@ -1941,6 +1970,27 @@ function openModalEditar(id) {
       '. Corregir el talle pedido no cambia el talle que se entregó.';
   } else {
     aviso.style.display = 'none';
+  }
+
+  // Medio de la seña: sólo tiene sentido si hay algo cobrado antes del retiro
+  const d = desglosePagos(p);
+  const wrap = document.getElementById('edMedioWrap');
+  const nota = document.getElementById('edMedioNota');
+  if (d.pagadoSeña > 0) {
+    wrap.style.display = '';
+    document.getElementById('ed_medio').value = d.medio === 'transferencia' ? 'transferencia' : 'efectivo';
+    const partes = [];
+    if (d.medio === 'mixto') {
+      partes.push('Hoy está dividido: Efectivo ' + fmt(d.señaEf) + ' y Transferencia ' + fmt(d.señaTr) +
+                  '. Si guardás, los ' + fmt(d.pagadoSeña) + ' pasan enteros al medio que elijas.');
+    }
+    if (d.montoRet > 0) {
+      partes.push('Los ' + fmt(d.montoRet) + ' cobrados al retirar no se tocan (se editan en Retiros).');
+    }
+    nota.textContent = partes.join(' ');
+    nota.style.display = partes.length ? '' : 'none';
+  } else {
+    wrap.style.display = 'none';
   }
 
   previewRestaEdicion();
@@ -1991,10 +2041,15 @@ async function guardarEdicionPedido() {
 
   const totalAnt = Number(p['Total']) || 0;
   const pagado   = Number(p['Seña'])  || 0;
+  const d        = desglosePagos(p);
+  const medioSeña = d.pagadoSeña > 0 ? document.getElementById('ed_medio').value : null;
+  const cambiaMedio = medioSeña !== null && medioSeña !== d.medio;
+
   const cambios = [];
   if (nombre !== (p['Nombre'] || '')) cambios.push('nombre: ' + (p['Nombre'] || '—') + ' → ' + nombre);
   if (talle  !== (p['Talle']  || '')) cambios.push('talle: ' + labelTalle(p['Talle'] || '—') + ' → ' + labelTalle(talle));
   if (total  !== totalAnt)            cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
+  if (cambiaMedio)                    cambios.push('medio de la seña: ' + (d.medio || '—') + ' → ' + medioSeña);
   if (nota   !== (p['Notas']  || '')) cambios.push('nota actualizada');
   // El total no puede quedar por debajo de lo ya cobrado: dejaría plata a favor de la persona
   // y la app no tiene forma de devolverla. El backend valida lo mismo.
@@ -2013,14 +2068,22 @@ async function guardarEdicionPedido() {
     await fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         action: 'editarPedido', sheetRow: p._sheetRow,
         nombre, talle, notas: nota, total, tipo: getTipoLabel(getTipo(p))
-      })
+      }, cambiaMedio ? { 'medioSeña': medioSeña } : {}))
     });
     p['Nombre'] = nombre;
     p['Talle']  = talle;
     p['Notas']  = nota;
+    // Mismo reparto que hace el backend: la parte de la seña va entera al medio elegido y la
+    // del retiro queda donde estaba.
+    if (cambiaMedio) {
+      const retEf = d.medioRet === 'efectivo'      ? d.montoRet : 0;
+      const retTr = d.medioRet === 'transferencia' ? d.montoRet : 0;
+      p['Total Efectivo']      = (medioSeña === 'efectivo'      ? d.pagadoSeña : 0) + retEf;
+      p['Total Transferencia'] = (medioSeña === 'transferencia' ? d.pagadoSeña : 0) + retTr;
+    }
     // Misma recalculación que hace el backend, para que la tarjeta no muestre otra cosa que
     // la planilla hasta que llegue el refresco.
     if (total !== totalAnt) {

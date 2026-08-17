@@ -651,6 +651,33 @@ function editarPedido(data) {
     }
   }
 
+  // Medio de pago de la seña. No existe un campo con el medio de cada pago: lo único que hay son
+  // los dos acumuladores 'Total Efectivo' y 'Total Transferencia'. Lo que este selector reasigna
+  // es la parte NO cobrada al retirar ('Seña' - 'Monto Retiro'); la del retiro tiene su propio
+  // editor en la pantalla de Retiros y queda intacta.
+  if (Object.prototype.hasOwnProperty.call(data, 'medioSeña') &&
+      idx('Total Efectivo') >= 0 && idx('Total Transferencia') >= 0) {
+    const medio    = String(data['medioSeña'] || '').toLowerCase();
+    const pagado   = Number(get('Seña')) || 0;
+    const montoRet = Number(get('Monto Retiro')) || 0;
+    const medioRet = String(get('Medio de Pago Retiro') || '').toLowerCase();
+    const retEf = medioRet === 'efectivo'      ? montoRet : 0;
+    const retTr = medioRet === 'transferencia' ? montoRet : 0;
+    const pagadoSeña = Math.max(0, pagado - montoRet);
+
+    const efActual = Number(get('Total Efectivo'))      || 0;
+    const trActual = Number(get('Total Transferencia')) || 0;
+    const efNuevo  = (medio === 'efectivo'      ? pagadoSeña : 0) + retEf;
+    const trNuevo  = (medio === 'transferencia' ? pagadoSeña : 0) + retTr;
+
+    if (pagadoSeña > 0 && (efNuevo !== efActual || trNuevo !== trActual)) {
+      set('Total Efectivo', efNuevo);
+      set('Total Transferencia', trNuevo);
+      cambios.push('medio de la seña → ' + medio +
+        ' (Efectivo ' + efActual + '→' + efNuevo + ', Transferencia ' + trActual + '→' + trNuevo + ')');
+    }
+  }
+
   if (!cambios.length) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
 
   logMovimiento({
