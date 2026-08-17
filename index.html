@@ -459,7 +459,10 @@
           font-size: 0.72rem; font-weight: 700; color: #55606d; min-width: 44px; text-align: center; }
     .zz { color: #c9d1d9; } .pnd { color: #b9770e; font-weight: 700; }
     .ngv { color: #c0392b; font-weight: 700; }
-    .flg { font-size: 0.64rem; font-weight: 700; padding: 1px 6px; border-radius: 9px; white-space: nowrap; }
+    /* El aviso vive dentro de la celda de Disponibles, debajo del número: así no necesita una
+       columna propia, que era la que no entraba en el celular. */
+    .flg { font-size: 0.64rem; font-weight: 700; padding: 1px 6px; border-radius: 9px;
+           white-space: nowrap; display: block; margin-top: 2px; }
     .flg.f1 { background: #fdecea; color: #c0392b; border: 1px solid #f5b7b1; }
     .flg.f2 { background: #fef5e7; color: #9c640c; border: 1px solid #f8d7a3; }
     .totline { display: flex; gap: 14px; flex-wrap: wrap; background: #fff; border-radius: 8px;
@@ -522,14 +525,14 @@
       table.dt { display: table; white-space: normal; table-layout: fixed; }
       table.dt th, table.dt td { padding: 5px 3px; font-size: 0.72rem; }
       table.dt th { font-size: 0.56rem; letter-spacing: 0; }
-      table.dt th:first-child, table.dt td:first-child { width: 27%; padding-left: 6px; }
+      /* La primera columna sólo lleva un chip de talle: al 27% dejaba un hueco enorme antes
+         de "Ped.". Con 18% las seis columnas entran cómodas. */
+      table.dt th:first-child, table.dt td:first-child { width: 18%; padding-left: 6px; }
       table.dt td b { font-size: 0.78rem; }
       .tl { min-width: 0; padding: 1px 4px; font-size: 0.66rem; }
       .hlong { display: none; }
       .hshort { display: inline; }
-      /* La columna de la etiqueta ("sin stock", "entregaste N de más") se saca: la fila ya
-         viene pintada de rojo o naranja, así que la información no se pierde. */
-      #tblStock th:last-child, #tblStock td:last-child { display: none; }
+      #tblStock .flg { font-size: 0.56rem; padding: 0 3px; }
       /* Estas dos tienen demasiadas columnas para forzarlas a entrar: scrollean solas,
          dentro de su propio recuadro, sin arrastrar el ancho de la página. */
       #tblCompras, #tblTandas { white-space: nowrap; display: block; overflow-x: auto; }
@@ -733,7 +736,6 @@
         <th data-m="pend"><span class="hlong">Por retirar</span><span class="hshort">Pend.</span></th>
         <th data-m="comp"><span class="hlong">Compradas</span><span class="hshort">Compr.</span></th>
         <th data-m="disp"><span class="hlong">Disponibles</span><span class="hshort">Disp.</span></th>
-        <th style="text-align:left"></th>
       </tr></thead>
       <tbody></tbody>
     </table>
@@ -2040,11 +2042,14 @@ function renderStockScreen() {
                   : (c.ped > 0 || c.comp > 0);
   const fN   = n => n === 0 ? '<span class="zz">0</span>' : n;
   const clsF = c => c.disp < 0 ? 'bad' : (c.pend > 0 && c.disp <= 0) ? 'warn' : '';
-  const flag = c => c.disp < 0 ? `<span class="flg f1">entregaste ${-c.disp} de más</span>`
-                  : (c.pend > 0 && c.disp <= 0) ? '<span class="flg f2">sin stock</span>' : '';
-  const cols = c => `<td>${fN(c.ped)}</td><td>${fN(c.ret)}</td>` +
+  const flag = c => c.disp < 0
+      ? `<span class="flg f1" title="Entregaste ${-c.disp} más de las que compraste">${-c.disp} de más</span>`
+      : (c.pend > 0 && c.disp <= 0)
+      ? `<span class="flg f2" title="Hay ${c.pend} pendiente(s) y no queda stock">sin stock</span>` : '';
+  const cols = (c, conAviso) => `<td>${fN(c.ped)}</td><td>${fN(c.ret)}</td>` +
     `<td class="${c.pend > 0 ? 'pnd' : ''}">${fN(c.pend)}</td><td>${fN(c.comp)}</td>` +
-    `<td class="${c.disp < 0 ? 'ngv' : c.disp === 0 ? 'zz' : ''}"><b>${c.disp}</b></td>`;
+    `<td class="${c.disp < 0 ? 'ngv' : c.disp === 0 ? 'zz' : ''}"><b>${c.disp}</b>` +
+    `${conAviso === false ? '' : flag(c)}</td>`;
 
   const T = { ped:0, ret:0, pend:0, comp:0, disp:0 };
   let html = '';
@@ -2061,7 +2066,7 @@ function renderStockScreen() {
     html = plano.map(r => `<tr class="${clsF(r.c)}"><td>` +
       `<span class="cdot" style="background:${r.t.color}"></span>` +
       `${escapeHtml(r.t.label.replace('Camiseta ', ''))} <span class="tl">${labelTalle(r.talle, true)}</span></td>` +
-      cols(r.c) + `<td style="text-align:left">${flag(r.c)}</td></tr>`).join('');
+      cols(r.c) + `</tr>`).join('');
   } else {
     stockTypes.forEach(t => {
       const tipo = t.key.toLowerCase();
@@ -2070,17 +2075,17 @@ function renderStockScreen() {
       const S = { ped:0, ret:0, pend:0, comp:0, disp:0 };
       filas.forEach(([, c]) => { for (const m in S) S[m] += c[m]; });
       for (const m in T) T[m] += S[m];
-      html += `<tr class="grp"><td colspan="7"><span class="cdot" style="background:${t.color}"></span>` +
+      html += `<tr class="grp"><td colspan="6"><span class="cdot" style="background:${t.color}"></span>` +
         `${escapeHtml(t.label)}</td></tr>`;
       html += filas.map(([talle, c]) => `<tr class="${clsF(c)}">` +
         `<td style="padding-left:26px"><span class="tl">${labelTalle(talle, true)}</span></td>` +
-        cols(c) + `<td style="text-align:left">${flag(c)}</td></tr>`).join('');
-      html += `<tr class="sub"><td style="padding-left:26px">Subtotal</td>` + cols(S) + `<td></td></tr>`;
+        cols(c) + `</tr>`).join('');
+      html += `<tr class="sub"><td style="padding-left:26px">Subtotal</td>` + cols(S, false) + `</tr>`;
     });
   }
 
   tbody.innerHTML = html ||
-    '<tr><td colspan="7" style="text-align:center;color:#8d97a3;padding:22px">Nada para mostrar con este filtro.</td></tr>';
+    '<tr><td colspan="6" style="text-align:center;color:#8d97a3;padding:22px">Nada para mostrar con este filtro.</td></tr>';
 
   const tl = document.getElementById('totStock');
   if (tl) tl.innerHTML =
