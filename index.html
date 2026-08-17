@@ -393,6 +393,7 @@
   <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/...../exec">
   <br>
   <button class="btn btn-primary btn-sm" onclick="saveConfig()" style="margin-top:8px;">Guardar y Conectar</button>
+  <button class="btn btn-dark btn-sm" onclick="usarUrlDelCodigo()" style="margin-top:8px;">Restablecer</button>
   <div id="configStatus"></div>
 </div>
 
@@ -863,7 +864,21 @@ let currentMovFilter = 'todos';
 let MOV_RANGO_DIAS = Number(localStorage.getItem('movRangoDias') ?? 30);
 const MOV_LIMITE = 500;
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwS9y-drmhJvXVjtJssBtsYgsrxaYQjbj0R1gxymyUaHbVi8un5rurOXYf7ZtcQ_UTRug/exec';
-let SCRIPT_URL = localStorage.getItem('gasUrl') || DEFAULT_SCRIPT_URL;
+// La URL del código MANDA sobre la guardada en el navegador. Antes era al revés: si alguna vez
+// pegaste una URL a mano quedaba en localStorage y le ganaba a la del código, así que después de
+// re-deployar el Apps Script la app seguía pegándole al deploy viejo hasta que borrabas los datos
+// del sitio a mano. Se respeta la pegada a mano sólo si se hizo sobre ESTA misma versión del
+// código; si el DEFAULT cambió, gana el DEFAULT y el override se descarta.
+let SCRIPT_URL = DEFAULT_SCRIPT_URL;
+(function elegirScriptUrl() {
+  const guardada = localStorage.getItem('gasUrl') || '';
+  const base     = localStorage.getItem('gasUrlBase') || '';
+  if (guardada && base === DEFAULT_SCRIPT_URL) { SCRIPT_URL = guardada; return; }
+  if (guardada) {  // override viejo: el código ya trae otra URL
+    localStorage.removeItem('gasUrl');
+    localStorage.removeItem('gasUrlBase');
+  }
+})();
 let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}');
 let pendingUnlockId = null;
 
@@ -1107,11 +1122,31 @@ function saveConfig() {
   const url = document.getElementById('scriptUrl').value.trim();
   if (!url) return;
   SCRIPT_URL = url;
-  localStorage.setItem('gasUrl', url);
+  if (url === DEFAULT_SCRIPT_URL) {
+    // Volver a la del código: se limpia el override en vez de guardarlo
+    localStorage.removeItem('gasUrl');
+    localStorage.removeItem('gasUrlBase');
+  } else {
+    localStorage.setItem('gasUrl', url);
+    // Se anota contra qué URL del código se hizo este override, para poder descartarlo cuando
+    // el código traiga una nueva (ver elegirScriptUrl arriba).
+    localStorage.setItem('gasUrlBase', DEFAULT_SCRIPT_URL);
+  }
   checkConfig();
   document.getElementById('configPanel').style.display = 'none';
   loadFromSheets();
   showToast('Conectado correctamente');
+}
+
+// Vuelve a la URL que viene en el código, descartando cualquier override manual.
+function usarUrlDelCodigo() {
+  localStorage.removeItem('gasUrl');
+  localStorage.removeItem('gasUrlBase');
+  SCRIPT_URL = DEFAULT_SCRIPT_URL;
+  document.getElementById('scriptUrl').value = SCRIPT_URL;
+  checkConfig();
+  loadFromSheets();
+  showToast('Usando la URL que viene en la app');
 }
 
 // ============ GOOGLE SHEETS: LOAD ============
