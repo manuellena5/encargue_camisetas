@@ -533,11 +533,24 @@
       .hlong { display: none; }
       .hshort { display: inline; }
       #tblStock .flg { font-size: 0.56rem; padding: 0 3px; }
-      /* Estas dos tienen demasiadas columnas para forzarlas a entrar: scrollean solas,
-         dentro de su propio recuadro, sin arrastrar el ancho de la página. */
-      #tblCompras, #tblTandas { white-space: nowrap; display: block; overflow-x: auto; }
+      /* Por Tanda tiene 7 columnas de números: se deja scrollear dentro de su recuadro. */
+      #tblTandas { white-space: nowrap; display: block; overflow-x: auto; }
       #tblTandas th, #tblTandas td { padding: 6px 9px; font-size: 0.76rem; }
       #tblTandas th { font-size: 0.6rem; }
+
+      /* Compras: forzar 7 columnas en un celular deja todo cortado. Cada fila pasa a ser una
+         tarjeta y cada dato muestra su rótulo (el data-l de cada celda). Nada se pierde. */
+      #tblCompras { display: block; }
+      #tblCompras thead { display: none; }
+      #tblCompras tbody { display: block; }
+      #tblCompras tr { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+        padding: 10px 12px; border-bottom: 1px solid #f0f3f6; }
+      #tblCompras td { display: inline-block; border: none; padding: 0; width: auto;
+        text-align: left !important; font-size: 0.8rem; }
+      #tblCompras td::before { content: attr(data-l); display: block; font-size: 0.56rem;
+        text-transform: uppercase; letter-spacing: .3px; color: #a3adb8; font-weight: 700; }
+      #tblCompras td[data-l="Prenda"] { flex: 1 1 100%; font-weight: 700; }
+      #tblCompras td[data-l="Costo total"] { margin-left: auto; text-align: right !important; }
     }
   </style>
 </head>
@@ -1129,6 +1142,13 @@ function getTipo(p) {
 function getTipoLabel(tipoLower) {
   const found = getPrendaTypes().find(t => t.key.toLowerCase() === tipoLower);
   return found ? found.key.replace(/_/g, ' ') : tipoLower.toUpperCase();
+}
+
+// getTipoLabel devuelve la CLAVE de la columna ('ARQUERO CELESTE'), que es lo que hace falta
+// para hablarle a la planilla. Para mostrar en pantalla conviene el nombre lindo.
+function getPrendaLabel(tipoLower) {
+  const found = getPrendaTypes().find(t => t.key.toLowerCase() === tipoLower);
+  return found ? found.label : getTipoLabel(tipoLower);
 }
 
 function getTipoColor(tipoLower) {
@@ -2123,20 +2143,23 @@ function renderCompras() {
     String(b.fecha || '').localeCompare(String(a.fecha || '')) ||
     String(a.prenda || '').localeCompare(String(b.prenda || '')));
 
+  // Cada celda lleva su rótulo en data-l: en el celular la fila se convierte en tarjeta y cada
+  // valor muestra ese rótulo arriba (ver el media query). Así no hay columnas cortadas.
   tb.innerHTML = filas.length ? filas.map(c => {
     const cu = Number(c.costo) || 0, n = Number(c.cant) || 0;
-    const col = getTipoColor(String(c.prenda || '').toLowerCase());
+    const tipo = String(c.prenda || '').toLowerCase();
+    const col = getTipoColor(tipo);
     const f = String(c.fecha || '');
     return `<tr>
-      <td>${f ? f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(2, 4) : '—'}</td>
-      <td style="text-align:left">${escapeHtml(labelTanda(c.tanda))}</td>
-      <td style="text-align:left"><span class="cdot" style="background:${col}"></span>${escapeHtml(getTipoLabel(String(c.prenda || '').toLowerCase()))}</td>
-      <td style="text-align:left"><span class="tl">${labelTalle(c.talle, true)}</span></td>
-      <td>${n}</td>
-      <td style="cursor:pointer" title="Clic para corregir el costo"
+      <td data-l="Fecha">${f ? f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(2, 4) : '—'}</td>
+      <td data-l="Tanda" style="text-align:left">${escapeHtml(labelTanda(c.tanda).replace(' Tanda', ''))}</td>
+      <td data-l="Prenda" style="text-align:left"><span class="cdot" style="background:${col}"></span>${escapeHtml(getPrendaLabel(tipo))}</td>
+      <td data-l="Talle" style="text-align:left"><span class="tl">${labelTalle(c.talle, true)}</span></td>
+      <td data-l="Unid.">${n}</td>
+      <td data-l="Costo unit." style="cursor:pointer" title="Clic para corregir el costo"
           onclick="editarCostoCompra('${escapeHtml(c.id)}')">${
         cu > 0 ? fmt(cu) : '<span class="flg f2">cargar costo</span>'}</td>
-      <td><b>${cu > 0 ? fmt(n * cu) : '<span class="zz">—</span>'}</b></td>
+      <td data-l="Costo total"><b>${cu > 0 ? fmt(n * cu) : '<span class="zz">—</span>'}</b></td>
     </tr>`;
   }).join('') : '<tr><td colspan="7" style="text-align:center;color:#8d97a3;padding:22px">Todavía no hay compras cargadas.</td></tr>';
 
