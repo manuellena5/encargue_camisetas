@@ -27,28 +27,16 @@
     .kpi-divider { width: 1px; background: #e0e0e0; margin: 0 4px; }
 
     /* STOCK PANEL */
-    .stock-panel { background: white; border-bottom: 1px solid #e0e0e0; padding: 10px 16px; }
-    .stock-panel h3 { font-size: 0.85rem; margin-bottom: 8px; color: #333; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; }
     .stock-panel h3 .arrow { font-size: 0.7rem; transition: transform 0.2s; }
     .stock-panel.collapsed .stock-content { display: none; }
     .stock-panel.collapsed h3 .arrow { transform: rotate(-90deg); }
-    .stock-tables { display: flex; gap: 12px; flex-wrap: wrap; }
-    .stock-table { flex: 1; min-width: 220px; }
-    .stock-table h4 { font-size: 0.75rem; margin-bottom: 4px; padding: 3px 8px; border-radius: 4px; color: white; }
-    .stock-table h4.blanca-title { background: #95a5a6; }
-    .stock-table h4.azul-title { background: #3498db; }
-    .stock-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-    .stock-cell { text-align: center; padding: 6px 3px 5px; border-radius: 7px; background: #f8f9fa; border: 1px solid #eee; }
     .stock-cell .talle-label { font-size: 0.6rem; color: #888; font-weight: 700; margin-bottom: 2px; }
-    .stock-cell .stock-actual { font-size: 1.05rem; font-weight: 800; line-height: 1; }
     .stock-cell.ok  .stock-actual { color: #27ae60; }
     .stock-cell.low .stock-actual { color: #e67e22; }
     .stock-cell.out .stock-actual { color: #e74c3c; }
     .stock-cell.out { background: #fdf0f0; border-color: #f5c6cb; }
     .stock-cell.empty .stock-actual { color: #95a5a6; }
     .stock-cell.empty { background: #f5f5f5; border-color: #ddd; opacity: 0.7; }
-    .stock-cell .stock-orig  { font-size: 0.6rem; color: #aaa; margin-top: 2px; }
-    .stock-cell .stock-pend  { font-size: 0.58rem; margin-top: 1px; }
     .stock-cell.ok  .stock-pend { color: #27ae60; }
     .stock-cell.low .stock-pend { color: #e67e22; }
     .stock-cell.out .stock-pend { color: #e74c3c; }
@@ -112,9 +100,6 @@
     .mov-empty { text-align: center; color: #999; font-size: 0.85rem; padding: 40px 20px; }
 
     /* SEARCH */
-    .search-bar { padding: 10px 16px; background: white; border-bottom: 1px solid #eee; }
-    .search-bar input { width: 100%; padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; }
-    .search-bar input:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.1); }
 
     .section { display: none; }
     .section.active { display: block; }
@@ -131,10 +116,6 @@
     .card.retirado .card-header .check { background: #27ae60; border-color: #27ae60; color: white; }
     .card-header .name { font-weight: 600; font-size: 0.95rem; flex: 1; }
     .card-header .talle { background: #eee; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
-    .tipo-badge { padding: 2px 7px; border-radius: 6px; font-size: 0.65rem; font-weight: 700; color: white; }
-    .tipo-badge.blanca { background: #95a5a6; }
-    .tipo-badge.azul { background: #3498db; }
-    .tipo-badge.chomba { background: #e67e22; }
     .tipo-badge.short { background: #27ae60; }
     .tanda-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; background: #f39c12; color: white; letter-spacing: 0.5px; }
     .tanda-badge.tanda-3 { background: #16a085; }
@@ -143,7 +124,6 @@
     .btn-editar:hover { opacity: 1; background: rgba(0,0,0,0.06); }
     .card-header .arrow { color: #aaa; transition: transform 0.2s; font-size: 0.75rem; }
     .card.expanded .card-header .arrow { transform: rotate(180deg); }
-    .sin-stock-badge { background: #e74c3c; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
 
     /* SEARCH + FILTERS */
     .filter-bar { background: white; border-bottom: 1px solid #eee; }
@@ -154,16 +134,9 @@
     .filter-line input:focus, .filter-line select:focus { border-color: #3498db; background: white; }
 
     /* EDITOR STOCK en tipos */
-    .stock-editor { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
-    .stock-editor-title { font-size: 0.75rem; font-weight: 700; color: #555; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-    .stock-editor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
-    .stock-editor-cell { display: flex; flex-direction: column; gap: 2px; }
-    .stock-editor-cell label { font-size: 0.65rem; font-weight: 700; color: #888; text-align: center; }
-    .stock-editor-cell input { width: 100%; padding: 5px 4px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; text-align: center; }
     /* Tandas ya cerradas: el editor arranca de sólo lectura y se abre con doble clic */
     .stock-editor-grid.bloqueado { opacity: 0.6; cursor: not-allowed; }
     .stock-editor-grid.bloqueado input { background: #f0f0f0; color: #888; pointer-events: none; }
-    .stock-editor-cell input:disabled { cursor: not-allowed; }
 
     /* TIPOS DE PRENDAS SECTION */
     .tipos-section { padding: 16px; max-width: 600px; margin: 0 auto; }
@@ -262,11 +235,9 @@
     /* DEUDA PENDIENTE */
     .card.deuda-pendiente .card-header { background: #fef3e2; border-left: 4px solid #e67e22; }
     .card.deuda-pendiente { opacity: 1; }
-    .deuda-badge { background: #e67e22; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
 
     /* REGALO */
     .card.regalo .card-header { background: #f0f8ff; border-left: 4px solid #8e44ad; }
-    .regalo-badge { background: #8e44ad; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 4px; font-weight: 700; }
     .kpi-item.gift .num { color: #8e44ad; }
     .regalo-checkbox-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 14px; background: #f0f8ff; border-radius: 8px; border: 1.5px solid #d2b4de; }
     .regalo-checkbox-row input[type=checkbox] { width: 20px; height: 20px; cursor: pointer; accent-color: #8e44ad; }
@@ -275,9 +246,6 @@
     /* SECCION RETIROS */
     /* Con la pestaña de regalos ya son cuatro: en pantallas angostas se desplazan en vez
        de apretujarse (flex-shrink:0), pero siguen ocupando todo el ancho cuando entran. */
-    .retiros-filter-tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; overflow-x: auto; }
-    .retiros-filter-tab { flex: 1 0 auto; padding: 10px 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.8rem; border-bottom: 3px solid transparent; color: #888; transition: all 0.2s; white-space: nowrap; }
-    .retiros-filter-tab:hover { background: #f8f9fa; }
     .retiros-filter-tab.active { color: #1a1a2e; border-bottom-color: #e67e22; }
     .retiros-filter-tab .badge { display: inline-block; background: #e0e0e0; color: #555; font-size: 0.65rem; padding: 1px 6px; border-radius: 10px; margin-left: 3px; }
     .retiros-filter-tab.active.deuda-tab .badge { background: #e67e22; color: white; }
@@ -368,7 +336,172 @@
       .kpi-row { gap: 6px; }
       .kpi-item { min-width: 45px; }
       .kpi-item .num { font-size: 0.95rem; }
-      .stock-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* ══════════════ REDISEÑO ══════════════ */
+
+    /* Tira de KPIs: 4 números en ~52px, en vez de 16 en tres bloques apilados */
+    .kstrip { display: flex; gap: 9px; flex-wrap: wrap; padding: 10px 12px; background: #eef1f4; }
+    .kbox { background: #fff; border-radius: 10px; padding: 8px 13px; min-width: 116px;
+            border-left: 3px solid #d7dde3; flex: 0 0 auto; }
+    .kbox b { display: block; font-size: 1.1rem; line-height: 1.2; }
+    .kbox span { font-size: 0.66rem; color: #7b8794; text-transform: uppercase; letter-spacing: .4px; }
+    .kbox u { display: block; font-size: 0.64rem; color: #a3adb8; text-decoration: none; margin-top: 1px; }
+    .kbox.g { border-left-color: #27ae60; } .kbox.g b { color: #1e8449; }
+    .kbox.r { border-left-color: #e74c3c; } .kbox.r b { color: #c0392b; }
+    .kbox.o { border-left-color: #f39c12; } .kbox.o b { color: #b9770e; }
+    .kbox.more { display: flex; align-items: center; justify-content: center; cursor: pointer;
+                 color: #5b6b7c; font-weight: 600; font-size: 0.74rem; text-align: center;
+                 line-height: 1.35; border-left-color: #bdc7d1; }
+    /* Estado "filtrado": rayado + borde punteado, para no confundir un parcial con el total */
+    .kstrip.filt .kbox { background: repeating-linear-gradient(135deg,#fff,#fff 9px,#fffbf2 9px,#fffbf2 18px);
+                         border-left-style: dashed; }
+    .filtag { display: none; align-items: center; gap: 8px; background: #fef5e7;
+              border-bottom: 1px solid #f8d7a3; color: #9c640c; padding: 7px 13px;
+              font-size: 0.76rem; font-weight: 600; }
+    .filtag.on { display: flex; }
+    .filtag button { background: #9c640c; color: #fff; border: none; border-radius: 6px;
+                     padding: 3px 9px; font-size: 0.7rem; font-weight: 700; cursor: pointer;
+                     font-family: inherit; margin-left: auto; white-space: nowrap; }
+
+    /* Línea de stock por prenda (reemplaza el panel de 60 celdas) */
+    .stockline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+                 padding: 8px 12px; background: #fff; border-bottom: 1px solid #e6eaee; }
+    .stockline .lb { font-size: 0.66rem; text-transform: uppercase; color: #8d97a3;
+                     font-weight: 700; letter-spacing: .4px; }
+    .sc { display: flex; align-items: baseline; gap: 5px; background: #f7f9fb;
+          border: 1px solid #e6eaee; border-radius: 8px; padding: 3px 8px; white-space: nowrap; }
+    .sc .nm { font-size: 0.72rem; font-weight: 700; color: #55606d; }
+    .sc .d { font-size: 0.84rem; font-weight: 700; color: #1e8449; }
+    .sc .d.zero { color: #b0b8c1; }
+    .sc .p { font-size: 0.7rem; color: #b9770e; font-weight: 700; }
+    .sc.alert { background: #fffaf3; border-color: #f8d7a3; }
+    .sc.alert::after { content: '⚠'; font-size: 0.72rem; color: #b9770e; }
+    .sc .cdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .lnk { margin-left: auto; font-size: 0.76rem; color: #2980b9; font-weight: 700;
+           cursor: pointer; white-space: nowrap; }
+
+    /* Barra de filtros unificada: una fila en vez de sub-tabs + 2 filas de selects */
+    .fbar { display: flex; gap: 7px; align-items: center; flex-wrap: wrap;
+            padding: 9px 12px; background: #fff; border-bottom: 2px solid #e0e0e0; }
+    .fbar input[type=text] { flex: 1; min-width: 130px; }
+    .fbar select { max-width: 152px; }
+    .fbar select.act, .fbar input.act { border-color: #f39c12; background: #fffbf2; }
+    .seg { display: flex; background: #eef1f4; border-radius: 8px; padding: 2px; }
+    .seg div { padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.76rem;
+               font-weight: 600; color: #6b7785; white-space: nowrap; user-select: none; }
+    .seg div.on { background: #fff; color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    .seg div .c { font-size: 0.66rem; opacity: .6; margin-left: 3px; }
+
+    /* Cabecera de tarjeta como columnas alineadas (antes: nombre + hueco enorme + badges) */
+    .card-header.gridh { display: grid; align-items: center;
+      grid-template-columns: 1.5fr 96px 50px 58px 84px 84px 84px 122px 24px 16px; gap: 8px; }
+    /* Fila de encabezados de la lista de pedidos */
+    .listhead { background: #f7f9fb; border-bottom: 1px solid #e6eaee; cursor: default;
+      font-size: 0.64rem; text-transform: uppercase; color: #7b8794; font-weight: 700;
+      letter-spacing: .4px; padding: 7px 14px; }
+    .listhead .gh-num { text-align: right; }
+    /* Etiqueta chiquita arriba de cada monto: en escritorio la da la cabecera, en celular esta */
+    .gh-num .ql { display: none; font-size: 0.6rem; color: #a3adb8; text-transform: uppercase;
+      letter-spacing: .3px; font-weight: 700; }
+    .card-header.gridh .gh-nom { font-weight: 700; font-size: 0.92rem; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; }
+    .card-header.gridh .gh-nom small { display: block; font-weight: 400; color: #8d97a3;
+      font-size: 0.7rem; margin-top: 1px; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; }
+    .card-header.gridh .gh-pre { font-size: 0.78rem; color: #55606d; white-space: nowrap; }
+    .card-header.gridh .gh-num { text-align: right; font-size: 0.8rem;
+      font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .card-header.gridh .gh-num.deb { color: #c0392b; font-weight: 700; }
+    .card-header.gridh .gh-num.ok { color: #b0b8c1; }
+    .card-header.gridh .gh-est { display: flex; gap: 4px; flex-wrap: wrap; }
+    .card-header.gridh .talle { justify-self: stretch; text-align: center; }
+    .cdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block;
+            margin-right: 6px; vertical-align: -1px; }
+    .st { font-size: 0.64rem; font-weight: 700; padding: 2px 6px; border-radius: 9px;
+          white-space: nowrap; }
+    .st.pend { background: #f4f6f7; color: #7f8c8d; border: 1px solid #dfe4e6; }
+    .st.ret  { background: #e8f6ee; color: #1e8449; border: 1px solid #a9dfbf; }
+    .st.deu  { background: #fdecea; color: #c0392b; border: 1px solid #f5b7b1; }
+    .st.reg  { background: #f4ecf7; color: #6c3483; border: 1px solid #d7bde2; }
+    .st.sin  { background: #fdf2e9; color: #a04000; border: 1px solid #f5cba7; }
+
+    /* Bloques de acción del pedido desplegado: cada uno es una cosa que podés hacer, con su
+       propio título y su propio botón, para que no se confundan los dos campos de monto. */
+    .acc { border: 1px solid #e6eaee; border-radius: 10px; padding: 11px 12px; margin-bottom: 10px;
+           background: #fff; }
+    .acc-t { font-size: 0.78rem; font-weight: 700; margin-bottom: 9px; padding-bottom: 6px;
+             border-bottom: 1px solid #f0f3f6; }
+    .acc-entregar { border-color: #aed6f1; background: #f7fbfe; }
+    .acc-entregar .acc-t { color: #1b4f72; }
+    .acc-pago { border-color: #f8d7a3; background: #fffdf8; }
+    .acc-pago .acc-t { color: #9c640c; }
+    .acc .talle-original { font-size: 0.68rem; color: #8d97a3; margin-top: 3px; }
+    .acc-foot { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+
+    /* Tablas de la pantalla Stock */
+    table.dt { width: 100%; border-collapse: collapse; background: #fff; }
+    table.dt th, table.dt td { padding: 6px 9px; font-size: 0.8rem;
+      border-bottom: 1px solid #f0f3f6; text-align: right; }
+    table.dt th { background: #f7f9fb; font-size: 0.64rem; text-transform: uppercase;
+      color: #7b8794; letter-spacing: .4px; font-weight: 700; cursor: pointer; }
+    table.dt th:first-child, table.dt td:first-child { text-align: left; }
+    table.dt th:last-child { cursor: default; }
+    table.dt td { font-variant-numeric: tabular-nums; }
+    table.dt tr.grp td { background: #f7f9fb; font-weight: 700; }
+    table.dt tr.sub td { font-weight: 700; border-bottom: 2px solid #e6eaee; color: #55606d; }
+    table.dt tr.warn td { background: #fffaf3; }
+    table.dt tr.bad td { background: #fdf2f0; }
+    .tl { display: inline-block; background: #eef1f4; border-radius: 5px; padding: 1px 7px;
+          font-size: 0.72rem; font-weight: 700; color: #55606d; min-width: 44px; text-align: center; }
+    .zz { color: #c9d1d9; } .pnd { color: #b9770e; font-weight: 700; }
+    .ngv { color: #c0392b; font-weight: 700; }
+    .flg { font-size: 0.64rem; font-weight: 700; padding: 1px 6px; border-radius: 9px; white-space: nowrap; }
+    .flg.f1 { background: #fdecea; color: #c0392b; border: 1px solid #f5b7b1; }
+    .flg.f2 { background: #fef5e7; color: #9c640c; border: 1px solid #f8d7a3; }
+    .totline { display: flex; gap: 14px; flex-wrap: wrap; background: #fff; border-radius: 8px;
+               padding: 8px 12px; margin: 10px 0; font-size: 0.78rem; }
+    .avisobox { background: #fffbea; border: 1px dashed #e8c86a; border-radius: 8px;
+                padding: 8px 11px; font-size: 0.76rem; color: #7d5f13; margin: 10px 0; }
+
+    /* ── CELULAR: la fila de tabla se reacomoda como tarjeta ──
+       Mismo HTML, distinta grilla. Las columnas de la tabla se reparten en cuatro renglones:
+       nombre / prenda-talle-tanda / los tres montos con su etiqueta / los estados. */
+    @media (max-width: 880px) {
+      .listhead { display: none; }
+      .list .card { margin-bottom: 9px; border-radius: 12px; }
+      .card-header.gridh {
+        grid-template-columns: 1fr 1fr 1fr 26px 20px;
+        grid-template-areas:
+          "nom nom nom edit arr"
+          "pre tal tan tan tan"
+          "tot pag res res res"
+          "est est est est est";
+        gap: 7px 8px; padding: 12px 13px; align-items: start;
+      }
+      .card-header.gridh > :nth-child(1) { grid-area: nom; align-self: center; }
+      .card-header.gridh > :nth-child(2) { grid-area: pre; }
+      .card-header.gridh > :nth-child(3) { grid-area: tal; justify-self: start; }
+      .card-header.gridh > :nth-child(4) { grid-area: tan; }
+      .card-header.gridh > :nth-child(5) { grid-area: tot; }
+      .card-header.gridh > :nth-child(6) { grid-area: pag; }
+      .card-header.gridh > :nth-child(7) { grid-area: res; }
+      .card-header.gridh > :nth-child(8) { grid-area: est; }
+      .card-header.gridh > .btn-editar   { grid-area: edit; align-self: center; }
+      .card-header.gridh > .arrow        { grid-area: arr;  align-self: center; }
+
+      .card-header.gridh .gh-nom { font-size: 1rem; }
+      .card-header.gridh .gh-pre { font-size: 0.76rem; }
+      .card-header.gridh .talle  { padding: 2px 9px; }
+      /* Los tres montos se leen como bloque, cada uno con su rótulo arriba */
+      .card-header.gridh .gh-num { text-align: left; font-size: 0.86rem; font-weight: 700;
+        background: #f7f9fb; border-radius: 7px; padding: 4px 8px; }
+      .card-header.gridh .gh-num .ql { display: block; font-weight: 700; margin-bottom: 1px; }
+      .card-header.gridh .gh-num.ok { font-weight: 600; }
+      .card-header.gridh .gh-est { display: flex; gap: 5px; flex-wrap: wrap; }
+      .card-header.gridh .st, .card-header.gridh .medio-chip { font-size: 0.68rem; padding: 3px 8px; }
+      .stockline { overflow-x: auto; flex-wrap: nowrap; }
+      table.dt { display: block; overflow-x: auto; white-space: nowrap; }
     }
   </style>
 </head>
@@ -376,16 +509,15 @@
 
 <div class="header">
   <h1>Gestión Prendas del Club</h1>
-  <div class="subtitle">Pedidos, retiros y stock</div>
 </div>
 
+<!-- Retiros ya no es una pestaña: es la misma entidad que Pedidos, filtrada por estado -->
 <div class="main-tabs">
-  <div class="main-tab active" onclick="switchSection('pedidos')">Pedidos</div>
-  <div class="main-tab" onclick="switchSection('retiros')">Retiros</div>
-  <div class="main-tab" onclick="switchSection('nuevo')">Nuevo Pedido</div>
-  <div class="main-tab" onclick="switchSection('resumen')">Resumen</div>
-  <div class="main-tab" onclick="switchSection('tipos')">Tipos</div>
-  <div class="main-tab" onclick="switchSection('movimientos')">Movim.</div>
+  <div class="main-tab active" data-sec="pedidos">Pedidos <span class="badge" id="tabNPed"></span></div>
+  <div class="main-tab" data-sec="nuevo">Nuevo</div>
+  <div class="main-tab" data-sec="stock">Stock</div>
+  <div class="main-tab" data-sec="resumen">Resumen</div>
+  <div class="main-tab" data-sec="movimientos">Movim.</div>
 </div>
 
 <div id="configPanel" class="config-panel" style="display:none;">
@@ -400,102 +532,32 @@
 <!-- ========== SECTION: PEDIDOS Y RETIROS ========== -->
 <div class="section active" id="sectionPedidos">
 
-  <!-- KPI: GENERAL -->
-  <div class="kpi-section">
-    <h4>General</h4>
-    <div class="kpi-row">
-      <div class="kpi-item"><div class="num" id="kTotalPedidos">0</div><div class="label">Pedidos</div></div>
-      <div class="kpi-item green"><div class="num" id="kRetirados">0</div><div class="label">Retirados</div></div>
-      <div class="kpi-item orange"><div class="num" id="kPendientes">0</div><div class="label">Pendientes</div></div>
-      <div class="kpi-divider"></div>
-      <div class="kpi-item green"><div class="num" id="kRecaudado">$0</div><div class="label">Recaudado</div></div>
-      <div class="kpi-item purple"><div class="num" id="kEfectivo">$0</div><div class="label">Efectivo</div></div>
-      <div class="kpi-item blue"><div class="num" id="kTransf">$0</div><div class="label">Transferencia</div></div>
-      <div class="kpi-item red"><div class="num" id="kPorCobrar">$0</div><div class="label">Por cobrar</div></div>
-      <div class="kpi-divider"></div>
-      <div class="kpi-item gift"><div class="num" id="kRegalos">0</div><div class="label">Regalos</div></div>
-      <div class="kpi-item gift"><div class="num" id="kGastoRegalos">$0</div><div class="label">Gasto regalos</div></div>
-    </div>
+  <div class="filtag" id="filtag">
+    <span>⚠</span><span id="filtxt"></span>
+    <button onclick="limpiarFiltrosPedidos()">Quitar filtros</button>
   </div>
 
-  <!-- KPI: POR TANDA -->
-  <div class="kpi-section" style="border-bottom: 2px solid #e0e0e0;">
-    <h4>1era Tanda</h4>
-    <div class="kpi-row">
-      <div class="kpi-item"><div class="num" id="k1Pedidos">0</div><div class="label">Pedidos</div></div>
-      <div class="kpi-item green"><div class="num" id="k1Retirados">0</div><div class="label">Retirados</div></div>
-      <div class="kpi-item green"><div class="num" id="k1Recaudado">$0</div><div class="label">Recaudado</div></div>
-      <div class="kpi-item red"><div class="num" id="k1PorCobrar">$0</div><div class="label">Por cobrar</div></div>
-    </div>
-    <h4 style="margin-top:8px;">2da Tanda</h4>
-    <div class="kpi-row">
-      <div class="kpi-item"><div class="num" id="k2Pedidos">0</div><div class="label">Pedidos</div></div>
-      <div class="kpi-item green"><div class="num" id="k2Retirados">0</div><div class="label">Retirados</div></div>
-      <div class="kpi-item green"><div class="num" id="k2Recaudado">$0</div><div class="label">Recaudado</div></div>
-      <div class="kpi-item red"><div class="num" id="k2PorCobrar">$0</div><div class="label">Por cobrar</div></div>
-    </div>
-    <!-- Se oculta entero mientras no haya ningún pedido de 3ra tanda, para no sumar ruido -->
-    <div id="kpiTanda3" style="display:none;">
-      <h4 style="margin-top:8px;">3ra Tanda</h4>
-      <div class="kpi-row">
-        <div class="kpi-item"><div class="num" id="k3Pedidos">0</div><div class="label">Pedidos</div></div>
-        <div class="kpi-item green"><div class="num" id="k3Retirados">0</div><div class="label">Retirados</div></div>
-        <div class="kpi-item green"><div class="num" id="k3Recaudado">$0</div><div class="label">Recaudado</div></div>
-        <div class="kpi-item red"><div class="num" id="k3PorCobrar">$0</div><div class="label">Por cobrar</div></div>
-      </div>
-    </div>
+  <!-- 4 KPIs que se recalculan con los filtros (ver renderKpisPedidos) -->
+  <div class="kstrip" id="kstripPed"></div>
+
+  <!-- Disponible y pendientes por prenda. Reemplaza el panel desplegable de 60 celdas. -->
+  <div class="stockline" id="lineaStock"></div>
+
+  <div class="fbar">
+    <div class="seg" id="segEstado"></div>
+    <input type="text" id="searchInput" placeholder="Buscar por nombre..." oninput="renderList()">
+    <select id="filterPrenda" onchange="switchFilter(this.value)"></select>
+    <select id="filterTalle" onchange="renderList()"></select>
+    <select id="filterTanda" onchange="renderList()"></select>
   </div>
 
-  <div class="sub-tabs" id="subTabs">
-    <!-- Poblado dinámicamente por initSubTabs() -->
+  <!-- Cabecera de columnas: sin esto los montos quedaban sueltos y no se sabía qué era cada uno.
+       Se oculta en celular, donde cada número lleva su propia etiqueta. -->
+  <div class="card-header gridh listhead" id="listHead">
+    <div>Nombre</div><div>Prenda</div><div>Talle</div><div>Tanda</div>
+    <div class="gh-num">Total</div><div class="gh-num">Pagado</div><div class="gh-num">Resta</div>
+    <div>Estado</div><div></div><div></div>
   </div>
-
-  <div class="stock-panel collapsed" id="stockPanel">
-    <h3 onclick="toggleStock()"><span class="arrow">▼</span> <span id="stockPanelTitle">Stock de Prendas</span></h3>
-    <div class="stock-content" id="stockContent"></div>
-  </div>
-
-  <div class="filter-bar">
-    <div class="filter-line">
-      <input type="text" id="searchInput" placeholder="Buscar por nombre..." oninput="renderList()">
-      <select id="filterTalle" onchange="renderList()" style="max-width:110px;">
-        <option value="">Todos los talles</option>
-        <option value="XS">XS</option>
-        <option value="S">S</option>
-        <option value="M">M</option>
-        <option value="L">L</option>
-        <option value="XL">XL</option>
-        <option value="XXL">XXL</option>
-        <option value="6">6</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
-        <option value="11">11</option>
-        <option value="12">12</option>
-        <option value="13">13</option>
-        <option value="14">14</option>
-        <option value="15">15</option>
-        <option value="16">16</option>
-        <option value="Talle unico">Talle único</option>
-      </select>
-    </div>
-    <div class="filter-line">
-      <select id="filterEstado" onchange="renderList()">
-        <option value="">Todos los estados</option>
-        <option value="pendiente">Pendientes</option>
-        <option value="retirado">Retirados</option>
-        <option value="deuda">Deuda pendiente</option>
-        <option value="regalo">🎁 Regalos del club</option>
-      </select>
-      <select id="filterTanda" onchange="renderList()">
-        <option value="">Todas las tandas</option>
-        <option value="PRIMERA">1era Tanda</option>
-        <option value="SEGUNDA">2da Tanda</option>
-        <option value="TERCERA">3ra Tanda</option>
-      </select>
-    </div>
-  </div>
-
   <div class="list" id="listContainer"></div>
 </div>
 
@@ -583,7 +645,22 @@
 <!-- ========== SECTION: RESUMEN ========== -->
 <div class="section" id="sectionResumen">
   <div class="resumen-section">
-    <h2>Resumen por tipo de prenda</h2>
+    <!-- Los KPIs de plata y de tanda se mudaron acá desde Pedidos: es donde se los mira con calma -->
+    <h2 style="margin-bottom:10px;">Resultado</h2>
+    <div class="kstrip" style="padding:0 0 8px;" id="kstripGanancia"></div>
+    <div class="avisobox" id="avisoGanancia" style="display:none;"></div>
+
+    <h3 style="font-size:0.8rem;text-transform:uppercase;color:#8d97a3;letter-spacing:.5px;margin:14px 0 8px;">General</h3>
+    <div class="kstrip" style="padding:0 0 10px;" id="kstripResumen"></div>
+
+    <h3 style="font-size:0.8rem;text-transform:uppercase;color:#8d97a3;letter-spacing:.5px;margin:8px 0;">Por tanda</h3>
+    <table class="dt" id="tblTandas" style="border-radius:8px;overflow:hidden;">
+      <thead><tr><th>Tanda</th><th>Pedidos</th><th>Retirados</th><th>Pendientes</th>
+        <th>Recaudado</th><th>Por cobrar</th><th>Costo compras</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h2 style="margin:20px 0 4px;">Resumen por tipo de prenda</h2>
     <p class="resumen-subtitle">Solo pedidos pendientes (no retirados) &nbsp;·&nbsp; <span id="resumenDiag" style="color:#27ae60;"></span></p>
     <div style="margin-bottom:14px;">
       <button class="btn btn-dark" onclick="switchSection('pedidoproveedor')" style="width:100%;font-size:0.95rem;padding:12px;">📋 Generar pedido al proveedor</button>
@@ -592,10 +669,47 @@
   </div>
 </div>
 
-<!-- ========== SECTION: TIPOS DE PRENDAS ========== -->
-<div class="section" id="sectionTipos">
+<!-- ========== SECTION: STOCK (antes "Tipos") ========== -->
+<div class="section" id="sectionStock">
   <div class="tipos-section">
-    <h2>Tipos de Prendas</h2>
+    <h2 style="margin-bottom:10px;">Stock</h2>
+
+    <div class="fbar" style="border:none;padding:0 0 10px;background:none;">
+      <span style="font-size:0.66rem;text-transform:uppercase;color:#8d97a3;font-weight:700;letter-spacing:.4px;">Tanda</span>
+      <div class="seg" id="segStkTanda"></div>
+      <span style="flex:1"></span>
+      <!-- Los filtros llevan el nombre de la columna que miran, para que no haya que adivinar -->
+      <div class="seg" id="segStkFiltro">
+        <div class="on" data-f="">Todo</div>
+        <div data-f="disp">Con disponibles</div>
+        <div data-f="pend">Por retirar</div>
+        <div data-f="prob">Sólo problemas</div>
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="abrirModalCompra()">＋ Cargar compra</button>
+    </div>
+
+    <div class="avisobox" id="avisoStkTanda" style="display:none;"></div>
+    <div class="totline" id="totStock"></div>
+
+    <table class="dt" id="tblStock" style="border-radius:8px;overflow:hidden;">
+      <thead><tr>
+        <th data-m="">Prenda / Talle</th><th data-m="ped">Pedidas</th><th data-m="ret">Retiradas</th>
+        <th data-m="pend">Por retirar</th><th data-m="comp">Compradas</th>
+        <th data-m="disp">Disponibles</th><th style="text-align:left"></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h2 style="margin:22px 0 6px;">Compras cargadas</h2>
+    <p class="resumen-subtitle" style="margin-bottom:8px;">Clic en un costo para corregirlo &nbsp;·&nbsp;
+      <span id="avisoCostos" style="color:#b9770e;font-weight:700;"></span></p>
+    <table class="dt" id="tblCompras" style="border-radius:8px;overflow:hidden;">
+      <thead><tr><th>Fecha</th><th>Tanda</th><th>Prenda</th><th>Talle</th>
+        <th>Unid.</th><th>Costo unit.</th><th>Costo total</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h2 style="margin:22px 0 10px;">Tipos de prenda</h2>
     <div id="tiposListContainer"></div>
     <div class="add-tipo-form">
       <h3>➕ Agregar nuevo tipo</h3>
@@ -617,30 +731,6 @@
 
 <button class="config-toggle" onclick="toggleConfig()" title="Configuración">⚙</button>
 <button class="refresh-btn" onclick="loadFromSheets()" title="Recargar datos">↻</button>
-
-<!-- ========== SECTION: RETIROS ========== -->
-<div class="section" id="sectionRetiros">
-  <div class="kpi-section">
-    <h4>Retiros</h4>
-    <div class="kpi-row">
-      <div class="kpi-item green"><div class="num" id="rTotalRet">0</div><div class="label">Retirados</div></div>
-      <div class="kpi-item blue"><div class="num" id="rSinDeuda">0</div><div class="label">Sin deuda</div></div>
-      <div class="kpi-item orange"><div class="num" id="rConDeuda">0</div><div class="label">Con deuda</div></div>
-      <div class="kpi-divider"></div>
-      <div class="kpi-item red"><div class="num" id="rMontoDeuda">$0</div><div class="label">Deuda total</div></div>
-    </div>
-  </div>
-  <div class="retiros-filter-tabs">
-    <div class="retiros-filter-tab active" data-rf="todos" onclick="switchRetirosFilter('todos')">TODOS <span class="badge" id="rfBadgeTodos">0</span></div>
-    <div class="retiros-filter-tab" data-rf="sin-deuda" onclick="switchRetirosFilter('sin-deuda')">SIN DEUDA <span class="badge" id="rfBadgeSinDeuda">0</span></div>
-    <div class="retiros-filter-tab deuda-tab" data-rf="con-deuda" onclick="switchRetirosFilter('con-deuda')">CON DEUDA <span class="badge" id="rfBadgeConDeuda">0</span></div>
-    <div class="retiros-filter-tab regalo-tab" data-rf="regalo" onclick="switchRetirosFilter('regalo')">🎁 REGALO <span class="badge" id="rfBadgeRegalo">0</span></div>
-  </div>
-  <div class="search-bar">
-    <input type="text" id="retirosSearch" placeholder="Buscar por nombre..." oninput="renderRetiros()">
-  </div>
-  <div class="list" id="retirosListContainer"></div>
-</div>
 
 <!-- ========== SECTION: MOVIMIENTOS ========== -->
 <div class="section" id="sectionMovimientos">
@@ -772,6 +862,70 @@
   </div>
 </div>
 
+<!-- ========== MODAL: CARGAR COMPRA ========== -->
+<div class="modal-overlay" id="modalCompra" style="display:none;" onclick="cerrarModalCompra(event)">
+  <div class="modal" style="text-align:left;max-width:520px;max-height:90vh;overflow-y:auto;">
+    <h3 style="text-align:center;">＋ Cargar compra</h3>
+    <p style="text-align:center;font-size:0.78rem;color:#7b8794;margin-bottom:16px;">
+      Suma unidades al stock y registra el costo. Podés usar una prenda y una tanda existentes,
+      o crear nuevas acá mismo.</p>
+
+    <div class="form-group">
+      <label>Prenda</label>
+      <select id="cmp_prenda" onchange="cmpPrendaCambio()"></select>
+    </div>
+    <div id="cmp_prendaNueva" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre de la prenda nueva</label>
+          <input type="text" id="cmp_prendaNom" placeholder="Ej: Buzo de salida">
+        </div>
+        <div class="form-group" style="max-width:80px;">
+          <label>Color</label>
+          <input type="color" id="cmp_prendaCol" value="#9b59b6" style="height:38px;padding:2px;width:100%;">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tanda</label>
+        <select id="cmp_tanda" onchange="cmpTandaCambio()"></select>
+      </div>
+      <div class="form-group">
+        <label>Fecha</label>
+        <input type="date" id="cmp_fecha">
+      </div>
+    </div>
+    <div class="form-group" id="cmp_tandaNueva" style="display:none;">
+      <label>Nombre de la tanda nueva</label>
+      <input type="text" id="cmp_tandaNom" placeholder="Ej: 3ra tanda">
+    </div>
+
+    <label style="display:block;font-size:0.72rem;font-weight:700;color:#6b7785;text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;">Unidades por talle</label>
+    <div id="cmp_talles"></div>
+    <button class="btn btn-dark btn-sm" onclick="cmpAgregarTalle()" style="margin-top:4px;">＋ Agregar talle</button>
+
+    <div class="form-row" style="margin-top:14px;">
+      <div class="form-group">
+        <label>Costo unitario</label>
+        <input type="number" id="cmp_costo" min="0" placeholder="0" oninput="cmpResumen()">
+      </div>
+      <div class="form-group">
+        <label>Nota</label>
+        <input type="text" id="cmp_notas" placeholder="Opcional">
+      </div>
+    </div>
+
+    <div id="cmp_resumen" style="background:#f0f7ff;border:1px solid #cfe4f7;border-radius:8px;padding:10px 12px;font-size:0.82rem;margin:12px 0;"></div>
+
+    <div class="modal-buttons">
+      <button class="btn btn-danger btn-sm" onclick="closeModalCompra()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="btnGuardarCompra" onclick="guardarCompraApp()">Cargar compra</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="loading-overlay" id="loading" style="display:none;">
   <div class="spinner">Sincronizando<span class="dots"></span></div>
@@ -797,61 +951,21 @@ function getPrendaTypes() {
   }
 }
 
-// ============ STOCK INICIAL ============
-// Base stock — puede sobreescribirse con valores guardados en localStorage
-const STOCK_INICIAL = {
-  blanca: { XS: 2, S: 6, M: 6, L: 6, XL: 6, XXL: 2 },
-  azul:   { XS: 2, S: 4, M: 4, L: 4, XL: 4, XXL: 2 }
-};
-const STOCK_INICIAL_SEGUNDA = {
-  blanca: { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '6': 0, '8': 0, '12': 0 },
-  azul:   { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '6': 0, '8': 0, '12': 0 }
-};
+// ============ COMPRAS (reemplaza el "stock inicial") ============
+// El stock ya no son dos objetos de cantidades iniciales por tanda, sino la hoja Compras:
+// una fila por prenda + talle + tanda, con su costo unitario. Lo disponible se calcula
+// (comprado − entregado), así que no puede desincronizarse, y una tanda nueva es una fila más.
+let COMPRAS = [];
+try {
+  const bk = localStorage.getItem('compras_backup');
+  if (bk) COMPRAS = JSON.parse(bk) || [];
+} catch (e) { COMPRAS = []; }
 
-(function initializeStock() {
+(function aplicarOverridesTipos() {
   try {
-    // Cargar stock guardado
-    const saved1 = localStorage.getItem('stockInicial');
-    if (saved1) { try { Object.assign(STOCK_INICIAL, JSON.parse(saved1)); } catch(e) {} }
-    
-    const saved2 = localStorage.getItem('stockInicialSegunda');
-    if (saved2) { try { Object.assign(STOCK_INICIAL_SEGUNDA, JSON.parse(saved2)); } catch(e) {} }
-    
-    // Aplicar overrides existentes primero
     const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
-    PRENDA_TYPES_BUILTIN.forEach(t => {
-      if (overrides[t.key]) Object.assign(t, overrides[t.key]);
-    });
-    
-    // Auto-activar hasStock para tipos que tienen datos de stock guardados
-    const allStockTypes = new Set([
-      ...Object.keys(STOCK_INICIAL),
-      ...Object.keys(STOCK_INICIAL_SEGUNDA)
-    ]);
-    
-    allStockTypes.forEach(tipoKey => {
-      const stock1 = STOCK_INICIAL[tipoKey] || {};
-      const stock2 = STOCK_INICIAL_SEGUNDA[tipoKey] || {};
-      const hasData = 
-        Object.values(stock1).some(val => Number(val) > 0) ||
-        Object.values(stock2).some(val => Number(val) > 0);
-      
-      if (hasData) {
-        const builtinType = PRENDA_TYPES_BUILTIN.find(t => t.key.toLowerCase() === tipoKey.toLowerCase());
-        if (builtinType && !builtinType.hasStock) {
-          builtinType.hasStock = true;
-          // Guardar el override
-          if (!overrides[builtinType.key]) {
-            overrides[builtinType.key] = {};
-          }
-          overrides[builtinType.key].hasStock = true;
-          localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
-        }
-      }
-    });
-  } catch (e) {
-    console.error('Error inicializando stock:', e);
-  }
+    PRENDA_TYPES_BUILTIN.forEach(t => { if (overrides[t.key]) Object.assign(t, overrides[t.key]); });
+  } catch (e) { console.error('Error leyendo overrides de tipos:', e); }
 })();
 
 // 'TALLE UNICO' es el talle normalizado a mayúsculas de la opción "Talle único" del formulario
@@ -1021,7 +1135,21 @@ function getTanda(p) {
 // La tanda normalizada a una de las tres conocidas. Hay filas viejas con la columna Tanda
 // vacía o con otro texto; el resto de la app ya las trata como primera, así que acá se hace
 // lo mismo. Sin esto, calcStock indexaba entregadasPorTanda[''] y reventaba con un TypeError.
-const TANDAS = ['PRIMERA', 'SEGUNDA', 'TERCERA'];
+// Las tandas ya no son un enum fijo: se descubren de los datos (pedidos + compras) sobre una
+// base conocida, así "cargar compra en una tanda nueva" no necesita tocar código.
+const TANDAS_BASE = ['PRIMERA', 'SEGUNDA', 'TERCERA'];
+let TANDAS = TANDAS_BASE.slice();
+
+function recalcularTandas() {
+  const vistas = new Set(TANDAS_BASE);
+  PEDIDOS.forEach(p => { const t = getTanda(p); if (t) vistas.add(t); });
+  COMPRAS.forEach(c => { const t = String(c.tanda || '').toUpperCase(); if (t) vistas.add(t); });
+  // Las conocidas primero y en orden; las nuevas detrás, alfabéticas
+  TANDAS = TANDAS_BASE.filter(t => vistas.has(t))
+    .concat([...vistas].filter(t => !TANDAS_BASE.includes(t)).sort());
+  if (!TANDAS.length) TANDAS = TANDAS_BASE.slice();
+}
+
 function tandaDe(p) {
   const t = getTanda(p);
   return TANDAS.includes(t) ? t : 'PRIMERA';
@@ -1035,8 +1163,12 @@ function badgeTanda(tandaNorm) {
   return '';
 }
 
+const LABEL_TANDA = { PRIMERA: '1era Tanda', SEGUNDA: '2da Tanda', TERCERA: '3ra Tanda' };
 function labelTanda(tandaNorm) {
-  return tandaNorm === 'SEGUNDA' ? '2da Tanda' : tandaNorm === 'TERCERA' ? '3ra Tanda' : '1era Tanda';
+  const t = String(tandaNorm || '').toUpperCase();
+  if (LABEL_TANDA[t]) return LABEL_TANDA[t];
+  // Tanda creada a mano al cargar una compra: se muestra tal cual, capitalizada
+  return t ? t.charAt(0) + t.slice(1).toLowerCase() : '1era Tanda';
 }
 
 function showLoading(show) {
@@ -1051,50 +1183,91 @@ function showToast(msg) {
 }
 
 // ============ SECTION NAV ============
+// Antes cada sección estaba nombrada a mano y los tabs se marcaban por índice, así que
+// sacar "Retiros" rompía la numeración y reventaba en el getElementById de la sección
+// eliminada. Ahora se resuelve por data-sec y tolera secciones que no existan.
+const SECCIONES = ['pedidos', 'nuevo', 'stock', 'resumen', 'movimientos', 'pedidoproveedor'];
+const ID_SECCION = {
+  pedidos: 'sectionPedidos', nuevo: 'sectionNuevo', stock: 'sectionStock',
+  resumen: 'sectionResumen', movimientos: 'sectionMovimientos',
+  pedidoproveedor: 'sectionPedidoProveedor'
+};
+
 function switchSection(section) {
+  if (!SECCIONES.includes(section)) section = 'pedidos';
   currentSection = section;
-  document.querySelectorAll('.main-tab').forEach((t, i) => {
-    t.classList.toggle('active',
-      (i === 0 && section === 'pedidos') ||
-      (i === 1 && section === 'retiros') ||
-      (i === 2 && section === 'nuevo') ||
-      (i === 3 && section === 'resumen') ||
-      (i === 4 && section === 'tipos') ||
-      (i === 5 && section === 'movimientos')
-    );
+  document.querySelectorAll('.main-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.sec === section));
+  SECCIONES.forEach(s => {
+    const el = document.getElementById(ID_SECCION[s]);
+    if (el) el.classList.toggle('active', s === section);
   });
-  document.getElementById('sectionPedidos').classList.toggle('active', section === 'pedidos');
-  document.getElementById('sectionRetiros').classList.toggle('active', section === 'retiros');
-  document.getElementById('sectionNuevo').classList.toggle('active', section === 'nuevo');
-  document.getElementById('sectionResumen').classList.toggle('active', section === 'resumen');
-  document.getElementById('sectionTipos').classList.toggle('active', section === 'tipos');
-  document.getElementById('sectionMovimientos').classList.toggle('active', section === 'movimientos');
-  document.getElementById('sectionPedidoProveedor').classList.toggle('active', section === 'pedidoproveedor');
   document.querySelector('.main-tabs').style.display = section === 'pedidoproveedor' ? 'none' : '';
-  if (section === 'resumen') renderResumen();
-  if (section === 'retiros') renderRetiros();
-  if (section === 'movimientos') renderMovimientos();
+  if (section === 'resumen')        renderResumen();
+  if (section === 'stock')          renderStockScreen();
+  if (section === 'movimientos')    renderMovimientos();
   if (section === 'pedidoproveedor') renderPedidoProveedor();
+  window.scrollTo(0, 0);
 }
+document.querySelectorAll('.main-tab').forEach(t =>
+  t.onclick = () => switchSection(t.dataset.sec));
 
+// La prenda pasó de 7 sub-tabs a un desplegable: se usa poco y se comía todo el ancho.
 function switchFilter(filter) {
-  currentFilter = filter;
-  document.querySelectorAll('.sub-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.filter === filter);
-  });
-  renderStock();
+  currentFilter = filter || 'todos';
   renderList();
-  updateKPIs();
 }
 
-function initSubTabs() {
-  const container = document.getElementById('subTabs');
-  container.innerHTML =
-    `<div class="sub-tab active" data-filter="todos" onclick="switchFilter('todos')">TODOS <span class="badge" id="badgeTodos">0</span></div>` +
-    getPrendaTypes().map(t => {
-      const key = t.key.toLowerCase();
-      return `<div class="sub-tab" data-filter="${key}" onclick="switchFilter('${key}')">${t.key.replace(/_/g,' ')} <span class="badge" id="badge-${key}">0</span></div>`;
-    }).join('');
+// Estado del pedido: segmented control, porque son excluyentes y se usan todo el tiempo.
+let filtroEstado = '';
+function initFiltrosPedidos() {
+  const seg = document.getElementById('segEstado');
+  if (seg) {
+    seg.innerHTML = [['', 'Todos'], ['pendiente', 'Pendientes'], ['retirado', 'Retirados'],
+      ['deuda', 'Con deuda'], ['regalo', '🎁 Regalos']]
+      .map(([v, l]) => `<div data-e="${v}" class="${v === filtroEstado ? 'on' : ''}">${l}` +
+        `<span class="c" id="cE-${v || 'todos'}"></span></div>`).join('');
+    seg.querySelectorAll('div').forEach(d => d.onclick = () => {
+      seg.querySelectorAll('div').forEach(x => x.classList.remove('on'));
+      d.classList.add('on');
+      filtroEstado = d.dataset.e;
+      renderList();
+    });
+  }
+  const opt = (v, l) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`;
+  const selPre = document.getElementById('filterPrenda');
+  if (selPre) {
+    selPre.innerHTML = opt('todos', 'Todas las prendas') +
+      getPrendaTypes().map(t => opt(t.key.toLowerCase(), t.label)).join('');
+    selPre.value = currentFilter || 'todos';
+  }
+  const selTal = document.getElementById('filterTalle');
+  if (selTal) {
+    const prev = selTal.value;
+    selTal.innerHTML = opt('', 'Todos los talles') +
+      TALLES_EXTENDIDOS.map(t => opt(t, labelTalle(t))).join('');
+    selTal.value = prev || '';
+  }
+  const selTan = document.getElementById('filterTanda');
+  if (selTan) {
+    const prev = selTan.value;
+    selTan.innerHTML = opt('', 'Todas las tandas') +
+      TANDAS.map(t => opt(t, labelTanda(t))).join('');
+    selTan.value = prev || '';
+  }
+}
+
+function limpiarFiltrosPedidos() {
+  filtroEstado = '';
+  currentFilter = 'todos';
+  const s = document.getElementById('searchInput'); if (s) s.value = '';
+  ['filterTalle', 'filterTanda'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.value = '';
+  });
+  const p = document.getElementById('filterPrenda'); if (p) p.value = 'todos';
+  const seg = document.getElementById('segEstado');
+  if (seg) seg.querySelectorAll('div').forEach((d, i) => d.classList.toggle('on', i === 0));
+  renderList();
 }
 
 function initNuevoPedidoTipos() {
@@ -1157,6 +1330,54 @@ function usarUrlDelCodigo() {
   showToast('Usando la URL que viene en la app');
 }
 
+// ============ ESCRITURAS AL BACKEND ============
+// Hasta acá TODAS las escrituras iban con mode:'no-cors', que impide leer la respuesta: si el
+// backend rechazaba algo (validación, cuota, lock ocupado) la app igual decía "guardado".
+// Ahora se lee el status. Como en algún navegador o deploy la lectura puede fallar por CORS, al
+// arrancar se hace un ping y se decide el modo. NO se reintenta con no-cors cuando falla una
+// escritura normal: la petición ya salió y el servidor pudo haberla procesado, así que
+// reintentar duplicaría el dato.
+let PUEDE_LEER_RESPUESTA = null;   // null = todavía no se probó
+
+async function probarLecturaRespuesta() {
+  if (!SCRIPT_URL) return false;
+  try {
+    const r = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
+      body: JSON.stringify({ action: 'ping' })
+    });
+    const j = await r.json();
+    PUEDE_LEER_RESPUESTA = !!(j && j.pong);
+  } catch (e) {
+    console.warn('No se pueden leer las respuestas del backend, se escribe a ciegas:', e.message);
+    PUEDE_LEER_RESPUESTA = false;
+  }
+  return PUEDE_LEER_RESPUESTA;
+}
+
+/**
+ * Manda una escritura y devuelve la respuesta del backend.
+ * Lanza Error con el mensaje real si el backend contestó status:'error'.
+ * Si no se puede leer la respuesta, devuelve { status:'ok', _ciego:true }.
+ */
+async function postApp(payload) {
+  if (!SCRIPT_URL) throw new Error('Configurá la URL del Apps Script primero');
+  if (PUEDE_LEER_RESPUESTA === null) await probarLecturaRespuesta();
+
+  if (!PUEDE_LEER_RESPUESTA) {
+    await postApp(payload);
+    return { status: 'ok', _ciego: true };
+  }
+
+  const r = await fetch(SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
+    body: JSON.stringify(payload)
+  });
+  const j = await r.json();
+  if (j && j.status === 'error') throw new Error(j.message || 'El servidor rechazó la operación');
+  return j || { status: 'ok' };
+}
+
 // ============ GOOGLE SHEETS: LOAD ============
 
 // Los refrescos que salen después de guardar algo van en segundo plano: no deben tapar la
@@ -1210,6 +1431,9 @@ async function _loadFromSheets(silent) {
           'Regalo': regaloNorm,
           _id: i + 1,
           _sheetRow: p._row,
+          // ID real de la planilla: es la referencia que se manda al escribir. _sheetRow
+          // queda sólo como atajo, y el backend lo verifica contra el ID antes de tocar nada.
+          _pid: String(p['ID'] || ''),
           _fechaAlta: normalizarFechaAlta(p['Fecha Alta']),
           _talleRetiro:     p['Talle Retiro']         || '',
           _medioPagoRetiro: p['Medio de Pago Retiro'] || '',
@@ -1221,42 +1445,34 @@ async function _loadFromSheets(silent) {
       console.log('Pedidos procesados:', PEDIDOS.length); // Debug
       
       // Sincronizar stock desde Google Sheets
-      if (data.stock) {
-        console.log('Stock recibido:', data.stock); // Debug
-        if (data.stock.primera && Object.keys(data.stock.primera).length > 0) {
-          Object.assign(STOCK_INICIAL, data.stock.primera);
-          localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
+      // Compras: reemplaza el stock inicial. La primera vez el backend migra sola la hoja Stock
+      // vieja a Compras (con costo 0) y devuelve el resumen en data.migracion.
+      COMPRAS = Array.isArray(data.compras) ? data.compras : [];
+      localStorage.setItem('compras_backup', JSON.stringify(COMPRAS));
+      recalcularTandas();
+      // Cualquier prenda con compras cargadas maneja stock, sin depender de un flag local
+      try {
+        const conCompras = new Set(COMPRAS.map(c => String(c.prenda || '').toUpperCase()));
+        if (conCompras.size) {
+          const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
+          let cambio = false;
+          PRENDA_TYPES_BUILTIN.forEach(t => {
+            if (conCompras.has(t.key) && !t.hasStock) {
+              t.hasStock = true;
+              overrides[t.key] = Object.assign(overrides[t.key] || {}, { hasStock: true });
+              cambio = true;
+            }
+          });
+          if (cambio) localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
         }
-        if (data.stock.segunda && Object.keys(data.stock.segunda).length > 0) {
-          Object.assign(STOCK_INICIAL_SEGUNDA, data.stock.segunda);
-          localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
-        }
-        // Activar hasStock para los tipos que tienen datos (después de renderizar)
-        setTimeout(() => {
-          try {
-            const allStockTypes = new Set([
-              ...Object.keys(data.stock.primera || {}),
-              ...Object.keys(data.stock.segunda || {})
-            ]);
-            allStockTypes.forEach(tipoKey => {
-              const upperKey = tipoKey.toUpperCase();
-              const builtinType = PRENDA_TYPES_BUILTIN.find(t => t.key === upperKey);
-              if (builtinType && !builtinType.hasStock) {
-                builtinType.hasStock = true;
-                const overrides = JSON.parse(localStorage.getItem('builtinOverrides') || '{}');
-                if (!overrides[upperKey]) overrides[upperKey] = {};
-                overrides[upperKey].hasStock = true;
-                localStorage.setItem('builtinOverrides', JSON.stringify(overrides));
-              }
-            });
-            renderTipos();
-            renderStock();
-          } catch (err) {
-            console.error('Error activando stock:', err);
-          }
-        }, 100);
+      } catch (err) { console.error('Error activando stock por compras:', err); }
+
+      if (data.migracion && data.migracion.filas) {
+        showToast('Stock migrado a Compras: ' + data.migracion.filas + ' filas, ' +
+                  data.migracion.unidades + ' unidades. Falta cargar los costos.');
       }
-      
+
+
       // Movimientos: el backend ya los devuelve del más reciente al más antiguo
       MOVIMIENTOS = Array.isArray(data.movimientos) ? data.movimientos : [];
       localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
@@ -1299,22 +1515,17 @@ async function savePagoSeña(pedido, pagoSeña, medioPago) {
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
   // Un pedido recién cargado todavía no tiene fila asignada — la asigna la hoja y llega en
   // el refresco de fondo. Escribir con sheetRow vacío pisaría la fila equivocada.
-  if (!pedido._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
+  if (!pedido._pid && !pedido._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
   try {
     showLoading(true);
     const payload = {
       action: 'registrarSeña',
       sheetRow: pedido._sheetRow,
-      pedidoId: pedido._id,
+      pedidoId: pedido._pid || pedido._id,
       pagoSeña: pagoSeña,
       medioPago: medioPago
     };
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
-    });
+    await postApp(payload);
     // Actualizar localmente
     pedido['Seña'] = (Number(pedido['Seña']) || 0) + pagoSeña;
     pedido['Resta'] = Math.max(0, (Number(pedido['Resta']) || 0) - pagoSeña);
@@ -1339,7 +1550,7 @@ async function savePagoSeña(pedido, pagoSeña, medioPago) {
     showToast('Pago registrado');
   } catch (e) {
     console.error('Error saving pago:', e);
-    showToast('Error al guardar el pago');
+    showToast('No se pudo guardar el pago: ' + e.message);
   } finally {
     showLoading(false);
   }
@@ -1363,13 +1574,14 @@ async function registrarPagoSeña(id) {
 async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, talleRetiro) {
   if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
   // Ver la nota en savePagoSeña: sin _sheetRow no se puede escribir en la hoja todavía.
-  if (!pedido._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
+  if (!pedido._pid && !pedido._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
   try {
     showLoading(true);
     const tipo = getTipo(pedido);
     const payload = {
       action: 'registrarRetiro',
       id: pedido._id,
+      pedidoId: pedido._pid || pedido._id,
       sheetRow: pedido._sheetRow,
       nombre: pedido['Nombre'] || '',
       talle: pedido['Talle'] || '',
@@ -1384,12 +1596,7 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, 
       total: pedido['Total'],
       resta: pedido['Resta']
     };
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
-    });
+    await postApp(payload);
     // Update local — todos los campos de retiro
     pedido['Retirado'] = retirado ? 1 : 0;
     const talleEfectivo = talleRetiro || pedido['Talle'] || '';
@@ -1435,7 +1642,7 @@ async function saveRetiro(pedido, retirado, pagoRetiro, medioPago, observacion, 
     showToast('Retiro guardado');
   } catch (e) {
     console.error('Error saving retiro:', e);
-    showToast('Error al guardar');
+    showToast('No se pudo guardar: ' + e.message);
   } finally {
     showLoading(false);
   }
@@ -1483,11 +1690,11 @@ async function submitNuevoPedido() {
   const tipoKey = selectedTipoObj ? selectedTipoObj.key : tipo.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
   try {
     showLoading(true);
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'nuevoPedido', nombre, tipo, tipoKey, talle, seña, total, modoPago, notas: nota, tanda, regalo: regalo ? 1 : 0, retirado: retirado ? 1 : 0 })
-    });
+    // El backend devuelve el ID del pedido creado: con eso el pedido recién cargado se puede
+    // editar o entregar en el acto, sin esperar el refresco de fondo.
+    const respAlta = await postApp({ action: 'nuevoPedido', nombre, tipo, tipoKey, talle, seña,
+      total, modoPago, notas: nota, tanda, regalo: regalo ? 1 : 0, retirado: retirado ? 1 : 0 });
+    const idNuevo = (respAlta && respAlta.pedidoId) || '';
     document.getElementById('successMsg').style.display = 'block';
     setTimeout(() => { document.getElementById('successMsg').style.display = 'none'; }, 3000);
     document.getElementById('np_nombre').value = '';
@@ -1562,7 +1769,8 @@ async function submitNuevoPedido() {
       'Fecha Alta': ahora,
       [tipoKey]: 1,                 // la columna de flag que usa getTipo()
       _id: PEDIDOS.length + 1,
-      _sheetRow: null,              // hasta que llegue el refresco no se puede operar sobre él
+      _pid: idNuevo,                // ID real: alcanza para poder operar sin esperar el refresco
+      _sheetRow: null,              // lo asigna la hoja; el backend resuelve la fila por ID
       _pendiente: true,
       _fechaAlta: ahora,
       _talleRetiro:     retirado ? talle       : '',
@@ -1576,7 +1784,7 @@ async function submitNuevoPedido() {
     loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error:', e);
-    showToast('Error al registrar pedido');
+    showToast('No se pudo registrar el pedido: ' + e.message);
   } finally {
     showLoading(false);
     btn.disabled = false;
@@ -1592,7 +1800,13 @@ async function submitNuevoPedido() {
 // La tanda sigue siendo una propiedad del pedido, y como tal filtra los contadores
 // Ret/Pend — pero no el stock disponible.
 function calcStock(tandaFilter) {
-  const stockTypes = getPrendaTypes().filter(t => t.hasStock).map(t => t.key.toLowerCase());
+  // Antes se listaban sólo los tipos con hasStock; ahora entra cualquier prenda que tenga
+  // compras cargadas o pedidos, porque el stock lo define la hoja Compras y no un flag local.
+  const stockTypes = [...new Set([
+    ...getPrendaTypes().filter(t => t.hasStock).map(t => t.key.toLowerCase()),
+    ...COMPRAS.map(c => String(c.prenda || '').toLowerCase()),
+    ...PEDIDOS.map(p => getTipo(p))
+  ])].filter(Boolean).filter(k => k !== 'otro');
   const pendientes = {};  // no-retirados por talle PEDIDO, filtrados por tanda
   const retirados  = {};  // retirados por talle RETIRO, filtrados por tanda
   const entregadas = {};  // todas las entregas por talle RETIRO, SIN filtrar por tanda
@@ -1638,14 +1852,41 @@ function calcStock(tandaFilter) {
   stockTypes.forEach(tipo => {
     remaining[tipo] = {};
     comprado[tipo]  = {};
+    TALLES_ORDER.forEach(t => { comprado[tipo][t] = 0; });
+  });
+  // Lo comprado sale de la hoja Compras, sumando todas las tandas (bolsa común)
+  COMPRAS.forEach(c => {
+    const tipo = String(c.prenda || '').toLowerCase();
+    const t = String(c.talle || '').toUpperCase();
+    if (!comprado[tipo] || !TALLES_ORDER.includes(t)) return;
+    comprado[tipo][t] += Number(c.cant) || 0;
+  });
+  stockTypes.forEach(tipo => {
     TALLES_ORDER.forEach(t => {
-      const total = (STOCK_INICIAL[tipo]?.[t] || 0) + (STOCK_INICIAL_SEGUNDA[tipo]?.[t] || 0);
-      comprado[tipo][t]  = total;
-      remaining[tipo][t] = total - (entregadas[tipo][t] || 0);
+      remaining[tipo][t] = comprado[tipo][t] - (entregadas[tipo][t] || 0);
     });
   });
 
   return { remaining, pendientes, retirados, comprado, entregadas };
+}
+
+// ═══ COSTOS ═══
+// Costo unitario promedio ponderado de una prenda, sobre las compras que tienen costo cargado.
+// Devuelve null si ninguna lo tiene: así el resumen puede avisar en vez de inventar un margen.
+function costoUnitPrenda(tipoLower) {
+  let unid = 0, tot = 0;
+  COMPRAS.forEach(c => {
+    if (String(c.prenda || '').toLowerCase() !== tipoLower) return;
+    const n = Number(c.cant) || 0, cu = Number(c.costo) || 0;
+    if (cu <= 0) return;          // sin costo cargado: no participa del promedio
+    unid += n; tot += n * cu;
+  });
+  return unid ? tot / unid : null;
+}
+
+// Cuántas unidades compradas todavía no tienen costo cargado (las migradas entran así)
+function unidadesSinCosto() {
+  return COMPRAS.reduce((s, c) => s + ((Number(c.costo) || 0) <= 0 ? (Number(c.cant) || 0) : 0), 0);
 }
 
 function hasStockForPedido(p) {
@@ -1657,60 +1898,378 @@ function hasStockForPedido(p) {
   return ((remaining[tipo] || {})[t] || 0) > 0;
 }
 
+// ═══ LÍNEA DE STOCK EN PEDIDOS ═══
+// Reemplaza el panel desplegable que mostraba 6 prendas × 10 talles = 60 celdas arriba de la
+// lista. Acá va un renglón: disponible y pendientes por prenda. El ⚠ aparece cuando los totales
+// por prenda cierran pero por TALLE no (ej. 4 disponibles en S/8/12 y pendientes en M/L/XL).
 function renderStock() {
-  const panel = document.getElementById('stockPanel');
-  const contentDiv = document.getElementById('stockContent');
-  const titleEl = document.getElementById('stockPanelTitle');
-  const stockTypes = getPrendaTypes().filter(t => t.hasStock);
+  const cont = document.getElementById('lineaStock');
+  if (!cont) return;
+  const { remaining, comprado } = calcStock();   // sin filtro de tanda: el stock es bolsa común
+  const partes = ['<span class="lb">Stock</span>'];
 
-  const typesToShow = currentFilter === 'todos'
-    ? stockTypes
-    : stockTypes.filter(t => t.key.toLowerCase() === currentFilter);
+  getPrendaTypes().filter(t => t.hasStock).forEach(t => {
+    const tipo = t.key.toLowerCase();
+    let disp = 0, pend = 0, hay = 0, avisos = [];
+    TALLES_ORDER.forEach(talle => {
+      const r = (remaining[tipo] || {})[talle] || 0;
+      const c = (comprado[tipo]  || {})[talle] || 0;
+      const pd = PEDIDOS.filter(p => getTipo(p) === tipo &&
+        String(p['Talle'] || '').toUpperCase() === talle && !isRetirado(p)).length;
+      disp += r; pend += pd; hay += c + pd;
+      if (r < 0)                 avisos.push(labelTalle(talle, true) + ': ' + r);
+      else if (pd > 0 && r <= 0) avisos.push(labelTalle(talle, true) + ': ' + pd + ' pend sin stock');
+    });
+    if (!hay) return;
+    partes.push('<span class="sc' + (avisos.length ? ' alert' : '') + '"' +
+      (avisos.length ? ' title="' + escapeHtml(avisos.join(' · ')) + '"' : '') + '>' +
+      '<span class="cdot" style="background:' + t.color + '"></span>' +
+      '<span class="nm">' + escapeHtml(t.label.replace('Camiseta ', '')) + '</span>' +
+      '<span class="d' + (disp <= 0 ? ' zero' : '') + '">' + disp + '</span>' +
+      (pend > 0 ? '<span class="p">' + pend + ' pend</span>' : '') + '</span>');
+  });
 
-  if (typesToShow.length === 0) {
-    panel.style.display = 'none';
+  // Sin compras cargadas no tiene sentido mostrar un disponible negativo por prenda: avisa.
+  if (!COMPRAS.length) {
+    cont.innerHTML = '<span class="lb">Stock</span>' +
+      '<span class="sc alert" title="Falta cargar las compras o redeployar el Apps Script">' +
+      '<span class="nm">Sin compras cargadas</span></span>' +
+      '<span class="lnk" onclick="switchSection(\'stock\')">Ver stock detallado →</span>';
     return;
   }
-  panel.style.display = '';
-  titleEl.textContent = typesToShow.length === 1 ? `Stock ${typesToShow[0].label}` : 'Stock de Prendas';
-
-  const tandaFilter = document.getElementById('filterTanda')?.value || '';
-  const { remaining, pendientes, retirados, comprado } = calcStock(tandaFilter);
-  // El rótulo de tanda aclara que aplica a los contadores Ret/Pend, no al disponible: el
-  // stock es uno solo y no cambia con el filtro.
-  const tandaLabel = tandaFilter ? ' — Ret/Pend de ' + labelTanda(tandaFilter) : '';
-  if (tandaLabel) titleEl.textContent = titleEl.textContent.replace(/ — .*$/, '') + tandaLabel;
-
-  contentDiv.innerHTML = `<div class="stock-tables">` +
-    typesToShow.map(t => {
-      const tipo = t.key.toLowerCase();
-      return `<div class="stock-table">
-        <h4 style="background:${t.color};color:white;font-size:0.75rem;margin-bottom:4px;padding:3px 8px;border-radius:4px;">${t.label.toUpperCase()}</h4>
-        <div class="stock-grid">${
-          TALLES_ORDER.map(talle => {
-            // "Orig" mostraba sólo el stock de la 1ra tanda, así que con mercadería de la 2da
-            // el disponible podía ser mayor que el original y no cerraba a la vista.
-            const orig = (comprado[tipo] || {})[talle] || 0;
-            const r    = (remaining[tipo] || {})[talle] ?? orig;
-            const ret  = (retirados[tipo]  || {})[talle] || 0;
-            const pend = (pendientes[tipo] || {})[talle] || 0;
-            // Gris si no hay stock ni pendientes, rojo si hay problema, naranja si bajo, verde si ok
-            const cls  = (r <= 0 && pend === 0) ? 'empty' : (pend > r || r <= 0) ? 'out' : (r <= 2 || pend === r) ? 'low' : 'ok';
-            return `<div class="stock-cell ${cls}">
-              <div class="talle-label">${labelTalle(talle, true)}</div>
-              <div class="stock-actual">${r}</div>
-              <div class="stock-orig">Orig: ${orig}</div>
-              <div class="stock-pend">${ret} Ret / ${pend} Pend</div>
-            </div>`;
-          }).join('')
-        }</div>
-      </div>`;
-    }).join('') +
-  `</div>`;
+  partes.push('<span class="lnk" onclick="switchSection(\'stock\')">Ver stock detallado →</span>');
+  cont.innerHTML = partes.join('');
 }
 
-function toggleStock() {
-  document.getElementById('stockPanel').classList.toggle('collapsed');
+// ═══ PANTALLA STOCK: tabla detallada ═══
+let stkTanda = '', stkFiltro = '', stkOrden = '';
+
+function initFiltrosStock() {
+  const seg = document.getElementById('segStkTanda');
+  if (seg) {
+    seg.innerHTML = '<div class="on" data-t="">Todas</div>' +
+      TANDAS.map(t => `<div data-t="${t}">${labelTanda(t).replace(' Tanda', '')}</div>`).join('');
+  }
+  [['segStkTanda', v => stkTanda = v], ['segStkFiltro', v => stkFiltro = v]].forEach(([id, set]) => {
+    const s = document.getElementById(id);
+    if (!s) return;
+    s.querySelectorAll('div').forEach(d => d.onclick = () => {
+      s.querySelectorAll('div').forEach(x => x.classList.remove('on'));
+      d.classList.add('on');
+      set(d.dataset.t !== undefined ? d.dataset.t : d.dataset.f);
+      stkOrden = '';
+      renderStockScreen();
+    });
+  });
+  document.querySelectorAll('#tblStock thead th').forEach(th => {
+    if (!th.dataset.m) return;
+    th.onclick = () => { stkOrden = stkOrden === th.dataset.m ? '' : th.dataset.m; renderStockScreen(); };
+  });
+}
+
+function renderStockScreen() {
+  const tbody = document.querySelector('#tblStock tbody');
+  if (!tbody) return;
+  const { remaining, pendientes, retirados, comprado } = calcStock(stkTanda);
+  const stockTypes = getPrendaTypes().filter(t => t.hasStock);
+
+  const celda = (tipo, talle) => {
+    const ret  = (retirados[tipo]  || {})[talle] || 0;
+    const pend = (pendientes[tipo] || {})[talle] || 0;
+    return { ped: ret + pend, ret, pend,
+             comp: (comprado[tipo] || {})[talle] || 0,
+             disp: (remaining[tipo] || {})[talle] || 0 };
+  };
+  const pasa = c => stkFiltro === 'disp' ? c.disp > 0
+                  : stkFiltro === 'pend' ? c.pend > 0
+                  : stkFiltro === 'prob' ? (c.disp < 0 || (c.pend > 0 && c.disp <= 0))
+                  : (c.ped > 0 || c.comp > 0);
+  const fN   = n => n === 0 ? '<span class="zz">0</span>' : n;
+  const clsF = c => c.disp < 0 ? 'bad' : (c.pend > 0 && c.disp <= 0) ? 'warn' : '';
+  const flag = c => c.disp < 0 ? `<span class="flg f1">entregaste ${-c.disp} de más</span>`
+                  : (c.pend > 0 && c.disp <= 0) ? '<span class="flg f2">sin stock</span>' : '';
+  const cols = c => `<td>${fN(c.ped)}</td><td>${fN(c.ret)}</td>` +
+    `<td class="${c.pend > 0 ? 'pnd' : ''}">${fN(c.pend)}</td><td>${fN(c.comp)}</td>` +
+    `<td class="${c.disp < 0 ? 'ngv' : c.disp === 0 ? 'zz' : ''}"><b>${c.disp}</b></td>`;
+
+  const T = { ped:0, ret:0, pend:0, comp:0, disp:0 };
+  let html = '';
+
+  if (stkOrden) {
+    // Vista ordenada: se pierde el agrupado por prenda a cambio de ver el ranking completo
+    const plano = [];
+    stockTypes.forEach(t => TALLES_ORDER.forEach(talle => {
+      const c = celda(t.key.toLowerCase(), talle);
+      if (pasa(c)) plano.push({ t, talle, c });
+    }));
+    plano.sort((a, b) => b.c[stkOrden] - a.c[stkOrden]);
+    plano.forEach(r => { for (const m in T) T[m] += r.c[m]; });
+    html = plano.map(r => `<tr class="${clsF(r.c)}"><td>` +
+      `<span class="cdot" style="background:${r.t.color}"></span>` +
+      `${escapeHtml(r.t.label.replace('Camiseta ', ''))} <span class="tl">${labelTalle(r.talle, true)}</span></td>` +
+      cols(r.c) + `<td style="text-align:left">${flag(r.c)}</td></tr>`).join('');
+  } else {
+    stockTypes.forEach(t => {
+      const tipo = t.key.toLowerCase();
+      const filas = TALLES_ORDER.map(talle => [talle, celda(tipo, talle)]).filter(([, c]) => pasa(c));
+      if (!filas.length) return;
+      const S = { ped:0, ret:0, pend:0, comp:0, disp:0 };
+      filas.forEach(([, c]) => { for (const m in S) S[m] += c[m]; });
+      for (const m in T) T[m] += S[m];
+      html += `<tr class="grp"><td colspan="7"><span class="cdot" style="background:${t.color}"></span>` +
+        `${escapeHtml(t.label)}</td></tr>`;
+      html += filas.map(([talle, c]) => `<tr class="${clsF(c)}">` +
+        `<td style="padding-left:26px"><span class="tl">${labelTalle(talle, true)}</span></td>` +
+        cols(c) + `<td style="text-align:left">${flag(c)}</td></tr>`).join('');
+      html += `<tr class="sub"><td style="padding-left:26px">Subtotal</td>` + cols(S) + `<td></td></tr>`;
+    });
+  }
+
+  tbody.innerHTML = html ||
+    '<tr><td colspan="7" style="text-align:center;color:#8d97a3;padding:22px">Nada para mostrar con este filtro.</td></tr>';
+
+  const tl = document.getElementById('totStock');
+  if (tl) tl.innerHTML =
+    `Pedidas <b>${T.ped}</b> · Retiradas <b>${T.ret}</b> · Por retirar ` +
+    `<b class="${T.pend ? 'pnd' : ''}">${T.pend}</b> · Compradas <b>${T.comp}</b> · ` +
+    `Disponibles <b class="${T.disp < 0 ? 'ngv' : ''}">${T.disp}</b>`;
+
+  const av = document.getElementById('avisoStkTanda');
+  if (av) {
+    // Sin compras cargadas, "disponibles" da todo negativo (0 comprado − lo entregado) y parece
+    // un error de cálculo. Se explica en vez de mostrar −115 sin contexto.
+    if (!COMPRAS.length) {
+      av.style.display = '';
+      av.innerHTML = '<b>No hay compras cargadas todavía, así que Compradas está en 0 y Disponibles ' +
+        'da negativo.</b> No es un error de cálculo: es 0 comprado menos lo que ya entregaste. ' +
+        'Si acabás de actualizar la app, falta <b>redeployar el Apps Script</b> — la hoja Compras la ' +
+        'crea el backend y ahí se migra sola tu hoja Stock. Si ya lo redeployaste, cargá las compras ' +
+        'con “＋ Cargar compra”.';
+    } else if (stkTanda) {
+      av.style.display = '';
+      av.innerHTML = `<b>Filtrado por ${labelTanda(stkTanda)}.</b> Pedidas, Retiradas y Por retirar ` +
+        `son de esa tanda. <b>Compradas y Disponibles no cambian</b>: el stock es una sola bolsa — ` +
+        `una prenda pendiente de una tanda se entrega con lo que llegó después.`;
+    } else av.style.display = 'none';
+  }
+
+  renderCompras();
+}
+
+// ═══ TABLA DE COMPRAS ═══
+function renderCompras() {
+  const tb = document.querySelector('#tblCompras tbody');
+  if (!tb) return;
+  const filas = COMPRAS.slice().sort((a, b) =>
+    String(b.fecha || '').localeCompare(String(a.fecha || '')) ||
+    String(a.prenda || '').localeCompare(String(b.prenda || '')));
+
+  tb.innerHTML = filas.length ? filas.map(c => {
+    const cu = Number(c.costo) || 0, n = Number(c.cant) || 0;
+    const col = getTipoColor(String(c.prenda || '').toLowerCase());
+    const f = String(c.fecha || '');
+    return `<tr>
+      <td>${f ? f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(2, 4) : '—'}</td>
+      <td style="text-align:left">${escapeHtml(labelTanda(c.tanda))}</td>
+      <td style="text-align:left"><span class="cdot" style="background:${col}"></span>${escapeHtml(getTipoLabel(String(c.prenda || '').toLowerCase()))}</td>
+      <td style="text-align:left"><span class="tl">${labelTalle(c.talle, true)}</span></td>
+      <td>${n}</td>
+      <td style="cursor:pointer" title="Clic para corregir el costo"
+          onclick="editarCostoCompra('${escapeHtml(c.id)}')">${
+        cu > 0 ? fmt(cu) : '<span class="flg f2">cargar costo</span>'}</td>
+      <td><b>${cu > 0 ? fmt(n * cu) : '<span class="zz">—</span>'}</b></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:#8d97a3;padding:22px">Todavía no hay compras cargadas.</td></tr>';
+
+  const sc = unidadesSinCosto();
+  const el = document.getElementById('avisoCostos');
+  if (el) el.textContent = sc ? `${sc} unidades sin costo cargado` : '';
+}
+
+// El costo se corrige en el lugar: las filas migradas de la hoja Stock vienen con 0 y hay que
+// completarlas para que la ganancia signifique algo.
+async function editarCostoCompra(id) {
+  const c = COMPRAS.find(x => String(x.id) === String(id));
+  if (!c) return;
+  if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+  const actual = Number(c.costo) || 0;
+  const txt = prompt(`Costo unitario de ${getTipoLabel(String(c.prenda).toLowerCase())} ` +
+    `talle ${labelTalle(c.talle)} (${c.cant} unidades):`, actual || '');
+  if (txt === null) return;
+  const nuevo = Number(String(txt).replace(/[^\d.-]/g, ''));
+  if (isNaN(nuevo) || nuevo < 0) { showToast('Costo inválido'); return; }
+  if (nuevo === actual) return;
+
+  // Una compra suele ser una prenda a un precio, repartida en varios talles = varias filas.
+  // Cargar el costo fila por fila es tedioso (la migración dejó una fila por talle), así que si
+  // hay hermanas sin costo se ofrece completarlas todas de una.
+  const hermanas = COMPRAS.filter(x => x !== c &&
+    String(x.prenda) === String(c.prenda) &&
+    String(x.tanda)  === String(c.tanda) &&
+    (Number(x.costo) || 0) <= 0);
+  const objetivo = [c];
+  if (hermanas.length && confirm(
+      `¿Aplicar ${fmt(nuevo)} a los otros ${hermanas.length} talles de ` +
+      `${getTipoLabel(String(c.prenda).toLowerCase())} en ${labelTanda(c.tanda)} que están sin costo?`)) {
+    objetivo.push(...hermanas);
+  }
+
+  try {
+    showLoading(true);
+    for (const x of objetivo) {
+      await postApp({ action: 'actualizarCostoCompra', id: x.id, costo: nuevo });
+      x.costo = nuevo;
+    }
+    localStorage.setItem('compras_backup', JSON.stringify(COMPRAS));
+    pushMovLocal({ tipo: 'COMPRA', prenda: getTipoLabel(String(c.prenda).toLowerCase()),
+      talle: objetivo.length > 1 ? '' : c.talle,
+      detalle: 'costo unitario: ' + actual + ' → ' + nuevo +
+        (objetivo.length > 1 ? ' (' + objetivo.length + ' talles)' : '') });
+    renderStockScreen();
+    if (currentSection === 'resumen') renderResumen();
+    showToast(objetivo.length > 1 ? objetivo.length + ' costos actualizados' : 'Costo actualizado');
+    loadFromSheets({ silent: true });
+  } catch (e) {
+    console.error('Error actualizando costo:', e);
+    showToast('No se pudo guardar el costo: ' + e.message);
+  } finally { showLoading(false); }
+}
+
+// ═══ MODAL CARGAR COMPRA ═══
+function abrirModalCompra(prendaKey) {
+  if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+  const opt = (v, l) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`;
+  const selP = document.getElementById('cmp_prenda');
+  selP.innerHTML = getPrendaTypes().map(t => opt(t.key, t.label)).join('') +
+    opt('__new', '＋ Nueva prenda...');
+  if (prendaKey) selP.value = prendaKey;
+
+  const selT = document.getElementById('cmp_tanda');
+  selT.innerHTML = TANDAS.map(t => opt(t, labelTanda(t))).join('') + opt('__new', '＋ Nueva tanda...');
+  selT.value = TANDAS[TANDAS.length - 1] || 'PRIMERA';
+
+  document.getElementById('cmp_fecha').value = hoyAR();
+  document.getElementById('cmp_costo').value = '';
+  document.getElementById('cmp_notas').value = '';
+  document.getElementById('cmp_prendaNom').value = '';
+  document.getElementById('cmp_tandaNom').value = '';
+  document.getElementById('cmp_talles').innerHTML = '';
+  cmpAgregarTalle(); cmpAgregarTalle();
+  cmpPrendaCambio(); cmpTandaCambio(); cmpResumen();
+  document.getElementById('modalCompra').style.display = 'flex';
+}
+function closeModalCompra() { document.getElementById('modalCompra').style.display = 'none'; }
+function cerrarModalCompra(e) {
+  if (e.target === document.getElementById('modalCompra')) closeModalCompra();
+}
+function cmpPrendaCambio() {
+  document.getElementById('cmp_prendaNueva').style.display =
+    document.getElementById('cmp_prenda').value === '__new' ? '' : 'none';
+}
+function cmpTandaCambio() {
+  document.getElementById('cmp_tandaNueva').style.display =
+    document.getElementById('cmp_tanda').value === '__new' ? '' : 'none';
+}
+function cmpAgregarTalle() {
+  const d = document.createElement('div');
+  d.className = 'form-row';
+  d.style.cssText = 'gap:8px;align-items:flex-end;margin-bottom:6px;';
+  d.innerHTML =
+    `<div class="form-group" style="margin:0;"><select>` +
+      TALLES_EXTENDIDOS.map(t => `<option value="${t}">${labelTalle(t)}</option>`).join('') +
+    `</select></div>` +
+    `<div class="form-group" style="margin:0;max-width:100px;">` +
+      `<input type="number" min="0" value="0" oninput="cmpResumen()"></div>` +
+    `<button class="btn-delete" style="flex-shrink:0;" onclick="this.parentNode.remove();cmpResumen()">✕</button>`;
+  document.getElementById('cmp_talles').appendChild(d);
+}
+function cmpLeerTalles() {
+  const out = {};
+  document.querySelectorAll('#cmp_talles .form-row').forEach(r => {
+    const t = r.querySelector('select')?.value;
+    const n = Number(r.querySelector('input')?.value) || 0;
+    if (t && n > 0) out[t] = (out[t] || 0) + n;
+  });
+  return out;
+}
+function cmpResumen() {
+  const d = cmpLeerTalles();
+  const cu = Number(document.getElementById('cmp_costo').value) || 0;
+  const n = Object.values(d).reduce((a, b) => a + b, 0);
+  const det = Object.entries(d).map(([k, v]) => labelTalle(k, true) + ' ' + v).join(', ') || '—';
+  document.getElementById('cmp_resumen').innerHTML =
+    `<b>${n} unidad${n === 1 ? '' : 'es'}</b> · ${escapeHtml(det)}<br>` +
+    (cu > 0 ? `Costo total: <b>${fmt(n * cu)}</b> · ${fmt(cu)} cada una`
+            : `<span style="color:#b9770e;">Sin costo: se puede cargar después desde la tabla de compras.</span>`);
+}
+
+async function guardarCompraApp() {
+  const det = cmpLeerTalles();
+  const n = Object.values(det).reduce((a, b) => a + b, 0);
+  if (!n) { showToast('Cargá al menos un talle con cantidad'); return; }
+
+  let prenda = document.getElementById('cmp_prenda').value;
+  let prendaLabel = '';
+  let nuevaPrenda = null;
+  if (prenda === '__new') {
+    const nom = document.getElementById('cmp_prendaNom').value.trim();
+    if (!nom) { showToast('Ponele nombre a la prenda nueva'); return; }
+    prenda = normalizeKey(nom).replace(/\s+/g, '_') || 'PRENDA';
+    if (getPrendaTypes().some(t => t.key === prenda)) { showToast('Ya existe una prenda con ese nombre'); return; }
+    nuevaPrenda = { key: prenda, label: nom, color: document.getElementById('cmp_prendaCol').value, hasStock: true };
+    prendaLabel = nom;
+  } else {
+    prendaLabel = (getPrendaTypes().find(t => t.key === prenda) || {}).label || prenda;
+  }
+
+  let tanda = document.getElementById('cmp_tanda').value;
+  if (tanda === '__new') {
+    const nom = document.getElementById('cmp_tandaNom').value.trim();
+    if (!nom) { showToast('Ponele nombre a la tanda nueva'); return; }
+    tanda = normalizeKey(nom).replace(/\s+/g, '_') || 'TANDA';
+  }
+
+  const costo = Number(document.getElementById('cmp_costo').value) || 0;
+  const fecha = document.getElementById('cmp_fecha').value || hoyAR();
+  const notas = document.getElementById('cmp_notas').value.trim();
+
+  const btn = document.getElementById('btnGuardarCompra');
+  btn.disabled = true;
+  try {
+    showLoading(true);
+    await postApp({ action: 'guardarCompra', prenda, prendaLabel, tanda, fecha,
+                             costo, notas, detalle: det });
+
+    // La prenda nueva se guarda como tipo custom para que aparezca en los selects al instante
+    if (nuevaPrenda) {
+      const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
+      custom.push(nuevaPrenda);
+      localStorage.setItem('customPrendaTypes', JSON.stringify(custom));
+    }
+    // Alta optimista: el id real lo asigna la hoja, se reconcilia en el refresco de fondo
+    Object.entries(det).forEach(([t, cant]) => {
+      COMPRAS.push({ id: '_tmp' + Math.random().toString(36).slice(2), fecha, tanda,
+                     prenda: prenda.toUpperCase(), talle: String(t).toUpperCase(),
+                     cant, costo, notas, _pendiente: true });
+    });
+    localStorage.setItem('compras_backup', JSON.stringify(COMPRAS));
+    recalcularTandas();
+    pushMovLocal({ tipo: 'COMPRA', prenda: prendaLabel, monto: n * costo,
+      detalle: labelTanda(tanda) + ' · ' +
+        Object.entries(det).map(([k, v]) => labelTalle(k, true) + ' ' + v).join(', ') +
+        ' · ' + n + ' unid.' + (costo ? ' a ' + costo + ' c/u' : ' (sin costo)') });
+
+    closeModalCompra();
+    initFiltrosPedidos(); initFiltrosStock(); renderTipos(); renderAll();
+    showToast(n + ' unidades cargadas al stock');
+    loadFromSheets({ silent: true });
+  } catch (e) {
+    console.error('Error guardando compra:', e);
+    showToast('No se pudo cargar la compra: ' + e.message);
+  } finally {
+    showLoading(false);
+    btn.disabled = false;
+  }
 }
 
 // ============ TIPOS DE PRENDAS ============
@@ -1724,68 +2283,31 @@ function renderTipos() {
   ].join('');
 }
 
-// Qué editores de stock se destrabaron en esta sesión. A propósito no se persiste: al recargar
-// la app vuelven a quedar bloqueados, que es el punto — las dos tandas ya cerraron y editarlas
-// tiene que ser un acto deliberado, no algo que pase de un dedazo.
-const stockDesbloqueado = new Set();
-
-function desbloquearStock(key, tandaTarget) {
-  const clave = key + '|' + tandaTarget;
-  if (stockDesbloqueado.has(clave)) return;
-  stockDesbloqueado.add(clave);
-  renderTipos();
-  showToast('Stock de ' + key + ' (' + tandaTarget + ') habilitado para editar');
-}
-
 function renderTipoCard(t, isDeletable) {
+  // Las grillas de "stock inicial" por tanda se fueron: el stock entra por Cargar compra, que
+  // además registra el costo. Acá queda sólo la identidad de la prenda y su total comprado.
   const tipo = t.key.toLowerCase();
-  const stk = STOCK_INICIAL[tipo] || {};
-  const stk2 = STOCK_INICIAL_SEGUNDA[tipo] || {};
-  // Las dos tandas ya pasaron: el stock queda de sólo lectura para no pisarlo sin querer, y
-  // se habilita con doble clic sobre el bloque (ver desbloquearStock).
-  const editorTanda = (tandaTarget, titulo, stkTanda, prefix, btnCls, btnTxt) => {
-    const abierto = stockDesbloqueado.has(t.key + '|' + tandaTarget);
-    return `
-      <div class="stock-editor-title" ondblclick="desbloquearStock('${t.key}','${tandaTarget}')">
-        📦 ${titulo}
-        <span style="font-size:0.6rem;color:${abierto ? '#e67e22' : '#aaa'};">
-          ${abierto ? '· 🔓 editable' : '· 🔒 doble clic para editar'}
-        </span>
-      </div>
-      <div class="stock-editor-grid ${abierto ? '' : 'bloqueado'}" ondblclick="desbloquearStock('${t.key}','${tandaTarget}')">
-        ${TALLES_ORDER.map(talle => `
-          <div class="stock-editor-cell">
-            <label>${labelTalle(talle, true)}</label>
-            <input type="number" min="0" id="${prefix}-${t.key}-${talle}" value="${stkTanda[talle] || 0}" ${abierto ? '' : 'disabled'}>
-          </div>`).join('')}
-      </div>
-      <button class="btn ${btnCls} btn-sm" style="margin-top:8px;width:100%;" ${abierto ? '' : 'disabled'}
-        onclick="saveStockTipo('${t.key}', '${tandaTarget}')">${btnTxt}</button>`;
-  };
-
-  const stockEditorHtml = t.hasStock ? `
-    <div class="stock-editor">
-      ${editorTanda('PRIMERA', 'Stock 1ra Tanda', stk,  'stk',  'btn-primary', 'Guardar stock 1ra tanda')}
-      <div style="margin-top:12px;"></div>
-      ${editorTanda('SEGUNDA', 'Stock 2da Tanda', stk2, 'stk2', 'btn-warning', 'Guardar stock 2da tanda')}
-    </div>` : '';
+  const comp = COMPRAS.filter(c => String(c.prenda || '').toLowerCase() === tipo);
+  const unid = comp.reduce((a, c) => a + (Number(c.cant) || 0), 0);
+  const sinCosto = comp.reduce((a, c) => a + ((Number(c.costo) || 0) <= 0 ? (Number(c.cant) || 0) : 0), 0);
 
   return `<div class="tipo-card-config">
     <div class="tipo-dot" style="background:${t.color}"></div>
     <div class="tipo-info" style="flex:1;">
-      <div class="tipo-name">${t.label}</div>
-      <div class="tipo-key-label">Columna: <strong>${t.key}</strong>${t.hasStock ? ' &nbsp;• con stock' : ''}</div>
-      ${stockEditorHtml}
+      <div class="tipo-name">${escapeHtml(t.label)}</div>
+      <div class="tipo-key-label">Columna: <strong>${escapeHtml(t.key)}</strong></div>
+      <div style="font-size:0.72rem;color:#6b7785;margin-top:3px;">
+        ${unid ? unid + ' unidades compradas en ' + comp.length + ' fila(s) de Compras' : 'Sin compras cargadas'}
+        ${sinCosto ? ` &nbsp;·&nbsp; <span style="color:#b9770e;font-weight:700;">${sinCosto} sin costo</span>` : ''}
+      </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
       ${isDeletable
         ? `<button class="btn-delete" onclick="deleteTipo('${t.key}')">Eliminar</button>`
         : '<span class="builtin-badge">Predefinido</span>'
       }
-      ${!t.hasStock
-        ? `<button style="background:#3498db;color:white;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;cursor:pointer;" onclick="activarStock('${t.key}')">+ Stock</button>`
-        : `<button style="background:#e0e0e0;color:#888;border:none;border-radius:6px;padding:4px 8px;font-size:0.65rem;cursor:pointer;" onclick="desactivarStock('${t.key}')">- Stock</button>`
-      }
+      <button class="btn btn-blue btn-sm" style="font-size:0.65rem;padding:4px 8px;"
+        onclick="abrirModalCompra('${t.key}')">＋ Compra</button>
     </div>
   </div>`;
 }
@@ -1795,85 +2317,9 @@ function deleteTipo(key) {
   custom = custom.filter(t => t.key !== key);
   localStorage.setItem('customPrendaTypes', JSON.stringify(custom));
   renderTipos();
-  initSubTabs();
+  initFiltrosPedidos();
   initNuevoPedidoTipos();
-  updateBadges();
   showToast('Tipo eliminado');
-}
-
-function saveStockTipo(key, tandaTarget = 'PRIMERA') {
-  // Red de seguridad: los inputs están disabled cuando el bloque está trabado, así que sin
-  // esto se guardarían todos ceros si el botón se disparara igual (Enter, autofill, etc.).
-  if (!stockDesbloqueado.has(key + '|' + tandaTarget)) {
-    showToast('Doble clic sobre el bloque para habilitar la edición');
-    return;
-  }
-  const tipo = key.toLowerCase();
-  const updated = {};
-  const prefix = tandaTarget === 'SEGUNDA' ? 'stk2' : 'stk';
-  
-  TALLES_ORDER.forEach(talle => {
-    const el = document.getElementById(`${prefix}-${key}-${talle}`);
-    updated[talle] = el ? (Number(el.value) || 0) : 0;
-  });
-  
-  // Diff contra los valores previos, para el log de movimientos
-  const previo = (tandaTarget === 'SEGUNDA' ? STOCK_INICIAL_SEGUNDA[tipo] : STOCK_INICIAL[tipo]) || {};
-  const cambios = TALLES_ORDER
-    .filter(t => (Number(previo[t]) || 0) !== (Number(updated[t]) || 0))
-    .map(t => `${t}: ${Number(previo[t]) || 0} → ${Number(updated[t]) || 0}`);
-
-  if (tandaTarget === 'SEGUNDA') {
-    STOCK_INICIAL_SEGUNDA[tipo] = updated;
-    localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
-  } else {
-    STOCK_INICIAL[tipo] = updated;
-    localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
-  }
-
-  if (cambios.length) {
-    pushMovLocal({
-      tipo: 'STOCK',
-      prenda: getTipoLabel(tipo),
-      detalle: (tandaTarget === 'SEGUNDA' ? '2da tanda · ' : '1era tanda · ') + cambios.join(' · ')
-    });
-  }
-
-  renderStock();
-  showToast(`Stock de ${key} (${tandaTarget}) guardado`);
-
-  // Persistir en Google Sheet si hay URL configurada
-  if (SCRIPT_URL) {
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'guardarStock', tipo: key, stock: updated, tanda: tandaTarget })
-    }).catch(() => {}); // no-cors: no hay respuesta, ignorar errores de red silenciosamente
-  }
-}
-
-function activarStock(key) {
-  _updateTipoField(key, 'hasStock', true);
-  const tipo = key.toLowerCase();
-  if (!STOCK_INICIAL[tipo]) {
-    STOCK_INICIAL[tipo] = {};
-    TALLES_ORDER.forEach(t => { STOCK_INICIAL[tipo][t] = 0; });
-    localStorage.setItem('stockInicial', JSON.stringify(STOCK_INICIAL));
-  }
-  if (!STOCK_INICIAL_SEGUNDA[tipo]) {
-    STOCK_INICIAL_SEGUNDA[tipo] = {};
-    TALLES_ORDER.forEach(t => { STOCK_INICIAL_SEGUNDA[tipo][t] = 0; });
-    localStorage.setItem('stockInicialSegunda', JSON.stringify(STOCK_INICIAL_SEGUNDA));
-  }
-  renderTipos(); initSubTabs(); renderStock();
-  showToast('Stock activado para este tipo');
-}
-
-function desactivarStock(key) {
-  _updateTipoField(key, 'hasStock', false);
-  renderTipos(); initSubTabs(); renderStock();
-  showToast('Stock desactivado');
 }
 
 function _updateTipoField(key, field, value) {
@@ -1912,9 +2358,8 @@ function agregarTipo() {
   }
   document.getElementById('newTipoLabel').value = '';
   renderTipos();
-  initSubTabs();
+  initFiltrosPedidos();
   initNuevoPedidoTipos();
-  updateBadges();
   showToast(`Tipo "${label}" agregado (clave: ${key}).`);
 }
 
@@ -1946,7 +2391,7 @@ function desglosePagos(p) {
 function openModalEditar(id) {
   const p = PEDIDOS.find(x => x._id === id);
   if (!p) return;
-  if (!p._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
+  if (!p._pid && !p._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
   edPedidoId = id;
 
   document.getElementById('ed_nombre').value = p['Nombre'] || '';
@@ -2065,14 +2510,10 @@ async function guardarEdicionPedido() {
   btn.disabled = true;
   try {
     showLoading(true);
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(Object.assign({
-        action: 'editarPedido', sheetRow: p._sheetRow,
+    await postApp(Object.assign({
+        action: 'editarPedido', pedidoId: p._pid || '', sheetRow: p._sheetRow,
         nombre, talle, notas: nota, total, tipo: getTipoLabel(getTipo(p))
-      }, cambiaMedio ? { 'medioSeña': medioSeña } : {}))
-    });
+      }, cambiaMedio ? { 'medioSeña': medioSeña } : {}));
     p['Nombre'] = nombre;
     p['Talle']  = talle;
     p['Notas']  = nota;
@@ -2105,7 +2546,7 @@ async function guardarEdicionPedido() {
     loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error editando pedido:', e);
-    showToast('Error al guardar los cambios');
+    showToast('No se pudieron guardar los cambios: ' + e.message);
   } finally {
     showLoading(false);
     btn.disabled = false;
@@ -2121,7 +2562,7 @@ let erPedidoId = null;
 function openModalRetiro(id) {
   const p = PEDIDOS.find(x => x._id === id);
   if (!p) return;
-  if (!p._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
+  if (!p._pid && !p._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
   erPedidoId = id;
 
   const tallePedido = String(p['Talle'] || '');
@@ -2187,15 +2628,11 @@ async function guardarEdicionRetiro() {
   btn.disabled = true;
   try {
     showLoading(true);
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'editarRetiro', sheetRow: p._sheetRow,
+    await postApp({
+        action: 'editarRetiro', pedidoId: p._pid || '', sheetRow: p._sheetRow,
         talleRetiro: talle, medioPago: medio, observacion: obs,
         tipo: getTipoLabel(getTipo(p))
-      })
-    });
+      });
 
     p['Talle Retiro']         = talle;  p['_talleRetiro']     = talle;
     p['Medio de Pago Retiro'] = medio;  p['_medioPagoRetiro'] = medio;
@@ -2225,7 +2662,7 @@ async function guardarEdicionRetiro() {
     loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error editando retiro:', e);
-    showToast('Error al guardar los cambios');
+    showToast('No se pudieron guardar los cambios: ' + e.message);
   } finally {
     showLoading(false);
     btn.disabled = false;
@@ -2236,14 +2673,6 @@ async function guardarEdicionRetiro() {
 // Los pedidos de segunda tanda ya no están bloqueados
 function isBloqueado(p) {
   return false; // Desactivado: todos los pedidos están desbloqueados
-}
-
-function bloquearPedido(id) {
-  // Función desactivada
-}
-
-function desbloquearTodos() {
-  // Función desactivada
 }
 
 function openModalDesbloqueo(id) {
@@ -2281,10 +2710,10 @@ function confirmarDesbloqueo() {
 
 // ============ RENDER ============
 function getFiltered() {
-  const search = document.getElementById('searchInput').value.toLowerCase();
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
   const filterTanda  = document.getElementById('filterTanda')?.value || '';
   const filterTalle  = document.getElementById('filterTalle')?.value || '';
-  const filterEstado = document.getElementById('filterEstado')?.value || '';
+  const filterEstado = filtroEstado;   // ahora viene del segmented control, no de un <select>
   return PEDIDOS.filter(p => {
     const tipo = getTipo(p);
     if (currentFilter !== 'todos' && tipo !== currentFilter) return false;
@@ -2313,14 +2742,11 @@ function getFiltered() {
 }
 
 function renderAll() {
-  renderList();
-  renderStock();
-  updateKPIs();
-  updateBadges();
-  updateRetirosKPIs();
+  renderList();          // adentro llama a renderStock() y renderKpisPedidos()
+  updateKPIs();          // KPIs y tabla por tanda de Resumen
   updateMovKPIs();
   if (currentSection === 'resumen') renderResumen();
-  if (currentSection === 'retiros') renderRetiros();
+  if (currentSection === 'stock')   renderStockScreen();
   if (currentSection === 'movimientos') renderMovimientos();
 }
 
@@ -2704,16 +3130,6 @@ function generarPedidoProveedor() {
   switchSection('pedidoproveedor');
 }
 
-function updateBadges() {
-  const elTodos = document.getElementById('badgeTodos');
-  if (elTodos) elTodos.textContent = PEDIDOS.length;
-  getPrendaTypes().forEach(t => {
-    const key = t.key.toLowerCase();
-    const badge = document.getElementById('badge-' + key);
-    if (badge) badge.textContent = PEDIDOS.filter(p => getTipo(p) === key).length;
-  });
-}
-
 function renderList() {
   const items = getFiltered();
   // Ordenar: pendientes primero, retirados al final.
@@ -2726,15 +3142,15 @@ function renderList() {
     return cmpMasNuevo(a, b);
   });
   const container = document.getElementById('listContainer');
-  // Refrescar stock al cambiar filtros (por tanda o tipo)
-  renderStock();
+  if (!container) return;
+  renderStock();                 // línea de stock por prenda
+  renderKpisPedidos(items);      // los KPIs reflejan lo que se está viendo
 
   if (items.length === 0) {
     container.innerHTML = `<div class="empty-state">
       <div class="icon">📋</div>
-      <p>${PEDIDOS.length === 0 ? 'Conectá tu Google Sheet para ver los pedidos' : 'No hay pedidos en esta categoría'}</p>
+      <p>${PEDIDOS.length === 0 ? 'Conectá tu Google Sheet para ver los pedidos' : 'Ningún pedido coincide con estos filtros'}</p>
     </div>`;
-    updateKPIs();
     return;
   }
 
@@ -2747,7 +3163,6 @@ function renderList() {
     const sinStock = !ret && !hasStockForPedido(p);
     const tanda = tandaDe(p);
     const bloqueado = isBloqueado(p);
-    const is2da = tanda === 'SEGUNDA';
     const tallePedido = p['Talle'] || '—';
     // Valores previos del retiro (para pre-poblar el formulario)
     const savedTalleRetiro = p['_talleRetiro'] || p['Talle Retiro'] || tallePedido;
@@ -2767,67 +3182,85 @@ function renderList() {
     const regalo = isRegalo(p);
     const html = `
       <div class="card ${ret ? 'retirado' : ''} ${deuda ? 'deuda-pendiente' : ''} ${regalo ? 'regalo' : ''} ${sinStock ? 'sin-stock' : ''} ${bloqueado ? 'bloqueado' : ''}" id="card-${id}">
-        <div class="card-header" onclick="toggleCard(${id})">
-          <div class="check">${ret ? '✓' : ''}</div>
-          <span class="name">${p['Nombre'] || '—'}</span>
-          ${p._pendiente ? '<span class="tanda-badge" title="Se está sincronizando con la planilla">⏳ SINCRONIZANDO</span>' : ''}
-          ${sinStock ? '<span class="sin-stock-badge">SIN STOCK</span>' : ''}
-          ${deuda ? '<span class="deuda-badge">DEUDA</span>' : ''}
-          ${regalo ? '<span class="regalo-badge">🎁 REGALO</span>' : ''}
-          ${currentFilter === 'todos' ? `<span class="tipo-badge" style="background:${getTipoColor(tipo)}">${getTipoLabel(tipo)}</span>` : ''}
-          ${badgeTanda(tanda)}
-          <span class="talle">${labelTalle(tallePedido, true)}</span>
-          <button class="btn-editar" title="Corregir el pedido"
-            onclick="event.stopPropagation(); openModalEditar(${id});">✏️</button>
+        <!-- Cabecera en columnas alineadas: antes era nombre + un hueco enorme + una hilera de
+             badges pegada a la derecha, y la plata vivía en una segunda línea aparte. -->
+        <div class="card-header gridh" onclick="toggleCard(${id})">
+          <div class="gh-nom">${p['Nombre'] || '—'}${p['Notas'] ? `<small>📝 ${escapeHtml(p['Notas'])}</small>` : ''}</div>
+          <div class="gh-pre"><span class="cdot" style="background:${getTipoColor(tipo)}"></span>${escapeHtml(getTipoLabel(tipo).replace('CAMISETA ', ''))}</div>
+          <div class="talle">${labelTalle(tallePedido, true)}</div>
+          <div>${badgeTanda(tanda)}</div>
+          <div class="gh-num"><span class="ql">Total</span>${fmt(p['Total'] || 0)}</div>
+          <div class="gh-num ${Number(p['Seña']) > 0 ? '' : 'ok'}"><span class="ql">Pagado</span>${fmt(p['Seña'] || 0)}</div>
+          <div class="gh-num ${regalo ? 'ok' : (Number(p['Resta']) > 0 ? 'deb' : 'ok')}"><span class="ql">Resta</span>${
+            regalo ? '—' : (Number(p['Resta']) > 0 ? fmt(p['Resta']) : '—')}</div>
+          <div class="gh-est">
+            ${p._pendiente ? '<span class="st sin" title="Se está sincronizando con la planilla">⏳ SINC</span>' : ''}
+            ${regalo ? '<span class="st reg">🎁 Regalo</span>' : ''}
+            ${ret ? '<span class="st ret">✓ Retirado</span>' : '<span class="st pend">Pendiente</span>'}
+            ${deuda ? '<span class="st deu">Debe</span>' : ''}
+            ${sinStock ? '<span class="st sin">Sin stock</span>' : ''}
+            ${chipMedioPago(p)}
+          </div>
+          <button class="btn-editar" title="${ret ? 'Corregir el retiro' : 'Corregir el pedido'}"
+            onclick="event.stopPropagation(); ${ret ? 'openModalRetiro' : 'openModalEditar'}(${id});">✏️</button>
           <span class="arrow">${bloqueado ? '🔒' : '▼'}</span>
         </div>
         <div class="card-info">
-          ${regalo
-            ? `<span style="color:#8e44ad;font-weight:600;">🎁 Regalo del club — Costo: <span class="val">${fmt(p['Total'] || 0)}</span></span>`
-            : `<span>Seña: <span class="val">${fmt(p['Seña'] || 0)}</span></span>
-               <span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
-               <span>Resta: <span class="val">${fmt(p['Resta'] || 0)}</span></span>
-               ${chipMedioPago(p)}`
-          }
-          ${ret && savedTalleRetiroStr && savedTalleRetiroStr.toUpperCase() !== tallePedidoStr.toUpperCase() ? `<span>Talle retiro: <span class="val">${savedTalleRetiroStr}</span></span>` : ''}
+          ${regalo ? `<span style="color:#8e44ad;font-weight:600;">🎁 Regalo del club — costo ${fmt(p['Total'] || 0)}</span>` : ''}
+          ${ret && savedTalleRetiroStr && savedTalleRetiroStr.toUpperCase() !== tallePedidoStr.toUpperCase() ? `<span>Retiró talle <span class="val">${labelTalle(savedTalleRetiroStr)}</span> (pidió ${labelTalle(tallePedidoStr)})</span>` : ''}
+          ${ret && Number(savedMonto) > 0 ? `<span>Cobrado al entregar: <span class="val">${fmt(savedMonto)}</span></span>` : ''}
           ${fmtFechaAlta(p._fechaAlta || p['Fecha Alta']) ? `<span class="fecha-alta">Alta: ${fmtFechaAlta(p._fechaAlta || p['Fecha Alta'])}</span>` : ''}
         </div>
-        ${p['Notas'] ? `<div class="notas-excel">📝 ${p['Notas']}</div>` : ''}
-        ${ret && (savedObs) ? `<div class="notas-excel" style="color:#2980b9;">Obs. retiro: ${savedObs}</div>` : ''}
+        <!-- La nota del pedido ya va bajo el nombre en la cabecera; acá se repetía -->
+        ${ret && (savedObs) ? `<div class="notas-excel" style="color:#2980b9;">Obs. retiro: ${escapeHtml(savedObs)}</div>` : ''}
+        <!-- Cuerpo desplegado: dos acciones bien separadas, cada una con su propio botón.
+             Antes eran cuatro campos arriba (que sólo aplicaban al retiro) más otro monto y otro
+             medio abajo, sin decir cuál era cuál: se prestaba a cobrar en el campo equivocado. -->
         <div class="card-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Talle que retira</label>
-              <select id="talleRetiro-${id}">
-                ${talleOptions}
-              </select>
-              <div class="talle-original">Pedido original: ${tallePedido}</div>
-            </div>
-            <div class="form-group">
-              <label>Monto pagado al retirar</label>
-              <input type="number" id="pago-${id}" placeholder="0" value="${savedMonto || ''}">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Medio de pago</label>
-              <select id="medio-${id}">
-                <option value="efectivo" ${savedMedio === 'efectivo' ? 'selected' : ''}>Efectivo</option>
-                <option value="transferencia" ${savedMedio === 'transferencia' ? 'selected' : ''}>Transferencia</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Observación</label>
-              <textarea id="obs-${id}" placeholder="Notas sobre el retiro...">${savedObs}</textarea>
-            </div>
-          </div>
-          ${(!ret || deuda) && !regalo ? `
-          <div style="border-top:1px solid #eee;margin-top:10px;padding-top:10px;">
-            <div style="font-size:0.75rem;font-weight:700;color:${deuda ? '#e67e22' : '#555'};margin-bottom:6px;">💰 ${deuda ? 'Registrar pago de deuda' : 'Registrar pago adicional'}</div>
+          ${!ret ? `
+          <div class="acc acc-entregar">
+            <div class="acc-t">📦 Entregar la prenda</div>
             <div class="form-row">
               <div class="form-group">
-                <label>Monto del pago</label>
-                <input type="number" id="pagoSeña-${id}" placeholder="0" min="0">
+                <label>Talle que se lleva</label>
+                <select id="talleRetiro-${id}">${talleOptions}</select>
+                <div class="talle-original">Pidió ${labelTalle(tallePedido)}</div>
+              </div>
+              ${!regalo ? `
+              <div class="form-group">
+                <label>Cobra en este momento</label>
+                <input type="number" id="pago-${id}" placeholder="0" min="0" value="">
+                <div class="talle-original">${Number(p['Resta']) > 0
+                  ? 'Debe ' + fmt(p['Resta']) + ' — dejalo en 0 si no paga ahora'
+                  : 'Ya está saldado'}</div>
+              </div>` : '<div class="form-group"><label>&nbsp;</label><div class="talle-original">🎁 Regalo: no se cobra</div></div>'}
+            </div>
+            <div class="form-row">
+              ${!regalo ? `
+              <div class="form-group">
+                <label>Medio de ese pago</label>
+                <select id="medio-${id}">
+                  <option value="efectivo" ${savedMedio === 'efectivo' ? 'selected' : ''}>Efectivo</option>
+                  <option value="transferencia" ${savedMedio === 'transferencia' ? 'selected' : ''}>Transferencia</option>
+                </select>
+              </div>` : `<input type="hidden" id="pago-${id}" value="0"><select id="medio-${id}" style="display:none"><option value="efectivo">Efectivo</option></select>`}
+              <div class="form-group">
+                <label>Observación del retiro</label>
+                <textarea id="obs-${id}" placeholder="Ej: se lo llevó el hermano">${savedObs}</textarea>
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:4px;"
+              onclick="marcarRetiro(${id}, true)">Entregar y marcar como retirado ✓</button>
+          </div>` : ''}
+
+          ${!regalo && Number(p['Resta']) > 0 ? `
+          <div class="acc acc-pago">
+            <div class="acc-t">💰 ${ret ? 'Cobrar la deuda' : 'Cobrar a cuenta, sin entregar todavía'}</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Monto que paga</label>
+                <input type="number" id="pagoSeña-${id}" placeholder="0" min="0" max="${Number(p['Resta']) || 0}">
+                <div class="talle-original">Debe ${fmt(p['Resta'])}</div>
               </div>
               <div class="form-group">
                 <label>Medio de pago</label>
@@ -2837,15 +3270,18 @@ function renderList() {
                 </select>
               </div>
             </div>
-            <button class="btn btn-warning btn-sm" onclick="registrarPagoSeña(${id})">Registrar Pago</button>
+            <button class="btn btn-warning" style="width:100%;margin-top:4px;"
+              onclick="registrarPagoSeña(${id})">Registrar el pago</button>
           </div>` : ''}
-          <div class="actions">
-            ${ret
-              ? `<button class="btn btn-danger btn-sm" onclick="marcarRetiro(${id}, false)">Desmarcar retiro</button>`
-              : `<button class="btn btn-primary btn-sm" onclick="marcarRetiro(${id}, true)">Marcar como retirado ✓</button>`
-            }
-            ${is2da && !bloqueado && !ret ? `<button class="btn btn-warning btn-sm" onclick="bloquearPedido(${id})">🔒 Bloquear</button>` : ''}
-          </div>
+
+          ${ret ? `
+          <div class="acc-foot">
+            <button class="btn btn-dark btn-sm" onclick="openModalRetiro(${id})">✏️ Corregir el retiro</button>
+            <button class="btn btn-danger btn-sm" onclick="marcarRetiro(${id}, false)">Deshacer entrega</button>
+          </div>` : `
+          <div class="acc-foot">
+            <button class="btn btn-dark btn-sm" onclick="openModalEditar(${id})">✏️ Corregir el pedido</button>
+          </div>`}
         </div>
       </div>
     `;
@@ -2903,211 +3339,174 @@ async function marcarRetiro(id, retirado) {
 }
 
 // ============ KPIs ============
-function updateKPIs() {
-  const filtered = currentFilter === 'todos' ? PEDIDOS :
-    PEDIDOS.filter(p => getTipo(p) === currentFilter);
-
-  const total = filtered.length;
-  const retiradosCount = filtered.filter(p => isRetirado(p)).length;
-
-  let recEfectivo = 0, recTransf = 0, porCobrar = 0, gastoRegalos = 0, cantRegalos = 0;
-  filtered.forEach(p => {
+// Totales de un conjunto de pedidos. Se usa tanto para los KPIs filtrados de Pedidos como
+// para los de Resumen y los de cada tanda: una sola definición de "recaudado" y "por cobrar".
+function statsPedidos(arr) {
+  const s = { n: arr.length, ret: 0, pend: 0, ef: 0, tr: 0, porCobrar: 0, reg: 0, gastoReg: 0 };
+  arr.forEach(p => {
+    if (isRetirado(p)) s.ret++; else s.pend++;
     if (isRegalo(p)) {
-      cantRegalos++;
-      gastoRegalos += Number(p['Total']) || 0;
+      s.reg++;
+      s.gastoReg += Number(p['Total']) || 0;
     } else {
-      recEfectivo += Number(p['Total Efectivo']) || 0;
-      recTransf += Number(p['Total Transferencia']) || 0;
-      porCobrar += Number(p['Resta']) || 0;
+      s.ef += Number(p['Total Efectivo'])      || 0;
+      s.tr += Number(p['Total Transferencia']) || 0;
+      s.porCobrar += Number(p['Resta']) || 0;
     }
   });
+  s.recaudado = s.ef + s.tr;
+  return s;
+}
 
-  document.getElementById('kTotalPedidos').textContent = total;
-  document.getElementById('kRetirados').textContent = retiradosCount;
-  document.getElementById('kPendientes').textContent = total - retiradosCount;
-  document.getElementById('kRecaudado').textContent = fmt(recEfectivo + recTransf);
-  document.getElementById('kEfectivo').textContent = fmt(recEfectivo);
-  document.getElementById('kTransf').textContent = fmt(recTransf);
-  document.getElementById('kPorCobrar').textContent = fmt(porCobrar);
-  document.getElementById('kRegalos').textContent = cantRegalos;
-  document.getElementById('kGastoRegalos').textContent = fmt(gastoRegalos);
+// ═══ KPIs DE PEDIDOS: se recalculan con los filtros ═══
+// Antes eran 16 números fijos sobre el total. Ahora son 4 sobre lo que estás viendo, con tres
+// señales de que hay un filtro puesto (rayado, barra amarilla, y el total abajo de cada número),
+// porque con una sola es muy fácil leer un parcial creyendo que es el total.
+function renderKpisPedidos(visibles) {
+  const strip = document.getElementById('kstripPed');
+  if (!strip) return;
+  const S = statsPedidos(visibles), Tot = statsPedidos(PEDIDOS);
 
-  // Per-tanda KPIs (always on full PEDIDOS, not filtered).
-  // Con tandaDe() en vez del viejo "!== SEGUNDA": si no, los pedidos de 3ra caían en la 1era.
-  const t1 = PEDIDOS.filter(p => tandaDe(p) === 'PRIMERA');
-  const t2 = PEDIDOS.filter(p => tandaDe(p) === 'SEGUNDA');
-  const t3 = PEDIDOS.filter(p => tandaDe(p) === 'TERCERA');
+  const activos = [];
+  const etiq = { pendiente:'Pendientes', retirado:'Retirados', deuda:'Con deuda', regalo:'Regalos' };
+  if (filtroEstado) activos.push(etiq[filtroEstado] || filtroEstado);
+  if (currentFilter && currentFilter !== 'todos') activos.push(getTipoLabel(currentFilter));
+  const tal = document.getElementById('filterTalle')?.value || '';
+  const tan = document.getElementById('filterTanda')?.value || '';
+  const q   = (document.getElementById('searchInput')?.value || '').trim();
+  if (tal) activos.push('Talle ' + labelTalle(tal));
+  if (tan) activos.push(labelTanda(tan));
+  if (q)   activos.push('"' + q + '"');
+  const hayFiltro = activos.length > 0;
 
-  function tandaStats(arr) {
-    const ped = arr.length;
-    const ret = arr.filter(p => isRetirado(p)).length;
-    let rec = 0, pc = 0;
-    arr.forEach(p => {
-      rec += (Number(p['Total Efectivo']) || 0) + (Number(p['Total Transferencia']) || 0);
-      pc += Number(p['Resta']) || 0;
-    });
-    return { ped, ret, rec, pc };
-  }
+  const tag = document.getElementById('filtag');
+  if (tag) tag.classList.toggle('on', hayFiltro);
+  const txt = document.getElementById('filtxt');
+  if (txt) txt.innerHTML = hayFiltro
+    ? `Mostrando <b>${visibles.length} de ${PEDIDOS.length}</b> pedidos — ${escapeHtml(activos.join(' · '))}` : '';
 
-  [[1, tandaStats(t1)], [2, tandaStats(t2)], [3, tandaStats(t3)]].forEach(([n, s]) => {
-    const set = (id, v) => { const el = document.getElementById('k' + n + id); if (el) el.textContent = v; };
-    set('Pedidos', s.ped);
-    set('Retirados', s.ret);
-    set('Recaudado', fmt(s.rec));
-    set('PorCobrar', fmt(s.pc));
+  // Marca los controles que están filtrando, para saber de un vistazo cuál sacar
+  ['filterPrenda', 'filterTalle', 'filterTanda'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.classList.toggle('act', !!e.value && e.value !== 'todos');
+  });
+  const si = document.getElementById('searchInput');
+  if (si) si.classList.toggle('act', !!q);
+  const tn = document.getElementById('tabNPed');
+  if (tn) tn.textContent = hayFiltro ? visibles.length + '/' + PEDIDOS.length : PEDIDOS.length;
+
+  const sub = v => hayFiltro ? `<u>de ${v}</u>` : '';
+  strip.className = 'kstrip' + (hayFiltro ? ' filt' : '');
+  strip.innerHTML =
+    `<div class="kbox"><b>${S.n}</b><span>Pedidos</span>${sub(Tot.n)}</div>` +
+    `<div class="kbox o"><b>${S.pend}</b><span>Pendientes</span>${sub(Tot.pend)}</div>` +
+    `<div class="kbox r"><b>${fmt(S.porCobrar)}</b><span>Por cobrar</span>${sub(fmt(Tot.porCobrar))}</div>` +
+    `<div class="kbox g"><b>${fmt(S.recaudado)}</b><span>Recaudado</span>${sub(fmt(Tot.recaudado))}</div>` +
+    `<div class="kbox more" onclick="switchSection('resumen')">Efectivo · Transferencia<br>Tandas · Regalos →</div>`;
+
+  // Contadores de cada estado en el segmented control
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set('cE-todos', Tot.n);
+  set('cE-pendiente', Tot.pend);
+  set('cE-retirado', Tot.ret);
+  set('cE-deuda', PEDIDOS.filter(p => tieneDeuda(p)).length);
+  set('cE-regalo', Tot.reg);
+}
+
+// updateKPIs ahora sólo alimenta Resumen (los de Pedidos los hace renderKpisPedidos)
+function updateKPIs() {
+  const S = statsPedidos(PEDIDOS);
+  const strip = document.getElementById('kstripResumen');
+  if (strip) strip.innerHTML =
+    `<div class="kbox"><b>${S.n}</b><span>Pedidos</span></div>` +
+    `<div class="kbox g"><b>${S.ret}</b><span>Retirados</span></div>` +
+    `<div class="kbox o"><b>${S.pend}</b><span>Pendientes</span></div>` +
+    `<div class="kbox g"><b>${fmt(S.recaudado)}</b><span>Recaudado</span></div>` +
+    `<div class="kbox g"><b>${fmt(S.ef)}</b><span>Efectivo</span></div>` +
+    `<div class="kbox g"><b>${fmt(S.tr)}</b><span>Transferencia</span></div>` +
+    `<div class="kbox r"><b>${fmt(S.porCobrar)}</b><span>Por cobrar</span></div>` +
+    `<div class="kbox"><b>${S.reg}</b><span>Regalos</span><u>${fmt(S.gastoReg)}</u></div>`;
+
+  const tb = document.querySelector('#tblTandas tbody');
+  if (tb) tb.innerHTML = TANDAS.map(t => {
+    const s = statsPedidos(PEDIDOS.filter(p => tandaDe(p) === t));
+    let costoTanda = 0;
+    COMPRAS.filter(c => String(c.tanda || '').toUpperCase() === t)
+      .forEach(c => costoTanda += (Number(c.cant) || 0) * (Number(c.costo) || 0));
+    if (!s.n && !costoTanda) return '';
+    return `<tr><td>${escapeHtml(labelTanda(t))}</td><td>${s.n}</td><td>${s.ret}</td>` +
+      `<td class="${s.pend ? 'pnd' : 'zz'}">${s.pend}</td><td>${fmt(s.recaudado)}</td>` +
+      `<td class="${s.porCobrar ? 'ngv' : 'zz'}">${fmt(s.porCobrar)}</td>` +
+      `<td>${costoTanda ? fmt(costoTanda) : '<span class="zz">—</span>'}</td></tr>`;
+  }).join('');
+
+  renderGanancia();
+}
+
+// ═══ RECAUDADO vs COSTO vs GANANCIA ═══
+// Son dos ganancias distintas y conviene ver las dos:
+//  · Margen        = recaudado − costo de lo ENTREGADO. Dice si el precio está bien puesto.
+//  · Result. caja  = recaudado − TODO lo comprado. Incluye la plata inmovilizada en el armario.
+// Con costos sin cargar el margen mentiría (daría igual al recaudado), así que en ese caso se
+// avisa en vez de mostrar un número inventado.
+function renderGanancia() {
+  const box = document.getElementById('kstripGanancia');
+  if (!box) return;
+  const S = statsPedidos(PEDIDOS);
+
+  let costoTotal = 0, unidComp = 0;
+  COMPRAS.forEach(c => {
+    const n = Number(c.cant) || 0;
+    unidComp += n;
+    costoTotal += n * (Number(c.costo) || 0);
   });
 
-  // El bloque de 3ra tanda sólo aparece cuando hay algo que mostrar
-  const bloque3 = document.getElementById('kpiTanda3');
-  if (bloque3) bloque3.style.display = t3.length ? '' : 'none';
-}
-
-// ============ RETIROS ============
-let currentRetirosFilter = 'todos';
-
-function switchRetirosFilter(filter) {
-  currentRetirosFilter = filter;
-  document.querySelectorAll('[data-rf]').forEach(t => {
-    t.classList.toggle('active', t.dataset.rf === filter);
-  });
-  renderRetiros();
-}
-
-function updateRetirosKPIs() {
-  const retirados = PEDIDOS.filter(p => isRetirado(p));
-  // los regalos no cuentan como deuda
-  const conDeuda  = retirados.filter(p => tieneDeuda(p));
-  const sinDeuda  = retirados.filter(p => !tieneDeuda(p));
-  const regalos   = retirados.filter(p => isRegalo(p));
-  const montoDeuda = conDeuda.reduce((s, p) => s + (Number(p['Resta']) || 0), 0);
-
-  const el = id => document.getElementById(id);
-  if (el('rTotalRet'))   el('rTotalRet').textContent   = retirados.length;
-  if (el('rSinDeuda'))   el('rSinDeuda').textContent   = sinDeuda.length;
-  if (el('rConDeuda'))   el('rConDeuda').textContent   = conDeuda.length;
-  if (el('rMontoDeuda')) el('rMontoDeuda').textContent = fmt(montoDeuda);
-
-  if (el('rfBadgeTodos'))     el('rfBadgeTodos').textContent     = retirados.length;
-  if (el('rfBadgeSinDeuda'))  el('rfBadgeSinDeuda').textContent  = sinDeuda.length;
-  if (el('rfBadgeConDeuda'))  el('rfBadgeConDeuda').textContent  = conDeuda.length;
-  if (el('rfBadgeRegalo'))    el('rfBadgeRegalo').textContent    = regalos.length;
-
-  // Colorear badge deuda
-  const badgeDeuda = el('rfBadgeConDeuda');
-  if (badgeDeuda) {
-    badgeDeuda.style.background = conDeuda.length > 0 ? '#e67e22' : '#e0e0e0';
-    badgeDeuda.style.color      = conDeuda.length > 0 ? 'white'   : '#555';
-  }
-}
-
-function toggleRetirosCard(id) {
-  const card = document.getElementById('retiro-card-' + id);
-  if (card) card.classList.toggle('expanded');
-}
-
-function renderRetiros() {
-  const search = (document.getElementById('retirosSearch')?.value || '').toLowerCase();
-  const lista = PEDIDOS.filter(p => {
-    if (!isRetirado(p)) return false;
-    if (search && !(p['Nombre'] || '').toLowerCase().includes(search)) return false;
-    if (currentRetirosFilter === 'sin-deuda' &&  tieneDeuda(p)) return false;
-    if (currentRetirosFilter === 'con-deuda' && !tieneDeuda(p)) return false;
-    if (currentRetirosFilter === 'regalo'    && !isRegalo(p))   return false;
-    return true;
-  }).sort(cmpMasNuevo);
-
-  const container = document.getElementById('retirosListContainer');
-  if (!container) return;
-
-  updateRetirosKPIs();
-
-  if (lista.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">📦</div>
-      <p>${PEDIDOS.length === 0 ? 'Conectá tu Google Sheet para ver los retiros' : 'No hay retiros en esta categoría'}</p></div>`;
-    return;
-  }
-
-  const cards = lista.map(p => {
-    const id   = p._id;
-    const tipo = getTipo(p);
-    const deuda = tieneDeuda(p);
-    const tallePedido   = p['Talle'] || '—';
-    const talleRetiro   = p['_talleRetiro'] || p['Talle Retiro'] || tallePedido;
-    const savedMedio    = (p['_medioPagoRetiro'] || p['Medio de Pago Retiro'] || '').toLowerCase();
-    const savedMonto    = p['_montoRetiro'] || p['Monto Retiro'] || 0;
-    const savedObs      = p['_notasRetiro'] || p['Notas Retiro'] || '';
-    const regalo        = isRegalo(p);
-    const cobrado       = (Number(p['Total']) || 0) - (Number(p['Resta']) || 0);
-
-    // En un regalo no se cobró nada: el número que importa es lo que la prenda le costó al
-    // club, o sea el Total. Mostrar "Cobrado" ahí daba $0 (o el saldo, si quedó cargado)
-    // y se leía como si la persona debiera plata.
-    const lineaMonto = regalo
-      ? `<span>Costo: <span class="val">${fmt(p['Total'] || 0)}</span></span>`
-      : `<span>Total: <span class="val">${fmt(p['Total'] || 0)}</span></span>
-         <span>Cobrado: <span class="val">${fmt(cobrado)}</span></span>`;
-
-    return `
-    <div class="card retirado ${deuda ? 'deuda-pendiente' : ''} ${regalo ? 'regalo' : ''}" id="retiro-card-${id}">
-      <div class="card-header" onclick="toggleRetirosCard(${id})">
-        <div class="check">✓</div>
-        <span class="name">${p['Nombre'] || '—'}</span>
-        ${deuda ? '<span class="deuda-badge">DEUDA</span>' : ''}
-        ${regalo ? '<span class="regalo-badge">🎁 REGALO</span>' : ''}
-        <span class="tipo-badge" style="background:${getTipoColor(tipo)}">${getTipoLabel(tipo)}</span>
-        <span class="talle">${labelTalle(talleRetiro || tallePedido, true)}</span>
-        <button class="btn-editar" title="Corregir los datos del retiro"
-          onclick="event.stopPropagation(); openModalRetiro(${id});">✏️</button>
-        <span class="arrow">▼</span>
-      </div>
-      <div class="card-info">
-        ${lineaMonto}
-        ${deuda ? `<span>Resta: <span class="val" style="color:#e74c3c;font-weight:700;">${fmt(p['Resta'] || 0)}</span></span>` : ''}
-        ${savedMedio ? `<span>Medio: <span class="val">${savedMedio}</span></span>` : ''}
-      </div>
-      ${savedObs ? `<div class="notas-excel" style="color:#2980b9;">Obs: ${savedObs}</div>` : ''}
-      <div class="card-body">
-        ${deuda ? `
-        <div style="padding-top:6px;">
-          <div style="font-size:0.75rem;font-weight:700;color:#e67e22;margin-bottom:6px;">💰 Registrar pago de deuda (resta ${fmt(p['Resta'] || 0)})</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Monto</label>
-              <input type="number" id="retiroPago-${id}" placeholder="0" min="0">
-            </div>
-            <div class="form-group">
-              <label>Medio de pago</label>
-              <select id="retiroMedio-${id}">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn btn-warning btn-sm" onclick="pagarDeudaRetiro(${id})">Registrar Pago</button>
-        </div>` : ''}
-        <div class="actions" style="margin-top:10px;">
-          <button class="btn btn-danger btn-sm" onclick="marcarRetiro(${id}, false)">Desmarcar retiro</button>
-        </div>
-      </div>
-    </div>`;
+  // Costo de lo entregado: unidades retiradas × costo promedio de su prenda
+  let costoEntregado = 0, entregadasSinCosto = 0, entregadas = 0;
+  PEDIDOS.filter(p => isRetirado(p)).forEach(p => {
+    entregadas++;
+    const cu = costoUnitPrenda(getTipo(p));
+    if (cu === null) entregadasSinCosto++; else costoEntregado += cu;
   });
 
-  container.innerHTML = cards.join('');
+  const sinCosto = unidadesSinCosto();
+  const hayCosto = costoTotal > 0;
+  const margen = S.recaudado - costoEntregado;
+  const caja   = S.recaudado - costoTotal;
+  const pct    = S.recaudado ? (margen / S.recaudado * 100) : 0;
+  const nd     = '<span class="zz">sin cargar</span>';
+
+  box.innerHTML =
+    `<div class="kbox g"><b>${fmt(S.recaudado)}</b><span>Recaudado</span><u>cobrado de verdad</u></div>` +
+    `<div class="kbox r"><b>${hayCosto ? fmt(costoEntregado) : nd}</b><span>Costo entregado</span>` +
+      `<u>${entregadas} prendas</u></div>` +
+    `<div class="kbox ${hayCosto ? 'g' : ''}"><b>${hayCosto ? fmt(margen) : nd}</b><span>Margen</span>` +
+      `<u>${hayCosto ? pct.toFixed(1) + '% s/ recaudado' : 'falta el costo'}</u></div>` +
+    `<div class="kbox r"><b>${hayCosto ? fmt(costoTotal) : nd}</b><span>Costo comprado</span>` +
+      `<u>${unidComp} unidades</u></div>` +
+    `<div class="kbox"><b>${hayCosto ? fmt(caja) : nd}</b><span>Resultado de caja</span>` +
+      `<u>recaudado − todo lo comprado</u></div>`;
+
+  const av = document.getElementById('avisoGanancia');
+  if (!av) return;
+  const partes = [];
+  if (sinCosto) partes.push(`<b>Faltan cargar ${sinCosto} costos.</b> Las filas que vinieron de la ` +
+    `hoja Stock entraron con costo 0. Cargalos desde Stock → Compras (clic en el costo) y estos ` +
+    `números pasan a ser reales.`);
+  if (hayCosto && entregadasSinCosto) partes.push(`${entregadasSinCosto} prendas entregadas son de ` +
+    `una prenda sin ningún costo cargado, así que no suman al costo entregado.`);
+  if (hayCosto && !sinCosto) partes.push(`El <b>margen</b> (${fmt(margen)}) mide sólo lo entregado: ` +
+    `dice si el precio está bien puesto. El <b>resultado de caja</b> (${fmt(caja)}) resta además las ` +
+    `<b>${unidComp - entregadas} prendas que siguen en el armario</b> — plata gastada que se ` +
+    `recupera cuando se vendan. Los ${S.reg} regalos están en el costo entregado con ingreso cero, ` +
+    `así que bajan el margen a propósito.`);
+  av.style.display = partes.length ? '' : 'none';
+  av.innerHTML = partes.join('<br><br>');
 }
 
-async function pagarDeudaRetiro(id) {
-  const pago  = Number(document.getElementById('retiroPago-'  + id)?.value) || 0;
-  const medio = document.getElementById('retiroMedio-' + id)?.value || 'efectivo';
-  if (!pago || pago <= 0) { showToast('Ingresá un monto válido'); return; }
-  const pedido = PEDIDOS.find(p => p._id === id);
-  if (!pedido) return;
-  const resta = Number(pedido['Resta']) || 0;
-  if (pago > resta) {
-    showToast(`El monto ($${pago.toLocaleString('es-AR')}) supera la deuda ($${resta.toLocaleString('es-AR')})`);
-    return;
-  }
-  await savePagoSeña(pedido, pago, medio);
-}
+// La pantalla de Retiros se eliminó: era la misma entidad que Pedidos con otro filtro. Sus
+// acciones (marcar/desmarcar retiro, registrar pago de deuda, corregir el retiro) ya viven en
+// la tarjeta de Pedidos, que se despliega con un clic.
 
 // ============ MOVIMIENTOS ============
 // Todas las fechas se manejan en huso horario de Argentina, sin importar
@@ -3410,7 +3809,8 @@ function pushMovLocal(m) {
 }
 
 // ============ INIT ============
-initSubTabs();
+initFiltrosPedidos();
+initFiltrosStock();
 initNuevoPedidoTipos();
 renderTipos();
 checkConfig();
@@ -3420,7 +3820,16 @@ const movBackupInit = localStorage.getItem('movimientos_backup');
 if (movBackupInit) { try { MOVIMIENTOS = JSON.parse(movBackupInit); } catch(e) {} }
 const backup = localStorage.getItem('pedidos_backup');
 if (backup) { try { invalidarCachePedidoDeMov(); PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
-if (SCRIPT_URL) { loadFromSheets(); }
+if (SCRIPT_URL) {
+  // Se prueba una vez si el navegador puede leer las respuestas del backend. Si puede, cada
+  // escritura verifica que el servidor la haya aceptado; si no, se sigue escribiendo a ciegas
+  // como antes, pero al menos queda avisado en la consola.
+  probarLecturaRespuesta().then(ok => {
+    if (!ok) console.warn('Las escrituras van a ciegas: el navegador no puede leer la respuesta ' +
+      'del Apps Script. Revisá que el deploy tenga acceso "Cualquier persona".');
+  });
+  loadFromSheets();
+}
 </script>
 </body>
 </html>

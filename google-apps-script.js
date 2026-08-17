@@ -15,12 +15,110 @@
 const SPREADSHEET_ID = '1EVLGu97_2A_TRx6-udU2tOIaE_tVXULGCJ_rMpP1UeM';
 const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_RETIROS = 'Retiros';
-const SHEET_STOCK   = 'Stock';
+const SHEET_STOCK   = 'Stock';        // legacy: dos fotos de "stock inicial" por tanda
+const SHEET_COMPRAS = 'Compras';      // reemplazo: una fila por compra, con costo
 const SHEET_MOVIMIENTOS = 'Movimientos';
 
 // Huso horario de Argentina: todas las fechas del log se guardan en esta zona
 const TZ_AR = 'America/Argentina/Buenos_Aires';
 const MOV_HEADERS = ['Fecha', 'Tipo', 'Pedido ID', 'Nombre', 'Prenda', 'Talle', 'Monto', 'Medio', 'Detalle'];
+const COM_HEADERS = ['ID', 'Fecha', 'Tanda', 'Prenda', 'Talle', 'Cantidad', 'Costo Unitario', 'Notas'];
+
+// ============ IDENTIDAD DE UN PEDIDO ============
+// Hasta acá un pedido se identificaba por su número de fila. Alcanzaba con borrar o reordenar
+// una fila en la planilla para que todas las referencias (retiros, movimientos) apuntaran al
+// pedido equivocado, en silencio. Ahora la columna ID es la referencia real y la fila es sólo
+// un atajo que se verifica antes de escribir.
+const PED_COL_ID = 'ID';
+
+function nuevoIdPedido_() {
+  return 'P' + new Date().getTime().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+/** Devuelve el índice 0-based de la columna ID, creándola al final si no existe. */
+function colIdPedidos_(sheet) {
+  const nCols = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0].map(h => String(h).trim());
+  let ix = headers.indexOf(PED_COL_ID);
+  if (ix >= 0) return ix;
+  // Se agrega AL FINAL a propósito: insertar en el medio correría todas las columnas y
+  // rompería cualquier fórmula o referencia que tengas armada en la planilla.
+  sheet.insertColumnAfter(nCols);
+  sheet.getRange(1, nCols + 1).setValue(PED_COL_ID).setFontWeight('bold');
+  return nCols;
+}
+
+/**
+ * Completa los IDs que falten. Corre solo desde getAll y corta enseguida si no hay ninguno
+ * vacío, así no cuesta nada en el uso normal. Escribe en un solo setValues.
+ */
+function backfillIdsPedidos_() {
+  try {
+    const sheet = getOrCreateSheet(SHEET_PEDIDOS);
+    const ultima = sheet.getLastRow();
+    if (ultima < 2) return null;
+    const cId = colIdPedidos_(sheet);
+
+    const ids = sheet.getRange(2, cId + 1, ultima - 1, 1).getValues();
+    // Sólo se le pone ID a las filas que tienen algo cargado (columna Nombre)
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const cNom = headers.indexOf('Nombre');
+    const nombres = cNom >= 0 ? sheet.getRange(2, cNom + 1, ultima - 1, 1).getValues() : null;
+
+    let puestos = 0;
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0] || '').trim()) continue;
+      if (nombres && !String(nombres[i][0] || '').trim()) continue;   // fila vacía
+      ids[i][0] = nuevoIdPedido_();
+      puestos++;
+    }
+    if (!puestos) return null;
+
+    sheet.getRange(2, cId + 1, ids.length, 1).setValues(ids);
+    logMovimiento({
+      tipo: 'SISTEMA', nombre: '', prenda: '', talle: '', monto: 0, medio: '',
+      detalle: 'Se asignaron ' + puestos + ' IDs de pedido a filas que no tenían'
+    });
+    return { puestos: puestos };
+  } catch (err) {
+    console.error('backfillIdsPedidos_ falló: ' + err);
+    return null;
+  }
+}
+
+/**
+ * Resuelve en qué fila está un pedido. Prioriza el ID; `filaHint` (el sheetRow que manda el
+ * cliente) se usa sólo como atajo y se verifica. Si no coinciden, se recorre la hoja.
+ * Devuelve 0 si no se encuentra — el que llama tiene que abortar, nunca escribir a ciegas.
+ */
+function filaDePedido_(sheet, id, filaHint) {
+  const cId = colIdPedidos_(sheet);
+  const ultima = sheet.getLastRow();
+  const idBuscado = String(id || '').trim();
+
+  if (idBuscado) {
+    const hint = Number(filaHint);
+    if (hint > 1 && hint <= ultima) {
+      const enHint = String(sheet.getRange(hint, cId + 1).getValue() || '').trim();
+      if (enHint === idBuscado) return hint;      // el atajo era correcto
+    }
+    const ids = sheet.getRange(2, cId + 1, Math.max(0, ultima - 1), 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0] || '').trim() === idBuscado) return i + 2;
+    }
+    return 0;   // hay ID pero no está en la hoja: no se escribe nada
+  }
+
+  // Sin ID (cliente viejo o pedido anterior al backfill): se cae al número de fila
+  const hint = Number(filaHint);
+  return (hint > 1 && hint <= ultima) ? hint : 0;
+}
+
+/** Lee el ID de una fila de Pedidos (para loguear movimientos con la referencia real). */
+function idDeFila_(sheet, fila) {
+  const cId = colIdPedidos_(sheet);
+  return String(sheet.getRange(fila, cId + 1).getValue() || '').trim();
+}
 
 // ============ HELPERS ============
 
@@ -184,12 +282,152 @@ function getAll(desde, hasta, limitMov) {
     'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
   ]);
 
+  // Se completan los IDs que falten antes de leer, así los pedidos salen siempre con el suyo
+  const backfill = backfillIdsPedidos_();
   const pedidos = sheetToObjects(pedidosSheet);
-  const retiros = sheetToObjects(retirosSheet);
+  const retiros = sheetToObjects(retirosSheet);   // se sigue devolviendo, pero la app ya no la lee
   const stock = getStock();
+  const migracion = migrarStockACompras_();
+  const compras = getCompras();
   const movimientos = leerMovimientos(desde, hasta, limitMov);
 
-  return jsonResponse({ status: 'ok', pedidos, retiros, stock, movimientos, hoyAR: ahoraAR().slice(0, 10) });
+  return jsonResponse({ status: 'ok', pedidos, retiros, stock, compras, movimientos,
+                        migracion: migracion, backfill: backfill,
+                        hoyAR: ahoraAR().slice(0, 10) });
+}
+
+// ============ COMPRAS ============
+// El stock pasó de ser dos fotos ("stock inicial" de 1ra y de 2da tanda) a un registro de
+// compras: una fila por prenda+talle+tanda, con su costo. Así una tanda nueva es una fila más
+// en vez de una grilla más en el código, y aparece el dato de costo para calcular la ganancia.
+
+function getCompras() {
+  const sheet = getOrCreateSheet(SHEET_COMPRAS, COM_HEADERS);
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+  const h = data[0].map(x => String(x).trim());
+  const ix = n => h.indexOf(n);
+  const out = [];
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (!r[ix('Prenda')] && !r[ix('Talle')]) continue;
+    out.push({
+      id:     String(r[ix('ID')] || ''),
+      fecha:  fechaMovToStr(r[ix('Fecha')]).slice(0, 10),
+      tanda:  String(r[ix('Tanda')]  || '').toUpperCase(),
+      prenda: String(r[ix('Prenda')] || '').toUpperCase(),
+      talle:  String(r[ix('Talle')]  || '').toUpperCase(),
+      cant:   Number(r[ix('Cantidad')]) || 0,
+      costo:  Number(r[ix('Costo Unitario')]) || 0,
+      notas:  String(r[ix('Notas')] || ''),
+      _row:   i + 1
+    });
+  }
+  return out;
+}
+
+function idCompra_() {
+  return 'C' + new Date().getTime().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// Migración de una sola vez: pasa la hoja Stock a Compras con costo 0 (M los carga después).
+// Sólo corre si Compras está vacía y Stock tiene algo, así que es idempotente y no se puede
+// duplicar sola. Se devuelve el resumen para que la app pueda avisarlo en pantalla.
+function migrarStockACompras_() {
+  try {
+    const compras = getOrCreateSheet(SHEET_COMPRAS, COM_HEADERS);
+    if (compras.getLastRow() > 1) return null;         // ya hay compras: nada que hacer
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const stock = ss.getSheetByName(SHEET_STOCK);
+    if (!stock) return null;
+    const data = stock.getDataRange().getValues();
+    if (data.length < 2) return null;
+
+    const hoy = ahoraAR().slice(0, 10);
+    const filas = [];
+    for (let i = 1; i < data.length; i++) {
+      const tipoRaw = String(data[i][0] || '').trim().toUpperCase();
+      const talle   = String(data[i][1] || '').trim().toUpperCase();
+      const cant    = Number(data[i][2]) || 0;
+      if (!tipoRaw || !talle || cant <= 0) continue;
+      // El sufijo _2DA era la única marca de que una fila pertenecía a la segunda tanda
+      const esSegunda = tipoRaw.endsWith('_2DA');
+      filas.push([idCompra_(), hoy, esSegunda ? 'SEGUNDA' : 'PRIMERA',
+                  tipoRaw.replace('_2DA', ''), talle, cant, 0,
+                  'Migrado de la hoja Stock — falta cargar el costo']);
+    }
+    if (!filas.length) return null;
+    compras.getRange(compras.getLastRow() + 1, 1, filas.length, COM_HEADERS.length).setValues(filas);
+
+    const unidades = filas.reduce((s, f) => s + f[5], 0);
+    logMovimiento({
+      tipo: 'COMPRA', nombre: '', prenda: '', talle: '', monto: 0, medio: '',
+      detalle: 'Migración: ' + filas.length + ' filas de la hoja Stock pasadas a Compras (' +
+               unidades + ' unidades, costo pendiente de cargar)'
+    });
+    return { filas: filas.length, unidades: unidades };
+  } catch (err) {
+    console.error('migrarStockACompras_ falló: ' + err);
+    return null;
+  }
+}
+
+// Registra una compra: una fila por talle. Acepta prenda y tanda nuevas (llegan como texto).
+function guardarCompra(data) {
+  const sheet = getOrCreateSheet(SHEET_COMPRAS, COM_HEADERS);
+  const prenda = String(data.prenda || '').trim().toUpperCase();
+  const tanda  = String(data.tanda  || '').trim().toUpperCase();
+  const costo  = Number(data.costo) || 0;
+  const det    = data.detalle || {};
+  if (!prenda) return jsonResponse({ status: 'error', message: 'Falta la prenda.' });
+  if (!tanda)  return jsonResponse({ status: 'error', message: 'Falta la tanda.' });
+
+  const fecha = String(data.fecha || '').slice(0, 10) || ahoraAR().slice(0, 10);
+  const filas = [];
+  Object.keys(det).forEach(t => {
+    const cant = Number(det[t]) || 0;
+    if (cant > 0) filas.push([idCompra_(), fecha, tanda, prenda,
+                              String(t).toUpperCase(), cant, costo, data.notas || '']);
+  });
+  if (!filas.length) return jsonResponse({ status: 'error', message: 'Ningún talle con cantidad.' });
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, filas.length, COM_HEADERS.length).setValues(filas);
+
+  const unidades = filas.reduce((s, f) => s + f[5], 0);
+  const resumen  = filas.map(f => f[4] + ' ' + f[5]).join(', ');
+  logMovimiento({
+    tipo: 'COMPRA', nombre: '', prenda: data.prendaLabel || prenda, talle: '',
+    monto: unidades * costo, medio: '',
+    detalle: tanda + ' · ' + resumen + ' · ' + unidades + ' unid. a ' + costo + ' c/u'
+  });
+  return jsonResponse({ status: 'ok', message: 'Compra registrada', unidades: unidades });
+}
+
+// Corrige el costo unitario de una fila de compra (las migradas entran con 0).
+function actualizarCostoCompra(data) {
+  const sheet = getOrCreateSheet(SHEET_COMPRAS, COM_HEADERS);
+  const all = sheet.getDataRange().getValues();
+  const h = all[0].map(x => String(x).trim());
+  const cId = h.indexOf('ID'), cCosto = h.indexOf('Costo Unitario');
+  if (cId < 0 || cCosto < 0) return jsonResponse({ status: 'error', message: 'Faltan columnas en Compras.' });
+  const nuevo = Number(data.costo) || 0;
+  if (nuevo < 0) return jsonResponse({ status: 'error', message: 'El costo no puede ser negativo.' });
+
+  for (let i = 1; i < all.length; i++) {
+    if (String(all[i][cId]) === String(data.id)) {
+      const viejo = Number(all[i][cCosto]) || 0;
+      if (viejo === nuevo) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
+      sheet.getRange(i + 1, cCosto + 1).setValue(nuevo);
+      logMovimiento({
+        tipo: 'COMPRA', nombre: '', prenda: String(all[i][h.indexOf('Prenda')] || ''),
+        talle: String(all[i][h.indexOf('Talle')] || ''), monto: 0, medio: '',
+        detalle: 'costo unitario: ' + viejo + ' → ' + nuevo
+      });
+      return jsonResponse({ status: 'ok', message: 'Costo actualizado' });
+    }
+  }
+  return jsonResponse({ status: 'error', message: 'No se encontró la compra ' + data.id });
 }
 
 // Leer stock desde la hoja Stock (formato: Tipo | Talle | Stock | Última Actualización)
@@ -245,11 +483,34 @@ function getRetiros() {
 
 // ============ POST: Write data ============
 
+// Serializa TODAS las escrituras. Sin esto, dos personas usando la app al mismo tiempo pueden
+// leer los mismos índices de fila antes de escribir: la segunda termina operando sobre una fila
+// que ya no es la que creía, y pisa el pedido equivocado. Con multiusuario no es hipotético.
+// Las lecturas (doGet) NO toman el lock, para que un getAll largo no trabe un guardado.
 function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+  } catch (lockErr) {
+    return jsonResponse({ status: 'error',
+      message: 'El servidor está ocupado con otra operación. Probá de nuevo en unos segundos.' });
+  }
+  try {
+    return rutearPost_(e);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rutearPost_(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
 
+    // Sirve para que la app pruebe si el navegador puede leer las respuestas de un POST
+    if (action === 'ping') {
+      return jsonResponse({ status: 'ok', pong: true, hoyAR: ahoraAR() });
+    }
     if (action === 'nuevoPedido') {
       return nuevoPedido(data);
     }
@@ -271,6 +532,12 @@ function doPost(e) {
     if (action === 'editarRetiro') {
       return editarRetiro(data);
     }
+    if (action === 'guardarCompra') {
+      return guardarCompra(data);
+    }
+    if (action === 'actualizarCostoCompra') {
+      return actualizarCostoCompra(data);
+    }
 
     return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
   } catch (err) {
@@ -288,25 +555,6 @@ function asegurarColumna_(sheet, headers, nombre) {
   sheet.insertColumnAfter(lastCol);
   sheet.getRange(1, lastCol + 1).setValue(nombre).setFontWeight('bold');
   return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-}
-
-// Escribe una fila en la hoja Retiros mapeando por NOMBRE de columna en vez de por posición.
-// Antes se mandaban 13 valores en orden fijo: alcanzaba con mover o insertar una columna en
-// la hoja para que todo quedara corrido una casilla, en silencio.
-// filaExistente > 0 actualiza esa fila (conservando el valor de cualquier columna propia que
-// no manejemos acá); si no, agrega una nueva al final.
-function escribirRetiro_(sheet, filaExistente, valores) {
-  const nCols   = sheet.getLastColumn();
-  const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0];
-  const fila = filaExistente > 0
-    ? sheet.getRange(filaExistente, 1, 1, nCols).getValues()[0]
-    : new Array(nCols).fill('');
-  headers.forEach((h, i) => {
-    const k = h.toString().trim();
-    if (Object.prototype.hasOwnProperty.call(valores, k)) fila[i] = valores[k];
-  });
-  if (filaExistente > 0) sheet.getRange(filaExistente, 1, 1, nCols).setValues([fila]);
-  else sheet.appendRow(fila);
 }
 
 function nuevoPedido(data) {
@@ -395,15 +643,19 @@ function nuevoPedido(data) {
     if (key === 'Notas Retiro')         return retiraAhora ? (data.notas    || '') : '';
     if (key === 'Regalo') return Number(data.regalo) || 0;
     if (key === 'Fecha Alta') return ahoraAR();
+    if (key === PED_COL_ID) return '';   // se completa abajo, con la columna ya asegurada
     return '';
   });
 
-  sheet.appendRow(row);
+  // El ID se genera acá y se devuelve al cliente, así el pedido recién creado se puede editar
+  // o retirar en el acto sin esperar al refresco.
+  const pedidoId = nuevoIdPedido_();
+  const cId = colIdPedidos_(sheet);
+  while (row.length <= cId) row.push('');
+  row[cId] = pedidoId;
 
-  // El cliente identifica cada pedido por su posición entre las filas de datos (fila 2 = id 1),
-  // así que el id se deduce de la fila recién agregada. Hasta ahora el log de PEDIDO_NUEVO iba
-  // sin pedidoId y no había forma de atarlo a su pedido.
-  const pedidoId = sheet.getLastRow() - 1;
+  sheet.appendRow(row);
+  const filaNueva = sheet.getLastRow();
 
   const esRegalo = Number(data.regalo) === 1;
   const detalles = [];
@@ -424,31 +676,10 @@ function nuevoPedido(data) {
     detalle:  (data.tanda || 'SEGUNDA') + (detalles.length ? ' · ' + detalles.join(' · ') : '')
   });
 
-  // Alta con retiro: se completa la hoja Retiros y se loguea el RETIRO aparte, para que el
-  // historial quede igual que si se hubiera hecho en dos pasos (y los filtros de retiro lo vean).
+  // Alta con retiro: se loguea el RETIRO aparte para que el historial quede igual que si se
+  // hubiera hecho en dos pasos. La hoja Retiros ya no se escribe: duplicaba datos del pedido
+  // (nombre, talle, montos) que quedaban viejos al primer cambio, y la app nunca la leía.
   if (retiraAhora) {
-    const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
-      'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
-      'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
-    ]);
-    // 'Seña' y 'Resta' se guardan como estaban ANTES del pago del retiro — misma convención
-    // que registrarRetiro(): dejan ver cuánto se debía al momento de venir a buscarlo.
-    escribirRetiro_(retirosSheet, -1, {
-      'ID':              pedidoId,
-      'Nombre':          data.nombre || '',
-      'Tipo':            data.tipo || tipoKey,
-      'Talle Pedido':    data.talle || '',
-      'Talle Retiro':    data.talle || '',
-      'Seña':            0,
-      'Total':           total,
-      'Resta':           total,
-      'Retirado':        'TRUE',
-      'Pago al Retirar': pagoRetiro,
-      'Medio de Pago':   medioRetiro,
-      'Observación':     data.notas || '',
-      'Fecha Retiro':    ahoraAR()
-    });
-
     const detRetiro = [];
     if (pagoRetiro > 0) detRetiro.push('pagó ' + pagoRetiro + (medioRetiro ? ' por ' + medioRetiro : ''));
     const restaFinal = Math.max(0, total - pagoRetiro);
@@ -488,7 +719,12 @@ function registrarRetiro(data) {
   const colMontoRetiro     = headers.indexOf('Monto Retiro');
   const colNotasRetiro     = headers.indexOf('Notas Retiro');
 
-  const targetRow = Number(data.sheetRow);
+  // La fila se resuelve por ID; el sheetRow del cliente es sólo un atajo que se verifica.
+  const targetRow = filaDePedido_(pedidosSheet, data.pedidoId, data.sheetRow);
+  if (!targetRow) {
+    return jsonResponse({ status: 'error',
+      message: 'No se encontró el pedido ' + (data.pedidoId || data.sheetRow) + '. No se escribió nada.' });
+  }
   if (targetRow > 1 && targetRow <= pedidosData.length) {
     // Mark as retirado / desmarcar
     if (colRetirado >= 0) {
@@ -526,37 +762,9 @@ function registrarRetiro(data) {
     }
   }
 
-  // 2. Add/update Retiros sheet
-  const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
-    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
-    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
-  ]);
-
-  // Check if row already exists in Retiros
-  const retirosData = retirosSheet.getDataRange().getValues();
-  let retiroRow = -1;
-  for (let i = 1; i < retirosData.length; i++) {
-    if (retirosData[i][0] == data.id) {
-      retiroRow = i + 1;
-      break;
-    }
-  }
-
-  escribirRetiro_(retirosSheet, retiroRow, {
-    'ID':              data.id,
-    'Nombre':          data.nombre,
-    'Tipo':            data.tipo,
-    'Talle Pedido':    data.talle,
-    'Talle Retiro':    data.talleRetiro || data.talle,
-    'Seña':            data.seña,
-    'Total':           data.total,
-    'Resta':           data.resta,
-    'Retirado':        data.retirado ? 'TRUE' : 'FALSE',
-    'Pago al Retirar': data.pagoRetiro || 0,
-    'Medio de Pago':   data.medioPago || '',
-    'Observación':     data.observacion || '',
-    'Fecha Retiro':    data.fecha || ''
-  });
+  // La hoja Retiros ya no se escribe: repetía nombre, talle y montos del pedido (fotos que
+  // quedaban viejas al primer cambio) y la app nunca la leía. El retiro vive en las columnas
+  // del propio pedido y queda registrado en Movimientos.
 
   // 3. Log de movimiento
   const pagoRet = Number(data.pagoRetiro) || 0;
@@ -572,7 +780,7 @@ function registrarRetiro(data) {
 
   logMovimiento({
     tipo:     data.retirado ? 'RETIRO' : 'RETIRO_REVERTIDO',
-    pedidoId: data.id,
+    pedidoId: idDeFila_(pedidosSheet, targetRow) || data.pedidoId || data.id,
     nombre:   data.nombre || '',
     prenda:   data.tipo || '',
     talle:    talleRet,
@@ -598,9 +806,10 @@ function editarPedido(data) {
   const nCols   = sheet.getLastColumn();
   const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0];
 
-  const fila = Number(data.sheetRow);
-  if (!(fila > 1) || fila > sheet.getLastRow()) {
-    return jsonResponse({ status: 'error', message: 'Fila inválida: ' + data.sheetRow });
+  const fila = filaDePedido_(sheet, data.pedidoId, data.sheetRow);
+  if (!fila) {
+    return jsonResponse({ status: 'error',
+      message: 'No se encontró el pedido ' + (data.pedidoId || data.sheetRow) + '. No se escribió nada.' });
   }
 
   const previo = sheet.getRange(fila, 1, 1, nCols).getValues()[0];
@@ -682,7 +891,7 @@ function editarPedido(data) {
 
   logMovimiento({
     tipo:     'PEDIDO_EDITADO',
-    pedidoId: fila - 1,
+    pedidoId: idDeFila_(sheet, fila) || data.pedidoId || '',
     nombre:   data.nombre || String(get('Nombre') || ''),
     prenda:   data.tipo || '',
     talle:    data.talle || '',
@@ -704,9 +913,10 @@ function editarRetiro(data) {
   const nCols   = sheet.getLastColumn();
   const headers = sheet.getRange(1, 1, 1, nCols).getValues()[0];
 
-  const fila = Number(data.sheetRow);
-  if (!(fila > 1) || fila > sheet.getLastRow()) {
-    return jsonResponse({ status: 'error', message: 'Fila inválida: ' + data.sheetRow });
+  const fila = filaDePedido_(sheet, data.pedidoId, data.sheetRow);
+  if (!fila) {
+    return jsonResponse({ status: 'error',
+      message: 'No se encontró el pedido ' + (data.pedidoId || data.sheetRow) + '. No se escribió nada.' });
   }
 
   const row = sheet.getRange(fila, 1, 1, nCols).getValues()[0];
@@ -747,21 +957,7 @@ function editarRetiro(data) {
 
   if (!cambios.length) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
 
-  // Espejar en la hoja Retiros la fila de este pedido, si existe
-  const pedidoId = fila - 1;
-  const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
-    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
-    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
-  ]);
-  const retirosData = retirosSheet.getDataRange().getValues();
-  for (let i = 1; i < retirosData.length; i++) {
-    if (String(retirosData[i][0]) === String(pedidoId)) {
-      escribirRetiro_(retirosSheet, i + 1, {
-        'Talle Retiro': talleNuevo, 'Medio de Pago': medioNuevo, 'Observación': notasNuevo
-      });
-      break;
-    }
-  }
+  const pedidoId = idDeFila_(sheet, fila) || data.pedidoId || '';
 
   logMovimiento({
     tipo:     'RETIRO_EDITADO',
@@ -788,7 +984,11 @@ function registrarSeña(data) {
   const colTotalTransf = headers.indexOf('Total Transferencia');
   const colTotalEfect  = headers.indexOf('Total Efectivo');
 
-  const targetRow = Number(data.sheetRow);
+  const targetRow = filaDePedido_(pedidosSheet, data.pedidoId, data.sheetRow);
+  if (!targetRow) {
+    return jsonResponse({ status: 'error',
+      message: 'No se encontró el pedido ' + (data.pedidoId || data.sheetRow) + '. No se escribió nada.' });
+  }
   if (targetRow < 2 || targetRow > pedidosData.length) {
     return jsonResponse({ status: 'error', message: 'Fila inválida' });
   }
@@ -816,25 +1016,6 @@ function registrarSeña(data) {
     pedidosSheet.getRange(targetRow, colTotalEfect + 1).setValue(current + pagoSeña);
   }
 
-  // Sincronizar hoja Retiros si existe una fila para este pedido
-  if (data.pedidoId) {
-    const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
-      'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
-      'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
-    ]);
-    const retirosData   = retirosSheet.getDataRange().getValues();
-    const rHeaders      = retirosData[0];
-    const rColSeña      = rHeaders.indexOf('Seña');
-    const rColResta     = rHeaders.indexOf('Resta');
-    for (let i = 1; i < retirosData.length; i++) {
-      if (String(retirosData[i][0]) === String(data.pedidoId)) {
-        if (rColSeña  >= 0) retirosSheet.getRange(i + 1, rColSeña  + 1).setValue(newSeña);
-        if (rColResta >= 0) retirosSheet.getRange(i + 1, rColResta + 1).setValue(newResta);
-        break;
-      }
-    }
-  }
-
   // Datos del pedido para el log (el front no los manda en este payload)
   const colNombre = headers.indexOf('Nombre');
   const colTalle  = headers.indexOf('Talle');
@@ -854,7 +1035,7 @@ function registrarSeña(data) {
 
   logMovimiento({
     tipo:     'PAGO_SEÑA',
-    pedidoId: data.pedidoId || '',
+    pedidoId: idDeFila_(pedidosSheet, targetRow) || data.pedidoId || '',
     nombre:   nombrePed,
     prenda:   prendaPed,
     talle:    tallePed,
