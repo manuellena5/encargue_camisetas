@@ -820,7 +820,7 @@ function editarPedido(data) {
 
   // Campos de texto. Sólo se escriben las claves que el cliente mandó explícitamente, así un
   // campo ausente no borra lo que había en la hoja.
-  [['Nombre', 'nombre'], ['Talle', 'talle'], ['Notas', 'notas']].forEach(function (par) {
+  [['Nombre', 'nombre'], ['Talle', 'talle'], ['Notas', 'notas'], ['Tanda', 'tanda']].forEach(function (par) {
     const col = par[0], clave = par[1];
     if (!Object.prototype.hasOwnProperty.call(data, clave) || idx(col) < 0) return;
     const nuevo = String(data[clave] == null ? '' : data[clave]);

@@ -468,7 +468,9 @@
        Mismo HTML, distinta grilla. Las columnas de la tabla se reparten en cuatro renglones:
        nombre / prenda-talle-tanda / los tres montos con su etiqueta / los estados. */
     @media (max-width: 880px) {
-      .listhead { display: none; }
+      /* .listhead sola perdía contra `.card-header.gridh { display:grid }`, que tiene más
+         especificidad: por eso la fila de encabezados seguía apareciendo en el celular. */
+      .card-header.gridh.listhead { display: none; }
       .list .card { margin-bottom: 9px; border-radius: 12px; }
       .card-header.gridh {
         grid-template-columns: 1fr 1fr 1fr 26px 20px;
@@ -501,8 +503,33 @@
       .card-header.gridh .gh-est { display: flex; gap: 5px; flex-wrap: wrap; }
       .card-header.gridh .st, .card-header.gridh .medio-chip { font-size: 0.68rem; padding: 3px 8px; }
       .stockline { overflow-x: auto; flex-wrap: nowrap; }
-      table.dt { display: block; overflow-x: auto; white-space: nowrap; }
+
+      /* El segmented control de estados se pasaba del ancho de pantalla (el tab de Regalos
+         quedaba afuera) y eso generaba scroll horizontal en TODA la página. Ahora scrollea
+         él solo, dentro de su renglón. */
+      .fbar { padding: 8px 10px; }
+      .fbar .seg { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+                   scrollbar-width: none; }
+      .fbar .seg::-webkit-scrollbar { display: none; }
+      .fbar .seg div { flex: 0 0 auto; padding: 5px 9px; font-size: 0.74rem; }
+      .fbar input[type=text] { min-width: 100%; }
+      .fbar select { max-width: none; flex: 1 1 30%; min-width: 96px; }
+
+      /* Tabla de Stock: entran las 6 columnas sin scroll lateral */
+      table.dt { display: table; white-space: normal; table-layout: fixed; }
+      table.dt th, table.dt td { padding: 5px 3px; font-size: 0.72rem; }
+      table.dt th { font-size: 0.56rem; letter-spacing: 0; }
+      table.dt th:first-child, table.dt td:first-child { width: 27%; padding-left: 6px; }
+      table.dt td b { font-size: 0.78rem; }
+      .tl { min-width: 0; padding: 1px 4px; font-size: 0.66rem; }
+      .hlong { display: none; }
+      .hshort { display: inline; }
+      /* La columna de la etiqueta ("sin stock", "entregaste N de más") se saca: la fila ya
+         viene pintada de rojo o naranja, así que la información no se pierde. */
+      #tblStock th:last-child, #tblStock td:last-child { display: none; }
+      #tblCompras { white-space: nowrap; display: block; overflow-x: auto; }
     }
+    .hshort { display: none; }
   </style>
 </head>
 <body>
@@ -692,10 +719,15 @@
     <div class="totline" id="totStock"></div>
 
     <table class="dt" id="tblStock" style="border-radius:8px;overflow:hidden;">
+      <!-- En el celular se muestran las versiones cortas de cada encabezado (ver .hshort) -->
       <thead><tr>
-        <th data-m="">Prenda / Talle</th><th data-m="ped">Pedidas</th><th data-m="ret">Retiradas</th>
-        <th data-m="pend">Por retirar</th><th data-m="comp">Compradas</th>
-        <th data-m="disp">Disponibles</th><th style="text-align:left"></th>
+        <th data-m=""><span class="hlong">Prenda / Talle</span><span class="hshort">Prenda</span></th>
+        <th data-m="ped"><span class="hlong">Pedidas</span><span class="hshort">Ped.</span></th>
+        <th data-m="ret"><span class="hlong">Retiradas</span><span class="hshort">Ret.</span></th>
+        <th data-m="pend"><span class="hlong">Por retirar</span><span class="hshort">Pend.</span></th>
+        <th data-m="comp"><span class="hlong">Compradas</span><span class="hshort">Compr.</span></th>
+        <th data-m="disp"><span class="hlong">Disponibles</span><span class="hshort">Disp.</span></th>
+        <th style="text-align:left"></th>
       </tr></thead>
       <tbody></tbody>
     </table>
@@ -810,11 +842,25 @@
       <label>Talle pedido</label>
       <select id="ed_talle"></select>
     </div>
+    <!-- Seña es de sólo lectura: no guarda la seña original sino el acumulado de todo lo
+         cobrado, así que editarla a mano descuadraría los totales de efectivo y transferencia.
+         Para cambiarla se registra o corrige un pago. -->
+    <div class="form-group">
+      <label>Seña / pagado</label>
+      <div id="ed_señaView" style="padding:9px 10px;background:#f7f9fb;border:1px solid #e6eaee;
+        border-radius:8px;font-weight:700;font-variant-numeric:tabular-nums;"></div>
+      <p style="font-size:0.68rem;color:#8d97a3;margin:4px 0 0 2px;">
+        Es todo lo cobrado hasta ahora. Se cambia registrando un pago, no acá.</p>
+    </div>
     <div class="form-group">
       <label>Total</label>
       <input type="number" id="ed_total" min="0" placeholder="0" oninput="previewRestaEdicion()">
     </div>
     <p id="edResta" style="font-size:0.75rem;color:#666;margin:-8px 0 12px 2px;"></p>
+    <div class="form-group">
+      <label>Tanda</label>
+      <select id="ed_tanda"></select>
+    </div>
     <div class="form-group" id="edMedioWrap" style="display:none;">
       <label>Medio de pago de la seña</label>
       <select id="ed_medio">
@@ -2397,6 +2443,10 @@ function openModalEditar(id) {
   document.getElementById('ed_nombre').value = p['Nombre'] || '';
   document.getElementById('ed_nota').value   = p['Notas']  || '';
   document.getElementById('ed_total').value  = Number(p['Total']) || 0;
+  document.getElementById('ed_señaView').textContent = fmt(p['Seña'] || 0);
+  document.getElementById('ed_tanda').innerHTML = TANDAS.map(t =>
+    `<option value="${escapeHtml(t)}" ${tandaDe(p) === t ? 'selected' : ''}>${escapeHtml(labelTanda(t))}</option>`
+  ).join('');
 
   // El talle guardado puede no estar en la lista (filas viejas con algo escrito a mano): se
   // agrega como opción para no perderlo al abrir el modal.
@@ -2481,6 +2531,7 @@ async function guardarEdicionPedido() {
   const talle  = document.getElementById('ed_talle').value;
   const nota   = document.getElementById('ed_nota').value.trim();
   const total  = Number(document.getElementById('ed_total').value) || 0;
+  const tanda  = document.getElementById('ed_tanda').value;
   if (!nombre) { showToast('El nombre no puede quedar vacío'); return; }
   if (total < 0) { showToast('El total no puede ser negativo'); return; }
 
@@ -2495,6 +2546,7 @@ async function guardarEdicionPedido() {
   if (talle  !== (p['Talle']  || '')) cambios.push('talle: ' + labelTalle(p['Talle'] || '—') + ' → ' + labelTalle(talle));
   if (total  !== totalAnt)            cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
   if (cambiaMedio)                    cambios.push('medio de la seña: ' + (d.medio || '—') + ' → ' + medioSeña);
+  if (tanda  !== tandaDe(p))          cambios.push('tanda: ' + labelTanda(tandaDe(p)) + ' → ' + labelTanda(tanda));
   if (nota   !== (p['Notas']  || '')) cambios.push('nota actualizada');
   // El total no puede quedar por debajo de lo ya cobrado: dejaría plata a favor de la persona
   // y la app no tiene forma de devolverla. El backend valida lo mismo.
@@ -2512,11 +2564,12 @@ async function guardarEdicionPedido() {
     showLoading(true);
     await postApp(Object.assign({
         action: 'editarPedido', pedidoId: p._pid || '', sheetRow: p._sheetRow,
-        nombre, talle, notas: nota, total, tipo: getTipoLabel(getTipo(p))
+        nombre, talle, notas: nota, total, tanda, tipo: getTipoLabel(getTipo(p))
       }, cambiaMedio ? { 'medioSeña': medioSeña } : {}));
     p['Nombre'] = nombre;
     p['Talle']  = talle;
     p['Notas']  = nota;
+    p['Tanda']  = tanda;
     // Mismo reparto que hace el backend: la parte de la seña va entera al medio elegido y la
     // del retiro queda donde estaba.
     if (cambiaMedio) {
