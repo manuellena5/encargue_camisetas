@@ -3096,8 +3096,8 @@ function ppAgregarTalle(tipoKey, selectId) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td class="talle-label">${labelTalle(talle)}</td>
-    <td>0</td>
-    <td>
+    <td class="print-hide">0</td>
+    <td class="print-hide">
       <div class="pp-adj">
         <button class="btn-minus" onclick="ppAjustar('${tipoKey}','${talle}',-1)">-</button>
         <input type="number" id="pp-adj-${tipoKey}-${talle}" value="0"
