@@ -1441,7 +1441,14 @@ async function postApp(payload) {
   if (PUEDE_LEER_RESPUESTA === null) await probarLecturaRespuesta();
 
   if (!PUEDE_LEER_RESPUESTA) {
-    await postApp(payload);
+    // Escritura a ciegas: mode 'no-cors' deja salir la petición pero la respuesta es opaca,
+    // así que no hay forma de saber si el backend la aceptó. OJO: no llamar a postApp() acá
+    // (era una recursión infinita -> "Maximum call stack size exceeded").
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
     return { status: 'ok', _ciego: true };
   }
 
