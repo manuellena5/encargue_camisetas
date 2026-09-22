@@ -552,6 +552,57 @@
       #tblCompras td[data-l="Prenda"] { flex: 1 1 100%; font-weight: 700; }
       #tblCompras td[data-l="Costo total"] { margin-left: auto; text-align: right !important; }
     }
+
+    /* ══════════ ESCRITORIO: contenido centrado, no estirado ══════════
+       En un monitor las barras de filtros y las filas de pedido iban de borde a borde
+       (2000px de ancho): el ojo perdía el renglón y los campos quedaban desparramados.
+       Acá se limita el ancho de Pedidos y Movimientos y se centra la columna. Sólo aplica
+       de 881px para arriba, así el celular sigue igual que antes. */
+    @media (min-width: 881px) {
+      /* Las pestañas dejan de ocupar todo el ancho: quedan centradas como la columna */
+      .main-tabs { justify-content: center; }
+      .main-tab { flex: 0 1 180px; }
+
+      #sectionPedidos, #sectionMovimientos { padding: 16px 20px 0; }
+
+      /* Todo bloque directo de estas dos pantallas comparte ancho y queda centrado */
+      #sectionPedidos > *, #sectionMovimientos > * {
+        max-width: 1060px; margin-left: auto; margin-right: auto;
+      }
+
+      /* Las franjas pasan a ser paneles: borde completo en vez de sólo abajo */
+      #sectionPedidos > .filtag,
+      #sectionPedidos > .stockline,
+      #sectionPedidos > .fbar,
+      #sectionMovimientos > .kpi-section,
+      #sectionMovimientos > .mov-filter-tabs,
+      #sectionMovimientos > .filter-bar {
+        border: 1px solid #e6eaee; border-radius: 10px; margin-bottom: 10px;
+      }
+      #sectionPedidos > .fbar { border-bottom-width: 1px; }
+      #sectionMovimientos > .mov-filter-tabs { border-bottom-width: 1px; }
+
+      /* La tira de KPIs no necesita fondo propio: los recuadros blancos flotan solos */
+      #sectionPedidos > .kstrip { background: transparent; padding: 0; margin-bottom: 10px; }
+
+      /* Cabecera de columnas pegada a la lista, sin separación */
+      #sectionPedidos > .listhead {
+        border: 1px solid #e6eaee; border-bottom: none;
+        border-radius: 10px 10px 0 0; margin-bottom: 0;
+      }
+      #sectionPedidos > .list { padding: 0 0 8px; }
+      #sectionPedidos > .list .card:first-child { border-radius: 0; }
+      #sectionMovimientos > .list { padding: 0 0 8px; }
+
+      /* El formulario de la fila de filtros centrado y sin campos gigantes.
+         Los anchos están calculados para que los 5 controles entren en un solo renglón
+         dentro de los 1060px: si crecen, el último select cae solo a una segunda fila. */
+      .fbar { justify-content: center; }
+      .fbar input[type=text] { flex: 0 1 230px; min-width: 160px; }
+      .fbar select { max-width: 132px; }
+      .filter-line { justify-content: center; }
+      .filter-line input { max-width: 420px; }
+    }
   </style>
 </head>
 <body>
