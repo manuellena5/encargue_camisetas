@@ -275,9 +275,13 @@ function doGet(e) {
       return getAll(e.parameter.desde, e.parameter.hasta, e.parameter.limitMov);
     }
 
-    return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
+    // 'origen' le dice al cliente que esta respuesta salió de doGet. Un POST que termina acá
+    // es un POST cuyo salto de redirección se perdió, no una acción inexistente: el cliente
+    // lo usa para no dar por fallida una escritura que el servidor sí ejecutó.
+    return jsonResponse({ status: 'error', origen: 'doGet',
+      message: 'Unknown action: ' + action });
   } catch (err) {
-    return jsonResponse({ status: 'error', message: err.toString() });
+    return jsonResponse({ status: 'error', origen: 'doGet', message: err.toString() });
   }
 }
 
@@ -513,6 +517,14 @@ function rutearPost_(e) {
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
 
+    // Nunca contestar 'Unknown action: undefined' desde acá: ese texto exacto es la firma de
+    // doGet y el cliente lo usa para detectar que se perdió la redirección del POST. Si
+    // llegara un cuerpo sin action, el mensaje tiene que ser distinguible.
+    if (!action) {
+      return jsonResponse({ status: 'error', origen: 'doPost',
+        message: 'El POST llegó sin action. Cuerpo: ' + String(e.postData.contents).slice(0, 150) });
+    }
+
     // Sirve para que la app pruebe si el navegador puede leer las respuestas de un POST
     if (action === 'ping') {
       return jsonResponse({ status: 'ok', pong: true, hoyAR: ahoraAR() });
@@ -548,9 +560,10 @@ function rutearPost_(e) {
       return actualizarCostoCompra(data);
     }
 
-    return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
+    return jsonResponse({ status: 'error', origen: 'doPost',
+      message: 'Acción desconocida: ' + action });
   } catch (err) {
-    return jsonResponse({ status: 'error', message: err.toString() });
+    return jsonResponse({ status: 'error', origen: 'doPost', message: err.toString() });
   }
 }
 

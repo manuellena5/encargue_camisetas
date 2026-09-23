@@ -723,13 +723,11 @@
       <label>Nota</label>
       <textarea id="np_nota" placeholder="Observaciones..."></textarea>
     </div>
-    <div class="form-group">
-      <label>Tanda</label>
-      <select id="np_tanda">
-        <option value="SEGUNDA" selected>2da Tanda (hay stock)</option>
-        <option value="TERCERA">3ra Tanda (se manda a pedir)</option>
-      </select>
-    </div>
+    <!-- El selector de tanda salió del formulario: todo lo que se carga ahora va a la tanda
+         que fija TANDA_NUEVO_PEDIDO. Queda el cartel para que no sea magia invisible; para
+         moverlo a otra tanda está el lápiz de corrección en la lista de pedidos. -->
+    <p id="np_tandaNota" style="font-size:0.78rem;color:#55606d;background:#f7f9fb;
+      border:1px solid #e6eaee;border-radius:8px;padding:8px 10px;margin-bottom:14px;"></p>
     <div class="regalo-checkbox-row">
       <input type="checkbox" id="np_regalo">
       <label for="np_regalo">🎁 Es regalo del club (gasto del club, no se cobra)</label>
@@ -1014,7 +1012,9 @@
 </div>
 
 <!-- ========== MODAL: CARGAR COMPRA ========== -->
-<div class="modal-overlay" id="modalCompra" style="display:none;" onclick="cerrarModalCompra(event)">
+<!-- Sin onclick en el overlay a propósito: cargar una compra son varios campos y un clic
+     al costado borraba todo lo tipeado. Se cierra sólo con Cancelar. -->
+<div class="modal-overlay" id="modalCompra" style="display:none;">
   <div class="modal" style="text-align:left;max-width:520px;max-height:90vh;overflow-y:auto;">
     <h3 style="text-align:center;">＋ Cargar compra</h3>
     <p style="text-align:center;font-size:0.78rem;color:#7b8794;margin-bottom:16px;">
@@ -1312,6 +1312,10 @@ function getTanda(p) {
 // Las tandas ya no son un enum fijo: se descubren de los datos (pedidos + compras) sobre una
 // base conocida, así "cargar compra en una tanda nueva" no necesita tocar código.
 const TANDAS_BASE = ['PRIMERA', 'SEGUNDA', 'TERCERA'];
+// Tanda con la que se dan de alta los pedidos nuevos. Es un solo valor en vez de un selector
+// en el formulario: se carga siempre la misma y elegirla en cada alta era una oportunidad más
+// de equivocarse. Cuando arranque la 4ta, se cambia acá.
+const TANDA_NUEVO_PEDIDO = 'TERCERA';
 let TANDAS = TANDAS_BASE.slice();
 
 function recalcularTandas() {
@@ -1445,6 +1449,9 @@ function limpiarFiltrosPedidos() {
 }
 
 function initNuevoPedidoTipos() {
+  const nota = document.getElementById('np_tandaNota');
+  if (nota) nota.innerHTML = 'Se registra en la <b>' + escapeHtml(labelTanda(TANDA_NUEVO_PEDIDO)) +
+    '</b>. Para moverlo a otra, se corrige el pedido desde la lista.';
   const sel = document.getElementById('np_tipo');
   sel.innerHTML = '<option value="">Seleccionar...</option>' +
     getPrendaTypes().map(t => `<option value="${t.label}">${t.label}</option>`).join('');
@@ -1555,6 +1562,24 @@ async function postApp(payload) {
     body: JSON.stringify(payload)
   });
   const j = await r.json();
+
+  // Apps Script no contesta el POST directo: responde un 302 a una URL de un solo uso en
+  // script.googleusercontent.com. Ese salto es frágil — a veces devuelve 404 y a veces rebota
+  // de vuelta a /exec, y entonces lo que el navegador termina leyendo es la respuesta de
+  // doGet, que sin ?action= contesta 'Unknown action: undefined'.
+  // Eso NO es un rechazo del backend: doPost ya corrió con el cuerpo (por eso los datos se
+  // guardan igual). Tratarlo como error hacía fallar operaciones que sí se habían hecho. Se
+  // degrada a escritura a ciegas y se sigue. NO se reintenta: la petición ya salió y
+  // reintentarla duplicaría el dato.
+  const perdioElSalto = j && j.status === 'error' &&
+    (j.origen === 'doGet' || /Unknown action: undefined/.test(String(j.message || '')));
+  if (perdioElSalto) {
+    PUEDE_LEER_RESPUESTA = false;
+    console.warn('Se perdió la redirección del Apps Script: la escritura salió pero no se puede ' +
+                 'confirmar. A partir de acá se escribe a ciegas.');
+    return { status: 'ok', _ciego: true };
+  }
+
   if (j && j.status === 'error') throw new Error(j.message || 'El servidor rechazó la operación');
   return j || { status: 'ok' };
 }
@@ -1854,10 +1879,10 @@ async function submitNuevoPedido() {
   const tipo = document.getElementById('np_tipo').value;
   const talle = document.getElementById('np_talle').value;
   const seña = document.getElementById('np_seña').value;
-  const total = document.getElementById('np_total').value;
+  let total = document.getElementById('np_total').value;   // let: un regalo sin total lo completa abajo
   const modoPago = document.getElementById('np_modoPago').value;
   const nota = document.getElementById('np_nota').value.trim();
-  const tanda = document.getElementById('np_tanda').value;
+  const tanda = TANDA_NUEVO_PEDIDO;
   const regalo = document.getElementById('np_regalo').checked;
   const retirado = document.getElementById('np_retirado').checked;
   if (!nombre) { showToast('Ingresá el nombre'); return; }
@@ -1876,6 +1901,21 @@ async function submitNuevoPedido() {
   // Derive tipoKey from selected tipo label
   const selectedTipoObj = getPrendaTypes().find(t => t.label === tipo);
   const tipoKey = selectedTipoObj ? selectedTipoObj.key : tipo.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+
+  // Un regalo no se cobra, pero le cuesta plata al club: el Total de un regalo es lo que el
+  // club gastó, no lo que factura (así lo suma statsPedidos en 'gastoReg'). Si no se cargó
+  // nada, se usa el costo unitario promedio de esa prenda según la hoja Compras. Si ninguna
+  // compra tiene costo cargado no hay de dónde sacarlo: se deja en 0 y se avisa, en vez de
+  // inventar un número que después descuadra el resumen.
+  if (regalo && !(Number(total) > 0)) {
+    const costo = costoUnitPrenda(String(tipoKey).toLowerCase());
+    if (costo) {
+      total = String(Math.round(costo));
+      showToast('Regalo: se tomó el costo de ' + fmt(Math.round(costo)) + ' como gasto del club');
+    } else {
+      showToast('Regalo sin costo: esa prenda todavía no tiene costo cargado en Compras');
+    }
+  }
   try {
     showLoading(true);
     // El backend devuelve el ID del pedido creado: con eso el pedido recién cargado se puede
@@ -2348,14 +2388,13 @@ function abrirModalCompra(prendaKey) {
   document.getElementById('cmp_prendaNom').value = '';
   document.getElementById('cmp_tandaNom').value = '';
   document.getElementById('cmp_talles').innerHTML = '';
-  cmpAgregarTalle(); cmpAgregarTalle();
+  // L y XL son los dos talles que más se compran: arrancar ahí ahorra dos cambios por compra
+  cmpAgregarTalle('L'); cmpAgregarTalle('XL');
   cmpPrendaCambio(); cmpTandaCambio(); cmpResumen();
   document.getElementById('modalCompra').style.display = 'flex';
 }
 function closeModalCompra() { document.getElementById('modalCompra').style.display = 'none'; }
-function cerrarModalCompra(e) {
-  if (e.target === document.getElementById('modalCompra')) closeModalCompra();
-}
+// El clic fuera del modal ya no cierra nada (ver el comentario en el HTML del overlay).
 function cmpPrendaCambio() {
   document.getElementById('cmp_prendaNueva').style.display =
     document.getElementById('cmp_prenda').value === '__new' ? '' : 'none';
@@ -2364,13 +2403,17 @@ function cmpTandaCambio() {
   document.getElementById('cmp_tandaNueva').style.display =
     document.getElementById('cmp_tanda').value === '__new' ? '' : 'none';
 }
-function cmpAgregarTalle() {
+// talleInicial: sin él las dos filas que abre el modal arrancaban las dos en el primer talle
+// de la lista (XS), y había que cambiar las dos a mano en cada compra.
+function cmpAgregarTalle(talleInicial) {
+  const sel = String(talleInicial || '').toUpperCase();
   const d = document.createElement('div');
   d.className = 'form-row';
   d.style.cssText = 'gap:8px;align-items:flex-end;margin-bottom:6px;';
   d.innerHTML =
     `<div class="form-group" style="margin:0;"><select>` +
-      TALLES_EXTENDIDOS.map(t => `<option value="${t}">${labelTalle(t)}</option>`).join('') +
+      TALLES_EXTENDIDOS.map(t =>
+        `<option value="${t}"${String(t).toUpperCase() === sel ? ' selected' : ''}>${labelTalle(t)}</option>`).join('') +
     `</select></div>` +
     `<div class="form-group" style="margin:0;max-width:100px;">` +
       `<input type="number" min="0" value="0" oninput="cmpResumen()"></div>` +
