@@ -80,6 +80,10 @@
     .mov-card.revert  .mov-ico { background: #fdeded; color: #922b21; }
     .mov-card.stock   { border-left-color: #7f8c8d; }
     .mov-card.stock   .mov-ico { background: #f1f1f1; color: #515a5a; }
+    .mov-card.elim    { border-left-color: #c0392b; background: #fffafa; }
+    .mov-card.elim    .mov-ico { background: #fdeded; color: #922b21; }
+    .mov-card.elim    .mov-title { text-decoration: line-through; text-decoration-color: #e6aaa4; }
+    .mov-estado.eliminado { background: #fdecea; color: #922b21; border: 1px solid #f5b7b1; }
     .mov-card.editado { border-left-color: #f39c12; }
     .mov-card.editado .mov-ico { background: #fef5e7; color: #9c640c; }
     /* Estado actual del pedido al que pertenece un movimiento de alta */
@@ -949,6 +953,35 @@
       <button class="btn btn-danger btn-sm" onclick="closeModalEditar()">Cancelar</button>
       <button class="btn btn-primary btn-sm" id="btnGuardarEdicion" onclick="guardarEdicionPedido()">Guardar</button>
     </div>
+    <!-- Eliminar vive acá abajo, separado y sin color de botón: es la acción destructiva y no
+         tiene que competir visualmente con Guardar. La confirmación va en su propio modal. -->
+    <div style="border-top:1px solid #f0f3f6;margin-top:16px;padding-top:11px;text-align:center;">
+      <button type="button" onclick="abrirModalEliminar()" style="background:none;border:none;
+        color:#c0392b;font-family:inherit;font-size:0.78rem;font-weight:700;cursor:pointer;
+        padding:4px 8px;border-radius:6px;">🗑 Eliminar este pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MODAL: ELIMINAR PEDIDO ========== -->
+<!-- z-index por encima del modal de corrección: se abre arriba de él, así cancelar devuelve
+     al editor en vez de cerrar todo. -->
+<div class="modal-overlay" id="modalEliminar" style="display:none;z-index:1200;" onclick="cerrarModalEliminar(event)">
+  <div class="modal" style="text-align:left;max-width:380px;">
+    <h3 style="text-align:center;color:#c0392b;">🗑 Eliminar pedido</h3>
+    <p id="elSub" style="text-align:center;font-size:0.84rem;color:#555;margin-bottom:14px;"></p>
+    <div id="elAvisos"></div>
+    <div class="form-group">
+      <label>Motivo (queda en el historial)</label>
+      <input type="text" id="el_motivo" placeholder="Ej: se cargó dos veces, se arrepintió...">
+    </div>
+    <p style="font-size:0.72rem;color:#8d97a3;margin:8px 0 0 2px;">
+      El pedido desaparece de la app y queda registrado en Movimientos. En la planilla la fila
+      no se borra: queda marcada como anulada, por si hay que revisarla.</p>
+    <div class="modal-buttons" style="margin-top:16px;">
+      <button class="btn btn-dark btn-sm" onclick="closeModalEliminar()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" id="btnConfirmarEliminar" onclick="confirmarEliminarPedido()">Eliminar</button>
+    </div>
   </div>
 </div>
 
@@ -1096,6 +1129,12 @@ const TALLES_EXTENDIDOS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '8', '9', '10'
 
 // ============ STATE ============
 let PEDIDOS = [];
+// Pedidos eliminados (columna 'Anulado' = 1). Se guardan aparte en vez de tirarlos: los
+// movimientos viejos siguen necesitando saber a quién pertenecían, y sin esta lista un
+// movimiento de un pedido borrado se engancharía por nombre a OTRO pedido de la misma persona.
+// Nada más de la app lee este array, así que la lista, los KPIs, el stock y el resumen ya
+// quedan recalculados sin los eliminados por el solo hecho de que no están en PEDIDOS.
+let PEDIDOS_ANULADOS = [];
 let MOVIMIENTOS = [];
 let currentSection = 'pedidos';
 let currentFilter = 'todos';
@@ -1212,6 +1251,14 @@ function isRetirado(p) {
   if (v === 1 || v === true) return true;
   const s = String(v).trim().toLowerCase();
   return s === '1' || s === 'true' || s === 'si' || s === 'sí';
+}
+
+// Un pedido eliminado tiene 1 en la columna 'Anulado'. Se acepta 1 / true / '1' / 'true'
+// porque Sheets devuelve el valor con el tipo que se le haya cargado a la celda.
+function esAnulado(p) {
+  const v = p && (p['Anulado'] !== undefined ? p['Anulado'] : p._anulado);
+  const s = String(v == null ? '' : v).trim().toLowerCase();
+  return v === 1 || v === true || s === '1' || s === 'true';
 }
 
 function isRegalo(p) {
@@ -1548,7 +1595,7 @@ async function _loadFromSheets(silent) {
     
     if (data.status === 'ok') {
       invalidarCachePedidoDeMov();   // cambió PEDIDOS: los vínculos mov→pedido se recalculan
-      PEDIDOS = (data.pedidos || []).map((p, i) => {
+      const _todos = (data.pedidos || []).map((p, i) => {
         // Normalizar Retirado a 0/1 sin importar qué devuelve Sheets
         const rawRet = p['Retirado'];
         const retiradoNorm = (rawRet === 1 || rawRet === true ||
@@ -1573,10 +1620,16 @@ async function _loadFromSheets(silent) {
           _medioPagoRetiro: p['Medio de Pago Retiro'] || '',
           _montoRetiro:     p['Monto Retiro']          || 0,
           _notasRetiro:     p['Notas Retiro']          || '',
+          _anulado: esAnulado(p) ? 1 : 0,
         };
       });
-      
-      console.log('Pedidos procesados:', PEDIDOS.length); // Debug
+      // Los eliminados salen de PEDIDOS acá y no en cada pantalla: así no hay forma de que
+      // alguno se cuele en un cálculo nuevo por olvidarse de filtrar.
+      PEDIDOS          = _todos.filter(p => !p._anulado);
+      PEDIDOS_ANULADOS = _todos.filter(p =>  p._anulado);
+
+      console.log('Pedidos procesados:', PEDIDOS.length,
+                  '(' + PEDIDOS_ANULADOS.length + ' eliminados)'); // Debug
       
       // Sincronizar stock desde Google Sheets
       // Compras: reemplaza el stock inicial. La primera vez el backend migra sola la hoja Stock
@@ -1612,6 +1665,7 @@ async function _loadFromSheets(silent) {
       localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
 
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
+      localStorage.setItem('pedidos_anulados_backup', JSON.stringify(PEDIDOS_ANULADOS));
       renderAll();
       if (!silent) showToast('Datos actualizados (' + PEDIDOS.length + ' pedidos)');
     } else {
@@ -2700,6 +2754,106 @@ async function guardarEdicionPedido() {
   }
 }
 
+// ============ ELIMINAR PEDIDO ============
+// No borra la fila de la planilla: el backend la marca como anulada y la app deja de leerla.
+// Como PEDIDOS es la única fuente de la lista, los KPIs, el stock, el resumen y el pedido al
+// proveedor, sacarlo de ahí ya recalcula todo; no hay contadores paralelos que actualizar.
+let elimPedidoId = null;
+
+function abrirModalEliminar() {
+  const p = PEDIDOS.find(x => x._id === edPedidoId);
+  if (!p) return;
+  if (!p._pid && !p._sheetRow) { showToast('Esperá unos segundos, el pedido se está sincronizando'); return; }
+  elimPedidoId = edPedidoId;
+
+  document.getElementById('elSub').innerHTML =
+    '<b>' + escapeHtml(p['Nombre'] || '—') + '</b><br>' +
+    escapeHtml(getTipoLabel(getTipo(p))) + ' · talle ' + escapeHtml(labelTalle(p['Talle'] || '—')) +
+    ' · total ' + escapeHtml(fmt(p['Total'] || 0));
+
+  // Los dos efectos que no son obvios se dicen antes de confirmar, no después
+  const cobrado = Number(p['Seña']) || 0;
+  const avisos = [];
+  if (cobrado > 0) {
+    avisos.push('Este pedido tiene <b>' + escapeHtml(fmt(cobrado)) + ' cobrados</b>. Al eliminarlo ' +
+      'esa plata deja de sumar en los totales y en el resumen. Si ya se devolvió, está bien; si no, ' +
+      'anotalo en el motivo.');
+  }
+  if (isRetirado(p)) {
+    avisos.push('El pedido figura <b>entregado</b>. Al eliminarlo la prenda vuelve a contarse como ' +
+      'disponible en el stock, como si nunca hubiera salido.');
+  }
+  document.getElementById('elAvisos').innerHTML = avisos.map(a =>
+    '<p style="font-size:0.76rem;color:#9c640c;background:#fef5e7;border:1px solid #f8d7a3;' +
+    'border-radius:8px;padding:8px 10px;margin-bottom:10px;">⚠ ' + a + '</p>').join('');
+
+  document.getElementById('el_motivo').value = '';
+  document.getElementById('modalEliminar').style.display = 'flex';
+}
+
+function closeModalEliminar() {
+  document.getElementById('modalEliminar').style.display = 'none';
+  elimPedidoId = null;
+}
+
+function cerrarModalEliminar(e) {
+  if (e.target === document.getElementById('modalEliminar')) closeModalEliminar();
+}
+
+async function confirmarEliminarPedido() {
+  const p = PEDIDOS.find(x => x._id === elimPedidoId);
+  if (!p) { closeModalEliminar(); return; }
+  if (!SCRIPT_URL) { showToast('Configurá la URL primero'); return; }
+
+  const motivo  = document.getElementById('el_motivo').value.trim();
+  const prenda  = getTipoLabel(getTipo(p));
+  const cobrado = Number(p['Seña']) || 0;
+  const btn = document.getElementById('btnConfirmarEliminar');
+  btn.disabled = true;
+  try {
+    showLoading(true);
+    await postApp({
+      action: 'eliminarPedido',
+      pedidoId: p._pid || '', sheetRow: p._sheetRow,
+      prenda: prenda, motivo: motivo
+    });
+
+    // Se saca de PEDIDOS y se pasa a la lista de anulados, igual que hace el próximo getAll.
+    // Hacerlo en el acto evita que el pedido siga en pantalla hasta que llegue el refresco.
+    p._anulado = 1;
+    PEDIDOS = PEDIDOS.filter(x => x._id !== p._id);
+    PEDIDOS_ANULADOS.push(p);
+    invalidarCachePedidoDeMov();
+
+    const det = [];
+    det.push('total ' + (Number(p['Total']) || 0));
+    if (cobrado > 0)   det.push('tenía ' + cobrado + ' cobrados que salen de la caja');
+    if (isRetirado(p)) det.push('estaba retirado: la prenda vuelve a contar como disponible');
+    if (motivo)        det.push('motivo: ' + motivo);
+    pushMovLocal({
+      tipo: 'PEDIDO_ELIMINADO',
+      pedidoId: p._pid || p._id,
+      nombre: p['Nombre'] || '', prenda: prenda, talle: p['Talle'] || '',
+      monto: 0,   // no es un ingreso: iría al KPI "Cobrado hoy". Va dicho en el detalle.
+      detalle: det.join(' · ')
+    });
+
+    localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
+    localStorage.setItem('pedidos_anulados_backup', JSON.stringify(PEDIDOS_ANULADOS));
+    closeModalEliminar();
+    closeModalEditar();
+    renderAll();
+    showToast('Pedido eliminado');
+    loadFromSheets({ silent: true });
+  } catch (e) {
+    console.error('Error eliminando pedido:', e);
+    showToast('No se pudo eliminar: ' + e.message);
+  } finally {
+    showLoading(false);
+    btn.disabled = false;
+  }
+}
+
 // ============ EDITAR RETIRO ============
 // Corrige el talle que se entregó, el medio de pago y la observación. Los importes se tocan
 // sólo indirectamente: al cambiar el medio, el backend mueve el Monto Retiro de un acumulador
@@ -3730,7 +3884,8 @@ const MOV_META = {
   RETIRO_REVERTIDO: { cls: 'revert', ico: '↩',  label: 'Retiro desmarcado', grupo: 'retiros' },
   STOCK:            { cls: 'stock',  ico: '▦',  label: 'Stock actualizado', grupo: 'stock'   },
   PEDIDO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Pedido corregido',  grupo: 'pedidos' },
-  RETIRO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Retiro corregido',  grupo: 'retiros' }
+  RETIRO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Retiro corregido',  grupo: 'retiros' },
+  PEDIDO_ELIMINADO: { cls: 'elim',    ico: '✕',  label: 'Pedido eliminado',  grupo: 'pedidos' }
 };
 function movMeta(tipo) {
   return MOV_META[tipo] || { cls: '', ico: '•', label: String(tipo || 'Movimiento'), grupo: 'otros' };
@@ -3763,6 +3918,15 @@ function pedidoDeMov(m) {
 
 function _pedidoDeMovCalc(m) {
   if (m.pedidoId) {
+    // El ID real de la planilla ('P...') es la referencia buena. Va primero.
+    const porPid = PEDIDOS.find(p => String(p._pid) === String(m.pedidoId));
+    if (porPid) return porPid;
+    // Si el pedido fue eliminado hay que decirlo, no seguir buscando: el fallback por nombre
+    // lo engancharía al otro pedido de la misma persona y el movimiento mostraría un estado
+    // que no es el suyo.
+    const anulado = PEDIDOS_ANULADOS.find(p => String(p._pid) === String(m.pedidoId));
+    if (anulado) return anulado;
+    // Movimientos optimistas (pushMovLocal) y filas viejas: guardaban el índice local
     const porId = PEDIDOS.find(p => String(p._id) === String(m.pedidoId));
     if (porId) return porId;
   }
@@ -3771,7 +3935,13 @@ function _pedidoDeMovCalc(m) {
   const talle = normalizeKey(m.talle);
   let cand = PEDIDOS.filter(p =>
     normalizeKey(p['Nombre']) === nombre && (!talle || normalizeKey(p['Talle']) === talle));
-  if (!cand.length) return null;
+  if (!cand.length) {
+    // Sin candidato vivo: puede ser un movimiento de un pedido eliminado antes de que
+    // existieran los IDs. Mejor marcarlo como eliminado que dejarlo sin estado.
+    const anul = PEDIDOS_ANULADOS.filter(p =>
+      normalizeKey(p['Nombre']) === nombre && (!talle || normalizeKey(p['Talle']) === talle));
+    return anul.length === 1 ? anul[0] : null;
+  }
   // La prenda es un filtro blando: si las etiquetas de tipo cambiaron con el tiempo, los
   // movimientos viejos ya no matchean y es preferible caer al desempate por fecha.
   const prenda = normalizeKey(m.prenda);
@@ -3795,6 +3965,7 @@ function _pedidoDeMovCalc(m) {
 function estadoPedidoChip(m) {
   const p = pedidoDeMov(m);
   if (!p) return '';
+  if (p._anulado) return '<span class="mov-estado eliminado">✕ Pedido eliminado</span>';
   if (!isRetirado(p)) return '<span class="mov-estado pendiente">Pendiente de retiro</span>';
   const debe = tieneDeuda(p) ? (Number(p['Resta']) || 0) : 0;
   return debe > 0
@@ -3982,6 +4153,8 @@ const selRango = document.getElementById('movRango');
 if (selRango) selRango.value = String(MOV_RANGO_DIAS);
 const movBackupInit = localStorage.getItem('movimientos_backup');
 if (movBackupInit) { try { MOVIMIENTOS = JSON.parse(movBackupInit); } catch(e) {} }
+const anulBackupInit = localStorage.getItem('pedidos_anulados_backup');
+if (anulBackupInit) { try { PEDIDOS_ANULADOS = JSON.parse(anulBackupInit); } catch(e) {} }
 const backup = localStorage.getItem('pedidos_backup');
 if (backup) { try { invalidarCachePedidoDeMov(); PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
 if (SCRIPT_URL) {

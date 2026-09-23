@@ -31,6 +31,12 @@ const COM_HEADERS = ['ID', 'Fecha', 'Tanda', 'Prenda', 'Talle', 'Cantidad', 'Cos
 // un atajo que se verifica antes de escribir.
 const PED_COL_ID = 'ID';
 
+// Un pedido eliminado NO se borra de la planilla: se marca con 1 en esta columna. Borrar la
+// fila rompería el historial (los movimientos quedan apuntando a un pedido que no existe) y
+// no habría forma de revisar qué se eliminó ni de deshacerlo. La app filtra los anulados al
+// cargar, así que para todo lo demás — lista, KPIs, stock, resumen — es como si no estuvieran.
+const PED_COL_ANULADO = 'Anulado';
+
 function nuevoIdPedido_() {
   return 'P' + new Date().getTime().toString(36) + Math.random().toString(36).slice(2, 6);
 }
@@ -531,6 +537,9 @@ function rutearPost_(e) {
     }
     if (action === 'editarRetiro') {
       return editarRetiro(data);
+    }
+    if (action === 'eliminarPedido') {
+      return eliminarPedido(data);
     }
     if (action === 'guardarCompra') {
       return guardarCompra(data);
@@ -1050,6 +1059,75 @@ function registrarSeña(data) {
 // ============ Stock: guardar en hoja Stock ============
 // Formato: Tipo | Talle | Stock | Última Actualización (una fila por cada tipo+talle)
 // data: { tipo: 'BLANCA', stock: { XS: 2, S: 6, M: 10, L: 8, XL: 4, XXL: 2 }, tanda: 'PRIMERA' o 'SEGUNDA' }
+// --- Eliminar (anular) un pedido ---
+// No borra la fila: escribe 1 en la columna 'Anulado'. El pedido desaparece de la app pero
+// queda en la planilla y en el historial de movimientos, con el motivo y lo que se había
+// cobrado, que es justamente lo que hace falta para poder auditar o revertir a mano.
+function eliminarPedido(data) {
+  const sheet   = getOrCreateSheet(SHEET_PEDIDOS);
+  const fila    = filaDePedido_(sheet, data.pedidoId, data.sheetRow);
+  if (!fila) {
+    return jsonResponse({ status: 'error',
+      message: 'No se encontró el pedido ' + (data.pedidoId || data.sheetRow) + '. No se borró nada.' });
+  }
+
+  // La columna se crea al vuelo la primera vez, igual que hace colIdPedidos_ con el ID
+  let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  headers = asegurarColumna_(sheet, headers, PED_COL_ANULADO);
+  const cAnulado = headers.map(h => String(h).trim()).indexOf(PED_COL_ANULADO);
+
+  const nCols  = sheet.getLastColumn();
+  const previo = sheet.getRange(fila, 1, 1, nCols).getValues()[0];
+  const idx = n => headers.findIndex(h => h.toString().trim() === n);
+  const get = n => { const i = idx(n); return i >= 0 ? previo[i] : ''; };
+
+  // Idempotente: si ya estaba anulado no se vuelve a loguear. Con las escrituras a ciegas el
+  // cliente puede reintentar sin saberlo, y dos movimientos de borrado confunden más que ayudan.
+  if (Number(previo[cAnulado]) === 1) {
+    return jsonResponse({ status: 'ok', message: 'El pedido ya estaba eliminado', yaEstaba: true });
+  }
+
+  const nombre   = String(get('Nombre') || '');
+  const talle    = String(get('Talle')  || '');
+  const total    = Number(get('Total')) || 0;
+  const cobrado  = Number(get('Seña'))  || 0;   // 'Seña' acumula todo lo cobrado
+  const retirado = Number(get('Retirado')) === 1;
+
+  // Prenda: las columnas de tipo son flags binarios, se busca la que está en 1
+  let prenda = String(data.prenda || '');
+  if (!prenda) {
+    const tipoCols = ['BLANCA', 'AZUL', 'SHORT', 'CHOMBA', 'ARQUERO_CELESTE', 'ARQUERO_NEGRA'];
+    headers.forEach(function (h, i) {
+      const key = String(h).trim().toUpperCase();
+      if (tipoCols.indexOf(key) >= 0 && Number(previo[i]) === 1) prenda = key;
+    });
+  }
+
+  sheet.getRange(fila, cAnulado + 1).setValue(1);
+
+  const det = [];
+  det.push('total ' + total);
+  if (cobrado > 0) det.push('tenía ' + cobrado + ' cobrados que salen de la caja');
+  if (retirado)    det.push('estaba retirado: la prenda vuelve a contar como disponible');
+  if (data.motivo) det.push('motivo: ' + String(data.motivo));
+
+  logMovimiento({
+    tipo:     'PEDIDO_ELIMINADO',
+    pedidoId: idDeFila_(sheet, fila) || data.pedidoId || '',
+    nombre:   nombre,
+    prenda:   prenda,
+    talle:    talle,
+    // monto 0 a propósito: lo cobrado NO es plata que entró hoy. Si fuera a 'monto' se sumaría
+    // al KPI "Cobrado hoy" y la tarjeta mostraría un +$ en verde, justo al revés de lo que pasó.
+    // El importe queda dicho en el detalle, que es donde se lee sin confundirlo con un ingreso.
+    monto:    0,
+    medio:    '',
+    detalle:  det.join(' · ')
+  });
+
+  return jsonResponse({ status: 'ok', message: 'Pedido eliminado', cobrado: cobrado });
+}
+
 function guardarStock(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(SHEET_STOCK);
