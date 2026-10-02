@@ -4,15 +4,47 @@
 // INSTRUCCIONES:
 // 1. Abrí https://script.google.com y creá un nuevo proyecto
 // 2. Pegá este código completo reemplazando todo lo existente
-// 3. Cambiá SPREADSHEET_ID por el ID de tu Google Sheet
-// 4. Asegurate de tener dos hojas: "Pedidos" y "Retiros"
-// 5. Deploy > New deployment > Web app
+// 3. Cargá el ID de la planilla como propiedad del script (NO va en el código):
+//    Configuración del proyecto (el engranaje) > Propiedades del script > Agregar propiedad
+//      Propiedad: SPREADSHEET_ID
+//      Valor:     el ID de tu Google Sheet (lo que va entre /d/ y /edit en su dirección)
+// 4. Ejecutá una vez la función probarConfiguracion desde el editor: tiene que mostrar el
+//    nombre de la planilla. Si da error, la propiedad falta o está mal copiada.
+// 5. Asegurate de tener dos hojas: "Pedidos" y "Retiros"
+// 6. Deploy > New deployment > Web app
 //    - Execute as: Me
 //    - Who has access: Anyone
-// 6. Copiá la URL del deployment y pegala en la webapp
+// 7. Copiá la URL del deployment y pegala en la webapp
 // =====================================================
 
-const SPREADSHEET_ID = '1EVLGu97_2A_TRx6-udU2tOIaE_tVXULGCJ_rMpP1UeM';
+// El ID de la planilla vive en las propiedades del script y no en este archivo, que está en un
+// repositorio público. Se lee una sola vez por ejecución.
+const PROP_PLANILLA = 'SPREADSHEET_ID';
+let _planilla = null;
+function planilla_() {
+  if (_planilla) return _planilla;
+  const id = String(PropertiesService.getScriptProperties().getProperty(PROP_PLANILLA) || '').trim();
+  if (!id) {
+    console.error('Falta la propiedad del script ' + PROP_PLANILLA + ' (Configuración del proyecto > Propiedades del script).');
+    throw new Error('La app todavía no está configurada. Avisale a quien la administra.');
+  }
+  try {
+    _planilla = SpreadsheetApp.openById(id);
+  } catch (err) {
+    console.error('No se pudo abrir la planilla de la propiedad ' + PROP_PLANILLA + ': ' + err);
+    throw new Error('La app no puede abrir sus datos. Avisale a quien la administra.');
+  }
+  return _planilla;
+}
+
+// Para correr a mano desde el editor antes de publicar: confirma que la propiedad está cargada
+// y que la planilla abre. No escribe nada.
+function probarConfiguracion() {
+  const ss = planilla_();
+  const msg = 'Configuración correcta. Planilla: "' + ss.getName() + '"';
+  console.log(msg);
+  return msg;
+}
 const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_RETIROS = 'Retiros';
 const SHEET_STOCK   = 'Stock';        // legacy: dos fotos de "stock inicial" por tanda
@@ -126,10 +158,34 @@ function idDeFila_(sheet, fila) {
   return String(sheet.getRange(fila, cId + 1).getValue() || '').trim();
 }
 
+// ============ TEXTO QUE ENTRA DESDE LA APP ============
+// Una celda cuyo texto empieza con = + o - es una fórmula para Sheets. Un nombre o una nota
+// escritos así (a propósito o sin querer) terminarían ejecutándose en la planilla, o quedando
+// como un error en la celda. Se les saca ese arranque antes de escribir. Los números se
+// respetan tal cual, incluidos los negativos.
+function textoSeguro_(v) {
+  if (typeof v !== 'string') return v;
+  if (!/^\s*[=+\-]/.test(v)) return v;
+  if (v.trim() !== '' && !isNaN(Number(v))) return v;
+  return v.replace(/^[\s=+\-]+/, '');
+}
+
+/** Aplica textoSeguro_ a todo lo que viene en el cuerpo de un POST, claves incluidas. */
+function entradaSegura_(x) {
+  if (typeof x === 'string') return textoSeguro_(x);
+  if (Array.isArray(x)) return x.map(entradaSegura_);
+  if (x && typeof x === 'object') {
+    const out = {};
+    Object.keys(x).forEach(function (k) { out[textoSeguro_(k)] = entradaSegura_(x[k]); });
+    return out;
+  }
+  return x;
+}
+
 // ============ HELPERS ============
 
 function getOrCreateSheet(name, headers) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = planilla_();
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -190,16 +246,18 @@ function fechaMovToStr(val) {
 function logMovimiento(m) {
   try {
     const sheet = getOrCreateSheet(SHEET_MOVIMIENTOS, MOV_HEADERS);
+    // textoSeguro_ también acá: nombre y talle a veces se releen de la planilla (donde un
+    // texto viejo puede empezar con =) y volver a escribirlos tal cual los haría fórmula.
     sheet.appendRow([
       ahoraAR(),
       m.tipo     || '',
       m.pedidoId || '',
-      m.nombre   || '',
-      m.prenda   || '',
-      m.talle    || '',
+      textoSeguro_(String(m.nombre  || '')),
+      textoSeguro_(String(m.prenda  || '')),
+      textoSeguro_(String(m.talle   || '')),
       Number(m.monto) || 0,
       m.medio    || '',
-      m.detalle  || ''
+      textoSeguro_(String(m.detalle || ''))
     ]);
   } catch (err) {
     // Silencioso a propósito: si falla el log, el pedido/pago/retiro igual se guarda
@@ -212,7 +270,7 @@ function logMovimiento(m) {
 // Recorre la hoja de abajo hacia arriba en bloques y corta apenas pasa el 'desde',
 // así no carga toda la hoja cuando el historial crece.
 function leerMovimientos(desde, hasta, limit) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = planilla_();
   const sheet = ss.getSheetByName(SHEET_MOVIMIENTOS);
   if (!sheet) return [];
 
@@ -288,7 +346,7 @@ function doGet(e) {
     return jsonResponse({ status: 'error', origen: 'doGet',
       message: 'Unknown action: ' + action });
   } catch (err) {
-    return jsonResponse({ status: 'error', origen: 'doGet', message: err.toString() });
+    return jsonResponse({ status: 'error', origen: 'doGet', message: (err && err.message) || String(err) });
   }
 }
 
@@ -355,7 +413,7 @@ function migrarStockACompras_() {
     const compras = getOrCreateSheet(SHEET_COMPRAS, COM_HEADERS);
     if (compras.getLastRow() > 1) return null;         // ya hay compras: nada que hacer
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = planilla_();
     const stock = ss.getSheetByName(SHEET_STOCK);
     if (!stock) return null;
     const data = stock.getDataRange().getValues();
@@ -449,7 +507,7 @@ function actualizarCostoCompra(data) {
 
 // Leer stock desde la hoja Stock (formato: Tipo | Talle | Stock | Última Actualización)
 function getStock() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = planilla_();
   const sheet = ss.getSheetByName(SHEET_STOCK);
   if (!sheet) return { primera: {}, segunda: {} };
   
@@ -521,7 +579,7 @@ function doPost(e) {
 
 function rutearPost_(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
+    const data = entradaSegura_(JSON.parse(e.postData.contents));
     const action = data.action;
 
     // Nunca contestar 'Unknown action: undefined' desde acá: ese texto exacto es la firma de
@@ -570,7 +628,7 @@ function rutearPost_(e) {
     return jsonResponse({ status: 'error', origen: 'doPost',
       message: 'Acción desconocida: ' + action });
   } catch (err) {
-    return jsonResponse({ status: 'error', origen: 'doPost', message: err.toString() });
+    return jsonResponse({ status: 'error', origen: 'doPost', message: (err && err.message) || String(err) });
   }
 }
 
@@ -1185,7 +1243,7 @@ function eliminarPedido(data) {
 }
 
 function guardarStock(data) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = planilla_();
   let sheet = ss.getSheetByName(SHEET_STOCK);
   
   if (!sheet) {

@@ -43,14 +43,20 @@ La pantalla **Movim.** pide al backend solo el rango elegido (7 / 30 / 90 días 
 
 ### 1. Google Apps Script
 
-1. Abrir el Google Sheet: `https://docs.google.com/spreadsheets/d/1EVLGu97_2A_TRx6-udU2tOIaE_tVXULGCJ_rMpP1UeM/edit`
+1. Abrir el Google Sheet del club
 2. Ir a **Extensiones > Apps Script**
 3. Pegar el contenido de `google-apps-script.js` reemplazando todo
-4. Verificar que el `SPREADSHEET_ID` sea correcto
-5. **Deploy > New deployment > Web app**
+4. Cargar el ID de la planilla como propiedad del script (no va en el código, porque este repositorio es público):
+   **Configuración del proyecto (engranaje) > Propiedades del script > Agregar propiedad**
+   - Propiedad: `SPREADSHEET_ID`
+   - Valor: el ID de la planilla (lo que va entre `/d/` y `/edit` en su dirección)
+5. Ejecutar una vez la función `probarConfiguracion` desde el editor: tiene que mostrar el nombre de la planilla
+6. **Deploy > New deployment > Web app**
    - Execute as: **Me**
    - Who has access: **Anyone**
-6. Copiar la URL del deployment
+7. Copiar la URL del deployment
+
+> Si se publica el script sin la propiedad cargada, la app muestra "La app todavía no está configurada" y no lee ni escribe nada.
 
 ### 2. Subir a GitHub Pages
 
