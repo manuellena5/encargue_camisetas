@@ -171,6 +171,13 @@ function ahoraAR() {
   return Utilities.formatDate(new Date(), TZ_AR, 'yyyy-MM-dd HH:mm:ss');
 }
 
+// Importe como se lee en la app ('$35.000'). Se arma a mano en vez de usar toLocaleString para
+// no depender de qué configuración regional tenga el proyecto de Apps Script.
+function plata_(n) {
+  const v = Math.round(Number(n) || 0);
+  return (v < 0 ? '-$' : '$') + String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 // Normaliza el valor de la celda Fecha a string 'yyyy-MM-dd HH:mm:ss' en hora AR.
 // Contempla que Sheets pueda devolver un Date en vez del string guardado.
 function fechaMovToStr(val) {
@@ -839,6 +846,7 @@ function editarPedido(data) {
   const get = n => { const i = idx(n); return i >= 0 ? previo[i] : ''; };
   const set = (n, v) => { const i = idx(n); if (i >= 0) sheet.getRange(fila, i + 1).setValue(v); };
   const cambios = [];
+  let cambioTotal = false;
 
   // Campos de texto. Sólo se escriben las claves que el cliente mandó explícitamente, así un
   // campo ausente no borra lo que había en la hoja.
@@ -869,14 +877,15 @@ function editarPedido(data) {
       }
 
       set('Total', nuevoTotal);
-      cambios.push('Total: ' + viejoTotal + ' → ' + nuevoTotal);
+      cambios.push('total: ' + plata_(viejoTotal) + ' → ' + plata_(nuevoTotal));
+      cambioTotal = true;
 
       if (idx('Resta') >= 0) {
         const viejaResta = Number(get('Resta')) || 0;
         const nuevaResta = nuevoTotal - pagado;   // nunca negativo: lo garantiza la validación
         if (nuevaResta !== viejaResta) {
           set('Resta', nuevaResta);
-          cambios.push('Resta recalculada: ' + viejaResta + ' → ' + nuevaResta);
+          cambios.push('resta: ' + plata_(viejaResta) + ' → ' + plata_(nuevaResta));
         }
       }
     }
@@ -911,8 +920,11 @@ function editarPedido(data) {
 
   if (!cambios.length) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
 
+  // Un cambio de total va con su propio tipo: es un cambio de precio, no una corrección de
+  // tipeo, y en Movimientos tiene que poder encontrarse. El monto va en 0 a propósito: no es
+  // plata que entró y no tiene que sumar en "Cobrado hoy".
   logMovimiento({
-    tipo:     'PEDIDO_EDITADO',
+    tipo:     cambioTotal ? 'TOTAL_EDITADO' : 'PEDIDO_EDITADO',
     pedidoId: idDeFila_(sheet, fila) || data.pedidoId || '',
     nombre:   data.nombre || String(get('Nombre') || ''),
     prenda:   data.tipo || '',
@@ -922,7 +934,8 @@ function editarPedido(data) {
     detalle:  cambios.join(' · ')
   });
 
-  return jsonResponse({ status: 'ok', message: 'Pedido actualizado', cambios: cambios });
+  return jsonResponse({ status: 'ok', message: 'Pedido actualizado', cambios: cambios,
+                        totalActualizado: cambioTotal });
 }
 
 // --- Corregir los datos de un retiro ya registrado ---
@@ -930,6 +943,9 @@ function editarPedido(data) {
 // necesaria: si cambia el medio de pago, hay que mover el 'Monto Retiro' de un acumulador al
 // otro ('Total Efectivo' <-> 'Total Transferencia'). Si no, corregir el medio sería cosmético
 // y los totales de efectivo/transferencia quedarían mal para siempre.
+// También puede cambiar el 'Total' del pedido (viene sólo si el cliente manda la clave): es
+// el caso de la prenda ya entregada que todavía se debe y a la que se le actualiza el precio.
+// Igual que en editarPedido, 'Resta' se recalcula contra lo ya cobrado y 'Seña' no se toca.
 function editarRetiro(data) {
   const sheet   = getOrCreateSheet(SHEET_PEDIDOS);
   const nCols   = sheet.getLastColumn();
@@ -955,7 +971,31 @@ function editarRetiro(data) {
   const medioNuevo = data.medioPago   != null ? String(data.medioPago).toLowerCase() : medioViejo;
   const notasNuevo = data.observacion != null ? String(data.observacion) : notasViejo;
 
+  // El total se valida ANTES de escribir nada: si es inválido no tiene que quedar el retiro
+  // corregido a medias con un error en pantalla.
+  const tocaTotal  = Object.prototype.hasOwnProperty.call(data, 'total') && idx('Total') >= 0;
+  const viejoTotal = Number(get('Total')) || 0;
+  const nuevoTotal = tocaTotal ? (Number(data.total) || 0) : viejoTotal;
+  const pagado     = Number(get('Seña')) || 0;   // 'Seña' acumula todo lo cobrado
+  const cambioTotal = tocaTotal && nuevoTotal !== viejoTotal;
+  if (cambioTotal && nuevoTotal < pagado) {
+    return jsonResponse({ status: 'error',
+      message: 'El total no puede quedar por debajo de lo ya cobrado (' + plata_(pagado) + ').' });
+  }
+
   const cambios = [];
+  if (cambioTotal) {
+    set('Total', nuevoTotal);
+    cambios.push('total: ' + plata_(viejoTotal) + ' → ' + plata_(nuevoTotal));
+    if (idx('Resta') >= 0) {
+      const viejaResta = Number(get('Resta')) || 0;
+      const nuevaResta = nuevoTotal - pagado;   // nunca negativo: lo garantiza la validación
+      if (nuevaResta !== viejaResta) {
+        set('Resta', nuevaResta);
+        cambios.push('resta: ' + plata_(viejaResta) + ' → ' + plata_(nuevaResta));
+      }
+    }
+  }
   if (talleNuevo !== talleViejo) { set('Talle Retiro', talleNuevo); cambios.push('talle retirado: ' + (talleViejo || '—') + ' → ' + talleNuevo); }
   if (notasNuevo !== notasViejo) { set('Notas Retiro', notasNuevo); cambios.push('observación actualizada'); }
 
@@ -981,18 +1021,21 @@ function editarRetiro(data) {
 
   const pedidoId = idDeFila_(sheet, fila) || data.pedidoId || '';
 
+  // Mismo criterio que en editarPedido: el cambio de total tiene su propio tipo de movimiento
+  // y va con monto 0, porque no es plata cobrada.
   logMovimiento({
-    tipo:     'RETIRO_EDITADO',
+    tipo:     cambioTotal ? 'TOTAL_EDITADO' : 'RETIRO_EDITADO',
     pedidoId: pedidoId,
     nombre:   String(get('Nombre') || ''),
     prenda:   data.tipo || '',
     talle:    talleNuevo,
     monto:    0,
-    medio:    medioNuevo,
+    medio:    cambioTotal ? '' : medioNuevo,
     detalle:  cambios.join(' · ')
   });
 
-  return jsonResponse({ status: 'ok', message: 'Retiro actualizado', cambios: cambios });
+  return jsonResponse({ status: 'ok', message: 'Retiro actualizado', cambios: cambios,
+                        totalActualizado: cambioTotal });
 }
 
 // --- Registrar pago/seña adicional sin marcar como retirado ---

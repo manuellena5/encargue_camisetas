@@ -930,7 +930,7 @@
       <label>Total</label>
       <input type="number" id="ed_total" min="0" placeholder="0" oninput="previewRestaEdicion()">
     </div>
-    <p id="edResta" style="font-size:0.75rem;color:#666;margin:-8px 0 12px 2px;"></p>
+    <p id="edResta" style="font-size:0.75rem;color:#666;margin:4px 0 10px 2px;"></p>
     <div class="form-group">
       <label>Tanda</label>
       <select id="ed_tanda"></select>
@@ -1000,6 +1000,16 @@
       </select>
     </div>
     <p id="erAvisoMonto" style="display:none;font-size:0.75rem;color:#9c640c;background:#fef5e7;border-radius:8px;padding:8px 10px;margin-bottom:12px;"></p>
+    <!-- Total: sólo aparece mientras la prenda entregada todavía se debe. Es el caso del que
+         tarda en pagar y al que se le actualiza el precio. Con el pedido saldado no se muestra:
+         subirlo ahí reabriría una deuda sobre algo que ya estaba cerrado. -->
+    <div id="erTotalWrap" style="display:none;">
+      <div class="form-group">
+        <label>Total</label>
+        <input type="number" id="er_total" min="0" placeholder="0" oninput="previewRestaRetiro()">
+      </div>
+      <p id="erResta" style="font-size:0.75rem;color:#666;margin:4px 0 10px 2px;"></p>
+    </div>
     <div class="form-group">
       <label>Observación del retiro</label>
       <textarea id="er_obs" placeholder="Observaciones..."></textarea>
@@ -2684,15 +2694,21 @@ function openModalEditar(id) {
 }
 
 // Muestra en vivo cómo queda la deuda al tocar el Total, para no tener que guardar y ver qué pasó.
-function previewRestaEdicion() {
-  const p = PEDIDOS.find(x => x._id === edPedidoId);
-  const el = document.getElementById('edResta');
+// Lo usan los dos modales del lápiz (pedido y retiro), cada uno con su campo y su botón.
+function pintarPreviewResta(p, inputId, textoId, btnId) {
+  const el = document.getElementById(textoId);
   if (!p || !el) return;
   const pagado = Number(p['Seña']) || 0;          // 'Seña' acumula todo lo cobrado
-  const total  = Number(document.getElementById('ed_total').value) || 0;
-  const btn    = document.getElementById('btnGuardarEdicion');
-  const invalido = total < pagado;
-  if (invalido) {
+  const crudo  = String(document.getElementById(inputId).value).trim();
+  const total  = Number(crudo) || 0;
+  const btn    = document.getElementById(btnId);
+  // Un campo vacío no es "total cero": guardarlo así dejaría la prenda gratis sin querer.
+  const vacio  = crudo === '';
+  const invalido = vacio || total < pagado;
+  if (vacio) {
+    el.style.color = '#c0392b';
+    el.textContent = '⚠ Poné el total.';
+  } else if (invalido) {
     el.style.color = '#c0392b';
     el.textContent = `⚠ No se puede: ya se cobraron ${fmt(pagado)}. El total no puede ser menor.`;
   } else {
@@ -2702,6 +2718,10 @@ function previewRestaEdicion() {
   // Se deshabilita Guardar mientras el valor sea inválido, para que el bloqueo se vea antes
   // de intentar guardar y no como un rechazo después.
   if (btn) { btn.disabled = invalido; btn.style.opacity = invalido ? 0.5 : ''; }
+}
+
+function previewRestaEdicion() {
+  pintarPreviewResta(PEDIDOS.find(x => x._id === edPedidoId), 'ed_total', 'edResta', 'btnGuardarEdicion');
 }
 
 function closeModalEditar() {
@@ -2735,7 +2755,11 @@ async function guardarEdicionPedido() {
   const cambios = [];
   if (nombre !== (p['Nombre'] || '')) cambios.push('nombre: ' + (p['Nombre'] || '—') + ' → ' + nombre);
   if (talle  !== (p['Talle']  || '')) cambios.push('talle: ' + labelTalle(p['Talle'] || '—') + ' → ' + labelTalle(talle));
-  if (total  !== totalAnt)            cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
+  if (total  !== totalAnt) {
+    cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
+    const restaAnt = Number(p['Resta']) || 0, restaNueva = Math.max(0, total - pagado);
+    if (restaNueva !== restaAnt) cambios.push('resta: ' + fmt(restaAnt) + ' → ' + fmt(restaNueva));
+  }
   if (cambiaMedio)                    cambios.push('medio de la seña: ' + (d.medio || '—') + ' → ' + medioSeña);
   if (tanda  !== tandaDe(p))          cambios.push('tanda: ' + labelTanda(tandaDe(p)) + ' → ' + labelTanda(tanda));
   if (nota   !== (p['Notas']  || '')) cambios.push('nota actualizada');
@@ -2775,8 +2799,9 @@ async function guardarEdicionPedido() {
       p['Total'] = total;
       p['Resta'] = Math.max(0, total - pagado);
     }
+    // Mismo criterio que el backend: si cambió el total, el movimiento es "Total actualizado".
     pushMovLocal({
-      tipo: 'PEDIDO_EDITADO',
+      tipo: total !== totalAnt ? 'TOTAL_EDITADO' : 'PEDIDO_EDITADO',
       pedidoId: p._id,
       nombre, prenda: getTipoLabel(getTipo(p)), talle,
       detalle: cambios.join(' · ')
@@ -2786,7 +2811,7 @@ async function guardarEdicionPedido() {
     localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
     closeModalEditar();
     renderAll();
-    showToast('Pedido corregido');
+    showToast(total !== totalAnt ? 'Total actualizado' : 'Pedido corregido');
     loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error editando pedido:', e);
@@ -2898,10 +2923,21 @@ async function confirmarEliminarPedido() {
 }
 
 // ============ EDITAR RETIRO ============
-// Corrige el talle que se entregó, el medio de pago y la observación. Los importes se tocan
+// Corrige el talle que se entregó, el medio de pago y la observación. Lo cobrado se toca
 // sólo indirectamente: al cambiar el medio, el backend mueve el Monto Retiro de un acumulador
 // al otro para que los totales de efectivo/transferencia sigan cerrando.
+// Si la prenda ya se entregó pero todavía se debe, además deja cambiar el Total (el precio
+// que se actualiza cuando se demoran en pagar). La deuda se recalcula contra lo ya cobrado.
 let erPedidoId = null;
+
+// El total se puede tocar desde acá sólo mientras quede algo por cobrar.
+function retiroPermiteTotal(p) {
+  return !!p && !isRegalo(p) && (Number(p['Resta']) || 0) > 0;
+}
+
+function previewRestaRetiro() {
+  pintarPreviewResta(PEDIDOS.find(x => x._id === erPedidoId), 'er_total', 'erResta', 'btnGuardarRetiroEdit');
+}
 
 function openModalRetiro(id) {
   const p = PEDIDOS.find(x => x._id === id);
@@ -2936,6 +2972,15 @@ function openModalRetiro(id) {
     aviso.style.display = 'none';
   }
 
+  // Total: visible sólo si todavía debe. Si no, se deja el botón Guardar como estaba, por si
+  // quedó deshabilitado de una apertura anterior con un total inválido.
+  const btnG = document.getElementById('btnGuardarRetiroEdit');
+  btnG.disabled = false; btnG.style.opacity = '';
+  const conTotal = retiroPermiteTotal(p);
+  document.getElementById('erTotalWrap').style.display = conTotal ? '' : 'none';
+  document.getElementById('er_total').value = Number(p['Total']) || 0;
+  if (conTotal) previewRestaRetiro();
+
   document.getElementById('modalRetiro').style.display = 'flex';
 }
 
@@ -2962,7 +3007,31 @@ async function guardarEdicionRetiro() {
   const obsAnt   = String(p['_notasRetiro'] || p['Notas Retiro'] || '');
   const monto    = Number(p['_montoRetiro'] || p['Monto Retiro']) || 0;
 
+  // Total: sólo se lee si el campo estaba a la vista (pedido que todavía debe).
+  const totalAnt = Number(p['Total']) || 0;
+  const pagado   = Number(p['Seña'])  || 0;       // 'Seña' acumula todo lo cobrado
+  const restaAnt = Number(p['Resta']) || 0;
+  let total = totalAnt;
+  if (retiroPermiteTotal(p)) {
+    const crudo = String(document.getElementById('er_total').value).trim();
+    if (crudo === '') { showToast('Poné el total'); document.getElementById('er_total').focus(); return; }
+    total = Number(crudo) || 0;
+  }
+  const cambiaTotal = total !== totalAnt;
+  // Mismo tope que al corregir un pedido: por debajo de lo cobrado quedaría plata a favor de
+  // la persona y la app no tiene forma de devolverla. El backend valida lo mismo.
+  if (cambiaTotal && total < pagado) {
+    showToast('El total no puede ser menor a lo ya cobrado (' + fmt(pagado) + ')');
+    document.getElementById('er_total').focus();
+    return;
+  }
+  const restaNueva = cambiaTotal ? Math.max(0, total - pagado) : restaAnt;
+
   const cambios = [];
+  if (cambiaTotal) {
+    cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
+    if (restaNueva !== restaAnt) cambios.push('resta: ' + fmt(restaAnt) + ' → ' + fmt(restaNueva));
+  }
   if (talle !== talleAnt) cambios.push('talle retirado: ' + (labelTalle(talleAnt) || '—') + ' → ' + labelTalle(talle));
   if (medio !== medioAnt) cambios.push('medio de pago: ' + (medioAnt || '—') + ' → ' + medio);
   if (obs   !== obsAnt)   cambios.push('observación actualizada');
@@ -2972,15 +3041,25 @@ async function guardarEdicionRetiro() {
   btn.disabled = true;
   try {
     showLoading(true);
-    await postApp({
+    // El total viaja en el mismo POST que el resto de la corrección, y sólo si cambió: así
+    // un guardado que no lo toca no puede pisar un total que alguien cambió desde otro equipo.
+    const r = await postApp(Object.assign({
         action: 'editarRetiro', pedidoId: p._pid || '', sheetRow: p._sheetRow,
         talleRetiro: talle, medioPago: medio, observacion: obs,
         tipo: getTipoLabel(getTipo(p))
-      });
+      }, cambiaTotal ? { total } : {}));
+    // Si el servidor contesta sin decir qué pasó con el total es porque todavía corre la
+    // versión anterior, que ignora ese dato. Mejor avisarlo que mostrar un total que al
+    // próximo refresco vuelve atrás.
+    if (cambiaTotal && r && !r._ciego && r.totalActualizado === undefined) {
+      loadFromSheets({ silent: true });
+      throw new Error('el total no se cambió. Falta actualizar el servidor.');
+    }
 
     p['Talle Retiro']         = talle;  p['_talleRetiro']     = talle;
     p['Medio de Pago Retiro'] = medio;  p['_medioPagoRetiro'] = medio;
     p['Notas Retiro']         = obs;    p['_notasRetiro']     = obs;
+    if (cambiaTotal) { p['Total'] = total; p['Resta'] = restaNueva; }
     // Mismo movimiento de plata que hace el backend, para que la pantalla no muestre otra
     // cosa que la planilla hasta el próximo refresco.
     if (medio !== medioAnt && monto > 0 && medioAnt) {
@@ -2993,16 +3072,16 @@ async function guardarEdicionRetiro() {
     }
 
     pushMovLocal({
-      tipo: 'RETIRO_EDITADO',
+      tipo: cambiaTotal ? 'TOTAL_EDITADO' : 'RETIRO_EDITADO',
       pedidoId: p._id,
       nombre: p['Nombre'] || '', prenda: getTipoLabel(getTipo(p)), talle,
-      medio, detalle: cambios.join(' · ')
+      medio: cambiaTotal ? '' : medio, detalle: cambios.join(' · ')
     });
     invalidarCachePedidoDeMov();
     localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
     closeModalRetiro();
     renderAll();
-    showToast('Retiro corregido');
+    showToast(cambiaTotal ? 'Total actualizado' : 'Retiro corregido');
     loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error editando retiro:', e);
@@ -3545,7 +3624,7 @@ function renderList() {
             ${sinStock ? '<span class="st sin">Sin stock</span>' : ''}
             ${chipMedioPago(p)}
           </div>
-          <button class="btn-editar" title="${ret ? 'Corregir el retiro' : 'Corregir el pedido'}"
+          <button class="btn-editar" title="${ret ? (retiroPermiteTotal(p) ? 'Corregir el retiro o el total' : 'Corregir el retiro') : 'Corregir el pedido'}"
             onclick="event.stopPropagation(); ${ret ? 'openModalRetiro' : 'openModalEditar'}(${id});">✏️</button>
           <span class="arrow">${bloqueado ? '🔒' : '▼'}</span>
         </div>
@@ -3928,6 +4007,7 @@ const MOV_META = {
   STOCK:            { cls: 'stock',  ico: '▦',  label: 'Stock actualizado', grupo: 'stock'   },
   PEDIDO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Pedido corregido',  grupo: 'pedidos' },
   RETIRO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Retiro corregido',  grupo: 'retiros' },
+  TOTAL_EDITADO:    { cls: 'editado', ico: '✏', label: 'Total actualizado', grupo: 'pedidos' },
   PEDIDO_ELIMINADO: { cls: 'elim',    ico: '✕',  label: 'Pedido eliminado',  grupo: 'pedidos' }
 };
 function movMeta(tipo) {
