@@ -201,6 +201,16 @@
     .btn-warning:hover { background: #e67e22; }
     .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* Modal guardando: el botón de la acción dice qué está pasando y el resto queda quieto y
+       apagado, para que se note que no hay que volver a tocar. */
+    .btn.btn-guardando:disabled { opacity: 1; cursor: progress; }
+    .btn-guardando::before { content: ''; display: inline-block; width: 11px; height: 11px; margin-right: 7px;
+      border: 2px solid rgba(255,255,255,0.45); border-top-color: #fff; border-radius: 50%;
+      vertical-align: -1px; animation: girar 0.7s linear infinite; }
+    @keyframes girar { to { transform: rotate(360deg); } }
+    .modal-overlay.guardando .modal { cursor: progress; }
+    .modal-overlay.guardando .modal > *:not(.modal-buttons) { opacity: 0.5; transition: opacity 0.15s; }
+    .modal-overlay.guardando .modal-buttons .btn:not(.btn-guardando) { opacity: 0.35; }
     .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     .notas-excel { font-size: 0.75rem; color: #e67e22; font-style: italic; padding-left: 48px; padding-bottom: 6px; }
 
@@ -226,7 +236,7 @@
     .config-panel.connected { background: #d5f5e3; border-bottom-color: #27ae60; }
     .config-panel .status-line { font-size: 0.75rem; margin-top: 6px; color: #27ae60; }
     .config-panel .status-line.disconnected { color: #e74c3c; }
-    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1001; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1300; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
     .toast.show { opacity: 1; }
     .empty-state { text-align: center; padding: 40px 20px; color: #999; }
     .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
@@ -724,10 +734,8 @@
       <textarea id="np_nota" placeholder="Observaciones..."></textarea>
     </div>
     <!-- El selector de tanda salió del formulario: todo lo que se carga ahora va a la tanda
-         que fija TANDA_NUEVO_PEDIDO. Queda el cartel para que no sea magia invisible; para
-         moverlo a otra tanda está el lápiz de corrección en la lista de pedidos. -->
-    <p id="np_tandaNota" style="font-size:0.78rem;color:#55606d;background:#f7f9fb;
-      border:1px solid #e6eaee;border-radius:8px;padding:8px 10px;margin-bottom:14px;"></p>
+         que fija TANDA_NUEVO_PEDIDO. Para moverlo a otra tanda está el lápiz de corrección en
+         la lista de pedidos. -->
     <div class="regalo-checkbox-row">
       <input type="checkbox" id="np_regalo">
       <label for="np_regalo">🎁 Es regalo del club (gasto del club, no se cobra)</label>
@@ -1119,7 +1127,7 @@ function getPrendaTypes() {
 let COMPRAS = [];
 try {
   const bk = localStorage.getItem('compras_backup');
-  if (bk) COMPRAS = JSON.parse(bk) || [];
+  if (bk) COMPRAS = (JSON.parse(bk) || []).map(sanearCompra);
 } catch (e) { COMPRAS = []; }
 
 (function aplicarOverridesTipos() {
@@ -1459,9 +1467,6 @@ function limpiarFiltrosPedidos() {
 }
 
 function initNuevoPedidoTipos() {
-  const nota = document.getElementById('np_tandaNota');
-  if (nota) nota.innerHTML = 'Se registra en la <b>' + escapeHtml(labelTanda(TANDA_NUEVO_PEDIDO)) +
-    '</b>. Para moverlo a otra, se corrige el pedido desde la lista.';
   const sel = document.getElementById('np_tipo');
   sel.innerHTML = '<option value="">Seleccionar...</option>' +
     getPrendaTypes().map(t => `<option value="${t.label}">${t.label}</option>`).join('');
@@ -1519,6 +1524,40 @@ function usarUrlDelCodigo() {
   checkConfig();
   loadFromSheets();
   showToast('Usando la URL que viene en la app');
+}
+
+// ============ ESTADO "GUARDANDO" EN LOS MODALES ============
+// Un guardado tarda entre 1 y 3 segundos y el cartel general de "Sincronizando" queda tapado
+// por el modal, así que desde adentro no se veía nada: daba para tocar Guardar otra vez o para
+// cerrar creyendo que no había andado. Mientras dura, el botón de la acción cambia su texto y
+// todo el modal queda bloqueado (botones, campos y el clic afuera para cerrar).
+function modalGuardando(modalId, btnId, activo, texto) {
+  const ov  = document.getElementById(modalId);
+  const btn = document.getElementById(btnId);
+  if (!ov || !btn) return;
+  const caja = ov.querySelector('.modal');
+  if (activo) {
+    if (btn.dataset.textoOriginal === undefined) btn.dataset.textoOriginal = btn.textContent;
+    btn.textContent = texto || 'Guardando…';
+    btn.classList.add('btn-guardando');
+    btn.disabled = true;
+    ov.classList.add('guardando');
+    if (caja) caja.inert = true;        // ni clics ni teclado adentro del modal
+  } else {
+    if (btn.dataset.textoOriginal !== undefined) {
+      btn.textContent = btn.dataset.textoOriginal;
+      delete btn.dataset.textoOriginal;
+    }
+    btn.classList.remove('btn-guardando');
+    btn.disabled = false;
+    ov.classList.remove('guardando');
+    if (caja) caja.inert = false;
+  }
+}
+// Para los cierres "tocando afuera": mientras se guarda no se cierra.
+function modalOcupado(modalId) {
+  const ov = document.getElementById(modalId);
+  return !!ov && ov.classList.contains('guardando');
 }
 
 // ============ ESCRITURAS AL BACKEND ============
@@ -1626,11 +1665,11 @@ async function _loadFromSheets(silent) {
     const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams());
     const data = await res.json();
     
-    console.log('Datos recibidos:', data); // Debug
     
     if (data.status === 'ok') {
       invalidarCachePedidoDeMov();   // cambió PEDIDOS: los vínculos mov→pedido se recalculan
       const _todos = (data.pedidos || []).map((p, i) => {
+        sanearPedido(p);
         // Normalizar Retirado a 0/1 sin importar qué devuelve Sheets
         const rawRet = p['Retirado'];
         const retiradoNorm = (rawRet === 1 || rawRet === true ||
@@ -1669,7 +1708,7 @@ async function _loadFromSheets(silent) {
       // Sincronizar stock desde Google Sheets
       // Compras: reemplaza el stock inicial. La primera vez el backend migra sola la hoja Stock
       // vieja a Compras (con costo 0) y devuelve el resumen en data.migracion.
-      COMPRAS = Array.isArray(data.compras) ? data.compras : [];
+      COMPRAS = (Array.isArray(data.compras) ? data.compras : []).map(sanearCompra);
       localStorage.setItem('compras_backup', JSON.stringify(COMPRAS));
       recalcularTandas();
       // Cualquier prenda con compras cargadas maneja stock, sin depender de un flag local
@@ -1717,7 +1756,7 @@ async function _loadFromSheets(silent) {
     if (backup) {
       try {
         invalidarCachePedidoDeMov();
-        PEDIDOS = JSON.parse(backup);
+        PEDIDOS = JSON.parse(backup).map(sanearPedido);
         const movBackup = localStorage.getItem('movimientos_backup');
         if (movBackup) { try { MOVIMIENTOS = JSON.parse(movBackup); } catch(e2) {} }
         renderAll();
@@ -2480,8 +2519,7 @@ async function guardarCompraApp() {
   const fecha = document.getElementById('cmp_fecha').value || hoyAR();
   const notas = document.getElementById('cmp_notas').value.trim();
 
-  const btn = document.getElementById('btnGuardarCompra');
-  btn.disabled = true;
+  modalGuardando('modalCompra', 'btnGuardarCompra', true, 'Cargando…');
   try {
     showLoading(true);
     await postApp({ action: 'guardarCompra', prenda, prendaLabel, tanda, fecha,
@@ -2515,7 +2553,7 @@ async function guardarCompraApp() {
     showToast('No se pudo cargar la compra: ' + e.message);
   } finally {
     showLoading(false);
-    btn.disabled = false;
+    modalGuardando('modalCompra', 'btnGuardarCompra', false);
   }
 }
 
@@ -2730,6 +2768,7 @@ function closeModalEditar() {
 }
 
 function cerrarModalEditar(e) {
+  if (modalOcupado('modalEditar')) return;
   if (e.target === document.getElementById('modalEditar')) closeModalEditar();
 }
 
@@ -2773,8 +2812,7 @@ async function guardarEdicionPedido() {
 
   if (!cambios.length) { showToast('No cambiaste nada'); closeModalEditar(); return; }
 
-  const btn = document.getElementById('btnGuardarEdicion');
-  btn.disabled = true;
+  modalGuardando('modalEditar', 'btnGuardarEdicion', true);
   try {
     showLoading(true);
     await postApp(Object.assign({
@@ -2818,7 +2856,7 @@ async function guardarEdicionPedido() {
     showToast('No se pudieron guardar los cambios: ' + e.message);
   } finally {
     showLoading(false);
-    btn.disabled = false;
+    modalGuardando('modalEditar', 'btnGuardarEdicion', false);
   }
 }
 
@@ -2865,6 +2903,7 @@ function closeModalEliminar() {
 }
 
 function cerrarModalEliminar(e) {
+  if (modalOcupado('modalEliminar')) return;
   if (e.target === document.getElementById('modalEliminar')) closeModalEliminar();
 }
 
@@ -2876,8 +2915,7 @@ async function confirmarEliminarPedido() {
   const motivo  = document.getElementById('el_motivo').value.trim();
   const prenda  = getTipoLabel(getTipo(p));
   const cobrado = Number(p['Seña']) || 0;
-  const btn = document.getElementById('btnConfirmarEliminar');
-  btn.disabled = true;
+  modalGuardando('modalEliminar', 'btnConfirmarEliminar', true, 'Eliminando…');
   try {
     showLoading(true);
     await postApp({
@@ -2918,7 +2956,7 @@ async function confirmarEliminarPedido() {
     showToast('No se pudo eliminar: ' + e.message);
   } finally {
     showLoading(false);
-    btn.disabled = false;
+    modalGuardando('modalEliminar', 'btnConfirmarEliminar', false);
   }
 }
 
@@ -2990,6 +3028,7 @@ function closeModalRetiro() {
 }
 
 function cerrarModalRetiro(e) {
+  if (modalOcupado('modalRetiro')) return;
   if (e.target === document.getElementById('modalRetiro')) closeModalRetiro();
 }
 
@@ -3037,8 +3076,7 @@ async function guardarEdicionRetiro() {
   if (obs   !== obsAnt)   cambios.push('observación actualizada');
   if (!cambios.length) { showToast('No cambiaste nada'); closeModalRetiro(); return; }
 
-  const btn = document.getElementById('btnGuardarRetiroEdit');
-  btn.disabled = true;
+  modalGuardando('modalRetiro', 'btnGuardarRetiroEdit', true);
   try {
     showLoading(true);
     // El total viaja en el mismo POST que el resto de la corrección, y sólo si cambió: así
@@ -3088,7 +3126,7 @@ async function guardarEdicionRetiro() {
     showToast('No se pudieron guardar los cambios: ' + e.message);
   } finally {
     showLoading(false);
-    btn.disabled = false;
+    modalGuardando('modalRetiro', 'btnGuardarRetiroEdit', false);
   }
 }
 
@@ -3608,7 +3646,7 @@ function renderList() {
         <!-- Cabecera en columnas alineadas: antes era nombre + un hueco enorme + una hilera de
              badges pegada a la derecha, y la plata vivía en una segunda línea aparte. -->
         <div class="card-header gridh" onclick="toggleCard(${id})">
-          <div class="gh-nom">${p['Nombre'] || '—'}${p['Notas'] ? `<small>📝 ${escapeHtml(p['Notas'])}</small>` : ''}</div>
+          <div class="gh-nom">${escapeHtml(p['Nombre'] || '—')}${p['Notas'] ? `<small>📝 ${escapeHtml(p['Notas'])}</small>` : ''}</div>
           <div class="gh-pre"><span class="cdot" style="background:${getTipoColor(tipo)}"></span>${escapeHtml(getTipoLabel(tipo).replace('CAMISETA ', ''))}</div>
           <div class="talle">${labelTalle(tallePedido, true)}</div>
           <div>${badgeTanda(tanda)}</div>
@@ -3632,7 +3670,7 @@ function renderList() {
           ${regalo ? `<span style="color:#8e44ad;font-weight:600;">🎁 Regalo del club — costo ${fmt(p['Total'] || 0)}</span>` : ''}
           ${ret && savedTalleRetiroStr && savedTalleRetiroStr.toUpperCase() !== tallePedidoStr.toUpperCase() ? `<span>Retiró talle <span class="val">${labelTalle(savedTalleRetiroStr)}</span> (pidió ${labelTalle(tallePedidoStr)})</span>` : ''}
           ${ret && Number(savedMonto) > 0 ? `<span>Cobrado al entregar: <span class="val">${fmt(savedMonto)}</span></span>` : ''}
-          ${fmtFechaAlta(p._fechaAlta || p['Fecha Alta']) ? `<span class="fecha-alta">Alta: ${fmtFechaAlta(p._fechaAlta || p['Fecha Alta'])}</span>` : ''}
+          ${fmtFechaAlta(p._fechaAlta || p['Fecha Alta']) ? `<span class="fecha-alta">Alta: ${escapeHtml(fmtFechaAlta(p._fechaAlta || p['Fecha Alta']))}</span>` : ''}
         </div>
         <!-- La nota del pedido ya va bajo el nombre en la cabecera; acá se repetía -->
         ${ret && (savedObs) ? `<div class="notas-excel" style="color:#2980b9;">Obs. retiro: ${escapeHtml(savedObs)}</div>` : ''}
@@ -3669,7 +3707,7 @@ function renderList() {
               </div>` : `<input type="hidden" id="pago-${id}" value="0"><select id="medio-${id}" style="display:none"><option value="efectivo">Efectivo</option></select>`}
               <div class="form-group">
                 <label>Observación del retiro</label>
-                <textarea id="obs-${id}" placeholder="Ej: se lo llevó el hermano">${savedObs}</textarea>
+                <textarea id="obs-${id}" placeholder="Ej: se lo llevó el hermano">${escapeHtml(savedObs)}</textarea>
               </div>
             </div>
             <button class="btn btn-primary" style="width:100%;margin-top:4px;"
@@ -4108,6 +4146,24 @@ function etiquetaDia(dia) {
   return txt;
 }
 
+// Talle, tanda y prenda no son texto libre: además de mostrarse, se usan para armar botones y
+// casilleros de las grillas. Si en la planilla alguno trae símbolos de código, se le sacan al
+// cargar, en un solo lugar, en vez de confiar en que cada pantalla se acuerde de cuidarse.
+function identSeguro(v) {
+  return typeof v === 'string' ? v.replace(/[<>"'`&\\]/g, '') : v;
+}
+function sanearPedido(p) {
+  if (!p || typeof p !== 'object') return p;
+  ['Talle', 'Talle Retiro', '_talleRetiro', 'Tanda', 'Medio de Pago Retiro', '_medioPagoRetiro']
+    .forEach(k => { if (k in p) p[k] = identSeguro(p[k]); });
+  return p;
+}
+function sanearCompra(c) {
+  if (!c || typeof c !== 'object') return c;
+  ['id', 'talle', 'tanda', 'prenda'].forEach(k => { if (k in c) c[k] = identSeguro(c[k]); });
+  return c;
+}
+
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -4277,9 +4333,9 @@ if (selRango) selRango.value = String(MOV_RANGO_DIAS);
 const movBackupInit = localStorage.getItem('movimientos_backup');
 if (movBackupInit) { try { MOVIMIENTOS = JSON.parse(movBackupInit); } catch(e) {} }
 const anulBackupInit = localStorage.getItem('pedidos_anulados_backup');
-if (anulBackupInit) { try { PEDIDOS_ANULADOS = JSON.parse(anulBackupInit); } catch(e) {} }
+if (anulBackupInit) { try { PEDIDOS_ANULADOS = JSON.parse(anulBackupInit).map(sanearPedido); } catch(e) {} }
 const backup = localStorage.getItem('pedidos_backup');
-if (backup) { try { invalidarCachePedidoDeMov(); PEDIDOS = JSON.parse(backup); renderAll(); } catch(e) {} }
+if (backup) { try { invalidarCachePedidoDeMov(); PEDIDOS = JSON.parse(backup).map(sanearPedido); renderAll(); } catch(e) {} }
 if (SCRIPT_URL) {
   // Se prueba una vez si el navegador puede leer las respuestas del backend. Si puede, cada
   // escritura verifica que el servidor la haya aceptado; si no, se sigue escribiendo a ciegas
