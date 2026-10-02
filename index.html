@@ -248,6 +248,7 @@
       border-radius: 8px; font-size: 0.9rem; font-family: inherit; background: #fff; color: #1a1a2e; }
     .pantalla-clave select { margin-bottom: 8px; }
     .config-panel .quien { font-size: 0.8rem; color: #1a1a2e; margin-top: 4px; }
+    .config-panel .tiempos { font-size: 0.72rem; color: #55606d; margin-top: 10px; cursor: pointer; }
     .pantalla-clave .aviso { min-height: 1.1rem; font-size: 0.78rem; color: #c0392b; margin: 8px 0 10px; }
     .pantalla-clave .btn { width: 100%; padding: 12px; font-size: 0.95rem; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1300; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
@@ -656,6 +657,8 @@
   <div id="configStatus"></div>
   <button class="btn btn-primary btn-sm" onclick="recargarDesdeConfig()" style="margin-top:8px;">Recargar datos</button>
   <button class="btn btn-dark btn-sm" id="btnCambiarPersona" onclick="cambiarPersona()" style="margin-top:8px;display:none;">Cambiar de persona</button>
+  <!-- Cuánto tardó lo último. Para poder decir "tarda tanto" con un número, y copiar el detalle. -->
+  <div class="tiempos" id="configTiempos" onclick="copiarTiempos()" style="display:none;"></div>
 </div>
 
 <!-- ========== SECTION: PEDIDOS Y RETIROS ========== -->
@@ -1641,7 +1644,14 @@ function switchSection(section) {
   document.querySelector('.main-tabs').style.display = section === 'pedidoproveedor' ? 'none' : '';
   if (section === 'resumen')        renderResumen();
   if (section === 'stock')          renderStockScreen();
-  if (section === 'movimientos')    renderMovimientos();
+  if (section === 'movimientos') {
+    // Se piden los movimientos de verdad. Si ya hay una carga en camino (que salió sin ellos),
+    // loadFromSheets encola otra para cuando termine, que ya sale desde esta pantalla.
+    if (!MOV_AL_DIA && SCRIPT_URL && document.getElementById('pantallaClave').style.display === 'none') {
+      loadFromSheets({ silent: true, avisarError: true });
+    }
+    renderMovimientos();              // y mientras tanto, lo que haya en memoria
+  }
   if (section === 'pedidoproveedor') renderPedidoProveedor();
   window.scrollTo(0, 0);
 }
@@ -1724,6 +1734,35 @@ function checkConfig() {
     : '<div class="status-line disconnected">Sin conexión. Estás viendo los últimos datos guardados.</div>';
   if (USUARIO) statusDiv.innerHTML += '<div class="quien">Estás usando la app como <b>' + escapeHtml(USUARIO) + '</b></div>';
   document.getElementById('btnCambiarPersona').style.display = USUARIO ? '' : 'none';
+  pintarTiempos();
+}
+
+function pintarTiempos() {
+  const el = document.getElementById('configTiempos');
+  if (!el || typeof TIEMPOS === 'undefined') return;
+  const ultimo = pref => { for (let i = TIEMPOS.length - 1; i >= 0; i--) if (TIEMPOS[i].que.indexOf(pref) === 0) return TIEMPOS[i]; return null; };
+  const seg = t => (t.total / 1000).toFixed(1).replace('.', ',') + ' s';
+  const c = ultimo('cargar'), g = ultimo('guardar');
+  const partes = [];
+  if (c) partes.push('Última carga: ' + seg(c));
+  if (g) partes.push('Último guardado: ' + seg(g));
+  el.style.display = partes.length ? '' : 'none';
+  el.textContent = partes.length ? partes.join(' · ') + ' — tocá para copiar el detalle' : '';
+}
+
+async function copiarTiempos() {
+  const txt = TIEMPOS.map(t => t.que + ': ' + t.total + ' ms en total' +
+    (t.servidor !== null ? ', ' + t.servidor + ' ms en el servidor (' + t.etapas + ')' : '')).join('\n');
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {}
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+  }
+  showToast(ok ? 'Detalle copiado' : 'No se pudo copiar');
 }
 
 function toggleConfig() {
@@ -1820,11 +1859,13 @@ async function postApp(payload) {
     return { status: 'ok', _ciego: true };
   }
 
+  const t0 = performance.now();
   const r = await fetch(SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
     body: JSON.stringify(payload)
   });
   const j = await r.json();
+  anotarTiempo('guardar ' + payload.action, t0, j);
 
   // Apps Script no contesta el POST directo: responde un 302 a una URL de un solo uso en
   // script.googleusercontent.com. Ese salto es frágil — a veces devuelve 404 y a veces rebota
@@ -1883,6 +1924,21 @@ function loadFromSheets(opts) {
   return _cargaEnCurso;
 }
 
+// Últimos tiempos de respuesta del servidor, para poder ver dónde se va la espera cuando algo
+// tarda. No se muestra en pantalla: queda en la consola del navegador y en TIEMPOS.
+const TIEMPOS = [];
+function anotarTiempo(que, t0, resp) {
+  try {
+    const total = Math.round(performance.now() - t0);
+    const fila = { que, total, servidor: resp && typeof resp.ms === 'number' ? resp.ms : null,
+                   etapas: resp && Array.isArray(resp.t) ? resp.t.map(x => x[0] + ' ' + x[1]).join(' · ') : '' };
+    TIEMPOS.push(fila); if (TIEMPOS.length > 30) TIEMPOS.shift();
+    console.log('[tiempos] ' + que + ': ' + total + ' ms en total' +
+      (fila.servidor !== null ? ', ' + fila.servidor + ' ms en el servidor (' + fila.etapas + ')' : ''));
+    pintarTiempos();
+  } catch (e) {}
+}
+
 function marcarCargando(si) {
   const b = document.querySelector('.refresh-btn');
   if (b) b.classList.toggle('cargando', !!si);
@@ -1898,8 +1954,10 @@ async function _loadFromSheets(silent, opts) {
   try {
     if (!silent) showLoading(true);
     const credUsada = credencial();
+    const t0 = performance.now();
     const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams() + claveQuery());
     const data = await res.json();
+    anotarTiempo('cargar', t0, data);
     if (credUsada !== credencial()) return 'viejo';
     if (data && data.codigo === 'CLAVE') { if (!opts.ingreso) pedirClave(); return 'clave'; }
     
@@ -1977,9 +2035,15 @@ async function _loadFromSheets(silent, opts) {
       }
 
 
-      // Movimientos: el backend ya los devuelve del más reciente al más antiguo
-      MOVIMIENTOS = Array.isArray(data.movimientos) ? data.movimientos : [];
-      localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
+      // Movimientos: el backend ya los devuelve del más reciente al más antiguo. Si esta carga
+      // no los pidió (vienen en null) se conservan los que había, con lo anotado localmente.
+      if (Array.isArray(data.movimientos)) {
+        MOVIMIENTOS = data.movimientos;
+        MOV_AL_DIA = true;
+        localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
+      } else {
+        MOV_AL_DIA = false;
+      }
 
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       localStorage.setItem('pedidos_anulados_backup', JSON.stringify(PEDIDOS_ANULADOS));
@@ -4327,7 +4391,13 @@ function restarDias(fechaISO, dias) {
 }
 
 // Query string para pedirle al backend solo el rango elegido
+// Los movimientos sólo se muestran en su pantalla. Pedirlos en cada carga le sumaba al servidor
+// varias lecturas de la hoja más larga de todas, para un dato que casi nunca se estaba mirando.
+// Ahora se piden sólo si se está en Movim.; en cualquier otra pantalla va mov=0 y el servidor
+// se los saltea. MOV_AL_DIA dice si lo que hay en memoria salió de la última carga.
+let MOV_AL_DIA = false;
 function movQueryParams() {
+  if (currentSection !== 'movimientos') return '&mov=0';
   let q = '&limitMov=' + MOV_LIMITE;
   if (MOV_RANGO_DIAS > 0) q += '&desde=' + restarDias(hoyAR(), MOV_RANGO_DIAS - 1);
   return q;
@@ -4573,7 +4643,8 @@ function renderMovimientos() {
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
   if (!items.length) {
-    container.innerHTML = '<div class="mov-empty">No hay movimientos en este período.</div>';
+    container.innerHTML = '<div class="mov-empty">' +
+      (MOV_AL_DIA || !_cargaEnCurso ? 'No hay movimientos en este período.' : 'Trayendo los movimientos…') + '</div>';
     return;
   }
 
@@ -4625,6 +4696,7 @@ function renderMovimientos() {
 // así que el movimiento se agrega localmente para que se vea al instante.
 // En el próximo loadFromSheets() se reemplaza por la versión real del Sheet.
 function pushMovLocal(m) {
+  MOV_AL_DIA = false;   // hay algo anotado acá que todavía no se trajo del servidor
   MOVIMIENTOS.unshift(Object.assign({
     fecha: ahoraAR(), tipo: '', pedidoId: '', nombre: '',
     prenda: '', talle: '', monto: 0, medio: '', detalle: '', usuario: USUARIO, _pendiente: true

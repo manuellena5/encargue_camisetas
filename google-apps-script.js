@@ -24,6 +24,14 @@
 
 // El ID de la planilla vive en las propiedades del script y no en este archivo, que está en un
 // repositorio público. Se lee una sola vez por ejecución.
+// ============ TIEMPOS ============
+// Cada respuesta lleva cuánto tardó el servidor ('ms') y en qué ('t': etapa y milisegundos
+// acumulados). No cambia nada para quien usa la app; sirve para ver dónde se va el tiempo
+// cuando algo tarda, sin adivinar. Se ve en la consola del navegador.
+const _T0 = Date.now();
+const _marcas = [];
+function marca_(nombre) { _marcas.push([nombre, Date.now() - _T0]); }
+
 const PROP_PLANILLA = 'SPREADSHEET_ID';
 
 // Las propiedades del script se leen todas juntas, una vez por ejecución. Cada lectura suelta
@@ -44,6 +52,7 @@ function planilla_() {
   }
   try {
     _planilla = SpreadsheetApp.openById(id);
+    marca_('abrir');
   } catch (err) {
     console.error('No se pudo abrir la planilla de la propiedad ' + PROP_PLANILLA + ': ' + err);
     throw new Error('La app no puede abrir sus datos. Avisale a quien la administra.');
@@ -154,6 +163,7 @@ function usuariosActivos_() {
     }
   }
   _usuariosCache = out;
+  marca_('leer Usuarios');
   return out;
 }
 
@@ -377,7 +387,93 @@ function entradaSegura_(x) {
 
 // ============ HELPERS ============
 
+// ============ HOJA EN MEMORIA ============
+// Lo caro de Apps Script no es la cantidad de filas: es cada ida a la planilla, y sobre todo
+// LEER después de haber ESCRITO, porque obliga a Sheets a aplicar lo pendiente y recalcular
+// antes de contestar. Un guardado hacía una veintena de idas, con lecturas intercaladas entre
+// las escrituras.
+//
+// Esto envuelve una hoja para que se lea UNA sola vez, entera, y a partir de ahí todas las
+// consultas (valores, última fila, última columna) se contesten desde esa copia. Las
+// escrituras van a la planilla en el momento y además actualizan la copia, así que lo que se
+// lee después coincide con lo recién escrito sin volver a preguntar. Resultado: una lectura,
+// las escrituras, y una sola aplicación al final.
+//
+// Tiene los mismos métodos que una hoja de verdad (los que usa este archivo), para que el
+// resto del código no cambie. Sólo se escriben las celdas que se tocan: nunca filas enteras,
+// que pisarían fórmulas o formatos que haya en otras columnas.
+function HojaMem_(sheet, nombre) { this.s = sheet; this.nombre = nombre; this.d = null; }
+HojaMem_.prototype._datos = function () {
+  if (!this.d) {
+    const v = this.s.getDataRange().getValues();
+    // Una hoja vacía devuelve una sola celda vacía: se la trata como cero filas
+    this.d = (v.length === 1 && v[0].length === 1 && v[0][0] === '') ? [] : v;
+    marca_('leer ' + this.nombre);
+  }
+  return this.d;
+};
+HojaMem_.prototype._asegurar = function (filas, cols) {
+  const d = this._datos();
+  const ancho = Math.max(cols, d.length ? d[0].length : 0);
+  while (d.length < filas) d.push([]);
+  for (let i = 0; i < d.length; i++) while (d[i].length < ancho) d[i].push('');
+};
+HojaMem_.prototype.getLastRow    = function () { return this._datos().length; };
+HojaMem_.prototype.getLastColumn = function () { const d = this._datos(); return d.length ? d[0].length : 0; };
+HojaMem_.prototype.getMaxRows    = function () { return this.s.getMaxRows(); };
+HojaMem_.prototype.getDataRange  = function () {
+  return new RangoMem_(this, 1, 1, Math.max(1, this.getLastRow()), Math.max(1, this.getLastColumn()));
+};
+HojaMem_.prototype.getRange = function (r, c, nr, nc) { return new RangoMem_(this, r, c, nr || 1, nc || 1); };
+HojaMem_.prototype.appendRow = function (fila) {
+  const d = this._datos();              // se lee antes de escribir, nunca después
+  this.s.appendRow(fila);
+  const nueva = fila.slice();
+  d.push(nueva);
+  this._asegurar(d.length, nueva.length);
+  return this;
+};
+HojaMem_.prototype.insertColumnAfter = function (n) {
+  const d = this._datos();
+  this.s.insertColumnAfter(n);
+  // En la copia sólo hace falta correr lo que quede a la derecha; agregar al final no cambia nada
+  for (let i = 0; i < d.length; i++) if (d[i].length > n) d[i].splice(n, 0, '');
+  return this;
+};
+HojaMem_.prototype.setFrozenRows = function (n) { this.s.setFrozenRows(n); return this; };
+
+function RangoMem_(hoja, r, c, nr, nc) { this.h = hoja; this.r = r; this.c = c; this.nr = nr; this.nc = nc; }
+RangoMem_.prototype._real = function () { return this.h.s.getRange(this.r, this.c, this.nr, this.nc); };
+RangoMem_.prototype.getValues = function () {
+  const d = this.h._datos(), out = [];
+  for (let i = 0; i < this.nr; i++) {
+    const fila = d[this.r - 1 + i] || [], o = [];
+    for (let j = 0; j < this.nc; j++) { const v = fila[this.c - 1 + j]; o.push(v === undefined ? '' : v); }
+    out.push(o);
+  }
+  return out;
+};
+RangoMem_.prototype.getValue = function () { return this.getValues()[0][0]; };
+RangoMem_.prototype.setValue = function (v) {
+  this.h._asegurar(this.r, this.c);
+  this._real().setValue(v);
+  this.h.d[this.r - 1][this.c - 1] = v;
+  return this;
+};
+RangoMem_.prototype.setValues = function (vs) {
+  this.h._asegurar(this.r + this.nr - 1, this.c + this.nc - 1);
+  this._real().setValues(vs);
+  for (let i = 0; i < vs.length; i++) for (let j = 0; j < vs[i].length; j++) this.h.d[this.r - 1 + i][this.c - 1 + j] = vs[i][j];
+  return this;
+};
+RangoMem_.prototype.setFontWeight   = function (x) { this._real().setFontWeight(x);   return this; };
+RangoMem_.prototype.setNumberFormat = function (x) { this._real().setNumberFormat(x); return this; };
+
+// Una hoja en memoria por nombre y por ejecución. Movimientos queda afuera a propósito: puede
+// tener miles de filas y de ella sólo se lee el final (ver leerMovimientos) o se le agrega una.
+const _hojas = {};
 function getOrCreateSheet(name, headers) {
+  if (_hojas[name]) return _hojas[name];
   const ss = planilla_();
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
@@ -388,7 +484,9 @@ function getOrCreateSheet(name, headers) {
       sheet.setFrozenRows(1);
     }
   }
-  return sheet;
+  if (name === SHEET_MOVIMIENTOS) return sheet;
+  _hojas[name] = new HojaMem_(sheet, name);
+  return _hojas[name];
 }
 
 function sheetToObjects(sheet) {
@@ -453,10 +551,49 @@ function colUsuarioMov_(sheet, crear) {
   return ix;
 }
 
+// En qué columna de Movimientos va el nombre de quien hizo el movimiento. Se recuerda en una
+// propiedad del script para no tener que LEER el encabezado en cada guardado: esa lectura,
+// hecha después de escribir el pedido, obligaba a la planilla a aplicar y recalcular a mitad
+// de camino. Las propiedades ya vienen leídas (prop_), así que consultarla no cuesta nada.
+// Se corrige sola: cada vez que la app pide los movimientos se compara con el encabezado real.
+const PROP_MOV_USUARIO = 'MOV_COL_USUARIO';
+function recordarColUsuarioMov_(ix) {
+  try {
+    if (String(prop_(PROP_MOV_USUARIO)) === String(ix)) return;
+    const ps = PropertiesService.getScriptProperties();
+    if (ix >= 0) ps.setProperty(PROP_MOV_USUARIO, String(ix)); else ps.deleteProperty(PROP_MOV_USUARIO);
+    if (_props) { if (ix >= 0) _props[PROP_MOV_USUARIO] = String(ix); else delete _props[PROP_MOV_USUARIO]; }
+  } catch (err) {
+    console.error('No se pudo recordar la columna Usuario: ' + err);
+  }
+}
+
+// La hoja Movimientos se pide una vez por ejecución, y en un guardado se pide ANTES de empezar
+// a escribir (ver doPost_): así agregar el movimiento al final no necesita consultar nada.
+let _hojaMov;
+function hojaMov_() {
+  if (_hojaMov === undefined) _hojaMov = planilla_().getSheetByName(SHEET_MOVIMIENTOS) || null;
+  return _hojaMov;
+}
+
 function logMovimiento(m) {
   try {
-    const sheet = getOrCreateSheet(SHEET_MOVIMIENTOS, MOV_HEADERS);
-    const cUsu = colUsuarioMov_(sheet, true);
+    let sheet = hojaMov_();
+    let cUsu;
+    if (!sheet) {
+      sheet = getOrCreateSheet(SHEET_MOVIMIENTOS, MOV_HEADERS);   // la crea con sus encabezados
+      _hojaMov = sheet;
+      cUsu = MOV_HEADERS.indexOf(MOV_COL_USUARIO);
+      recordarColUsuarioMov_(cUsu);
+    } else {
+      const recordada = prop_(PROP_MOV_USUARIO);
+      cUsu = (recordada === undefined || recordada === null || recordada === '') ? -1 : Number(recordada);
+      if (!(cUsu >= 0)) {
+        // Primera vez (o se perdió el dato): se mira el encabezado, creando la columna si falta
+        cUsu = colUsuarioMov_(sheet, true);
+        recordarColUsuarioMov_(cUsu);
+      }
+    }
     // textoSeguro_ también acá: nombre y talle a veces se releen de la planilla (donde un
     // texto viejo puede empezar con =) y volver a escribirlos tal cual los haría fórmula.
     const fila = [
@@ -487,8 +624,7 @@ function logMovimiento(m) {
 // Recorre la hoja de abajo hacia arriba en bloques y corta apenas pasa el 'desde',
 // así no carga toda la hoja cuando el historial crece.
 function leerMovimientos(desde, hasta, limit) {
-  const ss = planilla_();
-  const sheet = ss.getSheetByName(SHEET_MOVIMIENTOS);
+  const sheet = hojaMov_();
   if (!sheet) return [];
 
   const lastRow = sheet.getLastRow();
@@ -500,6 +636,7 @@ function leerMovimientos(desde, hasta, limit) {
 
   const cUsuMov  = colUsuarioMov_(sheet, false);
   const nColsMov = Math.max(MOV_COLS_BASE, cUsuMov + 1);
+  recordarColUsuarioMov_(cUsuMov);   // mantiene al día lo que usa logMovimiento
 
   const CHUNK = 500;   // igual al tope que pide la app: el caso normal sale en una sola lectura
   const out = [];
@@ -541,7 +678,9 @@ function leerMovimientos(desde, hasta, limit) {
 
 // ============ GET: Read all data ============
 
-function doGet(e) {
+function doGet(e) { return emitir_(doGet_(e)); }
+
+function doGet_(e) {
   try {
     const action = e.parameter.action;
 
@@ -559,6 +698,7 @@ function doGet(e) {
     }
 
     if (!autenticar_(e.parameter.usuario, e.parameter.clave).ok) return respuestaSinClave_('doGet');
+    marca_('acceso');
 
     // La pantalla de clave de la app pregunta acá si la clave que se pegó es la buena, sin
     // traer ningún dato.
@@ -576,7 +716,7 @@ function doGet(e) {
       });
     }
     if (action === 'getAll') {
-      return getAll(e.parameter.desde, e.parameter.hasta, e.parameter.limitMov);
+      return getAll(e.parameter.desde, e.parameter.hasta, e.parameter.limitMov, e.parameter.mov !== '0');
     }
 
     // 'origen' le dice al cliente que esta respuesta salió de doGet. Un POST que termina acá
@@ -589,7 +729,9 @@ function doGet(e) {
   }
 }
 
-function getAll(desde, hasta, limitMov) {
+// conMov === false: la app está en una pantalla que no muestra movimientos, así que no se leen.
+// Devuelve movimientos: null, que la app entiende como "quedate con los que tenías".
+function getAll(desde, hasta, limitMov, conMov) {
   const pedidosSheet = getOrCreateSheet(SHEET_PEDIDOS);
 
   // Las hojas Retiros y Stock ya no se leen: la app no usa ninguna de las dos (el retiro vive
@@ -616,7 +758,8 @@ function getAll(desde, hasta, limitMov) {
     migracion = migrarStockACompras_();
     if (migracion) compras = getCompras();
   }
-  const movimientos = leerMovimientos(desde, hasta, limitMov);
+  const movimientos = conMov === false ? null : leerMovimientos(desde, hasta, limitMov);
+  if (conMov !== false) marca_('leer Movimientos');
 
   return jsonResponse({ status: 'ok', pedidos, compras, movimientos,
                         migracion: migracion, backfill: backfill,
@@ -769,7 +912,9 @@ function getPedidos() {
 // leer los mismos índices de fila antes de escribir: la segunda termina operando sobre una fila
 // que ya no es la que creía, y pisa el pedido equivocado. Con multiusuario no es hipotético.
 // Las lecturas (doGet) NO toman el lock, para que un getAll largo no trabe un guardado.
-function doPost(e) {
+function doPost(e) { return emitir_(doPost_(e)); }
+
+function doPost_(e) {
   // La clave se revisa ANTES de tomar el lock: un pedido sin clave no tiene que poder hacer
   // esperar a los guardados de verdad. Se lee del cuerpo tal cual llegó. El 'ping' pasa
   // siempre: no toca datos y la app lo necesita para saber si puede leer las respuestas.
@@ -784,6 +929,7 @@ function doPost(e) {
     }
     if (!acceso.ok) return respuestaSinClave_('doPost');
     USUARIO_ACTUAL = acceso.usuario;   // firma los movimientos de esta ejecución
+    marca_('acceso');
   }
 
   const lock = LockService.getScriptLock();
@@ -793,9 +939,18 @@ function doPost(e) {
     return jsonResponse({ status: 'error',
       message: 'El servidor está ocupado con otra operación. Probá de nuevo en unos segundos.' });
   }
+  marca_('turno');
   try {
-    return rutearPost_(e);
+    if (cruda && cruda.action !== 'ping') hojaMov_();
+    const salida = rutearPost_(e);
+    marca_('accion');
+    return salida;
   } finally {
+    // Lo escrito se aplica ANTES de soltar el lock. Si no, el siguiente guardado podía empezar
+    // a leer la planilla cuando lo de éste todavía no estaba aplicado. Además deja medido
+    // cuánto tarda la planilla en aplicar y recalcular, que es parte de la espera.
+    try { SpreadsheetApp.flush(); } catch (err) { console.error('flush falló: ' + err); }
+    marca_('aplicar');
     lock.releaseLock();
   }
 }
@@ -1462,7 +1617,16 @@ function eliminarPedido(data) {
 }
 
 // ============ JSON Response ============
+// Las funciones siguen devolviendo jsonResponse({...}), pero lo que devuelve es el objeto
+// envuelto: el texto final lo arma emitir_ en doGet/doPost, cuando ya se sabe cuánto tardó todo.
 function jsonResponse(obj) {
+  return { __json: obj };
+}
+
+function emitir_(r) {
+  const obj = (r && r.__json) ? r.__json : (r || {});
+  obj.ms = Date.now() - _T0;
+  obj.t  = _marcas;
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }

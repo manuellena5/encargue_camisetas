@@ -102,3 +102,11 @@ Para que cada persona entre con su nombre y sus movimientos queden firmados.
 - Cada movimiento queda con el nombre en la columna **Usuario** de la hoja Movimientos (se agrega sola) y se ve en la pantalla Movim. El nombre lo pone el servidor después de validar la clave.
 - Para sacarle el acceso a alguien: borrar su fila o ponerle `no`. Si entraba con la clave general, además hay que cambiarla, porque la sigue sabiendo y podría entrar con el nombre de otro. Con clave propia por persona eso no pasa.
 - Mientras la hoja no exista o esté vacía, la app no pide nombre.
+
+### Propiedades del script
+
+| Propiedad | Quién la carga | Para qué |
+|---|---|---|
+| `SPREADSHEET_ID` | a mano | ID de la planilla |
+| `CLAVE_ACCESO` | a mano o con `generarClaveAcceso` | clave general de acceso (optativa) |
+| `MOV_COL_USUARIO` | sola | en qué columna de Movimientos va el nombre de quien hizo el movimiento. Se recuerda para no leer el encabezado en cada guardado, y se corrige sola al abrir la pantalla Movim. No hace falta tocarla. |
