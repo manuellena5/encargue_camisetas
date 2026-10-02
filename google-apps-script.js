@@ -25,10 +25,19 @@
 // El ID de la planilla vive en las propiedades del script y no en este archivo, que está en un
 // repositorio público. Se lee una sola vez por ejecución.
 const PROP_PLANILLA = 'SPREADSHEET_ID';
+
+// Las propiedades del script se leen todas juntas, una vez por ejecución. Cada lectura suelta
+// es una llamada a un servicio de Google, y en una carga se consultaban varias veces.
+let _props = null;
+function prop_(nombre) {
+  if (!_props) _props = PropertiesService.getScriptProperties().getProperties() || {};
+  return _props[nombre];
+}
+
 let _planilla = null;
 function planilla_() {
   if (_planilla) return _planilla;
-  const id = String(PropertiesService.getScriptProperties().getProperty(PROP_PLANILLA) || '').trim();
+  const id = String(prop_(PROP_PLANILLA) || '').trim();
   if (!id) {
     console.error('Falta la propiedad del script ' + PROP_PLANILLA + ' (Configuración del proyecto > Propiedades del script).');
     throw new Error('La app todavía no está configurada. Avisale a quien la administra.');
@@ -79,7 +88,7 @@ function normalizarClave_(v) {
 }
 
 function claveRequerida_() {
-  return normalizarClave_(PropertiesService.getScriptProperties().getProperty(PROP_CLAVE));
+  return normalizarClave_(prop_(PROP_CLAVE));
 }
 
 /** true si no hay clave configurada o si la recibida coincide. */
@@ -207,6 +216,7 @@ function generarClaveAcceso() {
     if (i === 3) clave += '-';
   }
   PropertiesService.getScriptProperties().setProperty(PROP_CLAVE, clave);
+  _props = null;   // lo leído antes ya no vale
   const msg = 'Clave de acceso nueva: ' + clave + '  — Desde ahora la app la pide. Pasásela a ' +
     'cada persona; la escriben una sola vez.';
   console.log(msg);
@@ -253,6 +263,20 @@ function colIdPedidos_(sheet) {
   sheet.insertColumnAfter(nCols);
   sheet.getRange(1, nCols + 1).setValue(PED_COL_ID).setFontWeight('bold');
   return nCols;
+}
+
+/** true si en los valores de la hoja Pedidos hay algún pedido cargado (con Nombre) sin ID. */
+function faltanIdsPedidos_(datos) {
+  if (!datos || datos.length < 2) return false;
+  const headers = datos[0].map(function (h) { return String(h).trim(); });
+  const cId = headers.indexOf(PED_COL_ID), cNom = headers.indexOf('Nombre');
+  if (cId < 0) return true;                       // ni siquiera está la columna
+  for (let i = 1; i < datos.length; i++) {
+    if (String(datos[i][cId] || '').trim()) continue;
+    if (cNom >= 0 && !String(datos[i][cNom] || '').trim()) continue;   // fila vacía
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -368,7 +392,11 @@ function getOrCreateSheet(name, headers) {
 }
 
 function sheetToObjects(sheet) {
-  const data = sheet.getDataRange().getValues();
+  return objetosDeValores_(sheet.getDataRange().getValues());
+}
+
+/** Convierte los valores ya leídos de una hoja (con su fila de encabezados) en objetos. */
+function objetosDeValores_(data) {
   if (data.length < 2) return [];
   const headers = data[0];
   const rows = [];
@@ -473,7 +501,7 @@ function leerMovimientos(desde, hasta, limit) {
   const cUsuMov  = colUsuarioMov_(sheet, false);
   const nColsMov = Math.max(MOV_COLS_BASE, cUsuMov + 1);
 
-  const CHUNK = 300;
+  const CHUNK = 500;   // igual al tope que pide la app: el caso normal sale en una sola lectura
   const out = [];
   let end = lastRow;
   let cortar = false;
@@ -569,11 +597,25 @@ function getAll(desde, hasta, limitMov) {
   // perdido. Tampoco se crean si faltan. Lo único que todavía mira Stock es la migración de
   // abajo, y sólo si Compras está vacía.
 
-  // Se completan los IDs que falten antes de leer, así los pedidos salen siempre con el suyo
-  const backfill = backfillIdsPedidos_();
-  const pedidos = sheetToObjects(pedidosSheet);
-  const migracion = migrarStockACompras_();
-  const compras = getCompras();
+  // Pedidos se lee UNA vez. Antes, completar los IDs faltantes leía la hoja por partes (cuatro
+  // lecturas) en cada carga aunque no faltara ninguno, y después se volvía a leer entera. Ahora
+  // se mira en lo ya leído si falta alguno, y sólo en ese caso se completan y se relee.
+  let datos = pedidosSheet.getDataRange().getValues();
+  let backfill = null;
+  if (faltanIdsPedidos_(datos)) {
+    backfill = backfillIdsPedidos_();
+    datos = pedidosSheet.getDataRange().getValues();
+  }
+  const pedidos = objetosDeValores_(datos);
+
+  // La migración desde la hoja Stock sólo tiene sentido con Compras vacía: se pregunta eso con
+  // lo que ya se leyó, en vez de consultar la hoja aparte en cada carga.
+  let compras = getCompras();
+  let migracion = null;
+  if (!compras.length) {
+    migracion = migrarStockACompras_();
+    if (migracion) compras = getCompras();
+  }
   const movimientos = leerMovimientos(desde, hasta, limitMov);
 
   return jsonResponse({ status: 'ok', pedidos, compras, movimientos,

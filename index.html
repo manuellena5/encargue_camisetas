@@ -257,6 +257,8 @@
     .empty-state p { font-size: 0.9rem; }
     .refresh-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #1a1a2e; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
     .refresh-btn:hover { background: #2c3e50; }
+    /* Mientras se actualiza en segundo plano, la flecha gira: avisa sin tapar la pantalla */
+    .refresh-btn.cargando { animation: girar 0.9s linear infinite; }
     .config-toggle { position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px; border-radius: 50%; background: #7f8c8d; color: white; border: none; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 50; display: flex; align-items: center; justify-content: center; }
     .config-toggle:hover { background: #95a5a6; }
 
@@ -1138,10 +1140,19 @@ const PRENDA_TYPES_BUILTIN = [
   { key: 'ARQUERO_CELESTE', label: 'Arquero Celeste',  color: '#00bcd4', hasStock: false },
   { key: 'ARQUERO_NEGRA',   label: 'Arquero Negra',    color: '#2c3e50', hasStock: false },
 ];
+// Se llama miles de veces por dibujado (una por pedido, desde getTipo y el cálculo de stock).
+// El texto guardado se vuelve a interpretar sólo cuando cambia; se devuelven copias para que
+// nadie modifique sin querer lo que quedó en memoria.
+let _tiposRaw = null, _tiposCustom = [];
 function getPrendaTypes() {
   try {
-    const custom = JSON.parse(localStorage.getItem('customPrendaTypes') || '[]');
-    return [...PRENDA_TYPES_BUILTIN, ...(Array.isArray(custom) ? custom : [])];
+    const raw = localStorage.getItem('customPrendaTypes') || '[]';
+    if (raw !== _tiposRaw) {
+      const custom = JSON.parse(raw);
+      _tiposCustom = Array.isArray(custom) ? custom : [];
+      _tiposRaw = raw;
+    }
+    return [...PRENDA_TYPES_BUILTIN, ..._tiposCustom.map(t => Object.assign({}, t))];
   } catch(e) {
     console.error('Error leyendo tipos customizados:', e);
     return [...PRENDA_TYPES_BUILTIN];
@@ -1246,6 +1257,14 @@ async function cargarPersonas() {
     // Un servidor que todavía no conoce la lista contesta error: se sigue sólo con la clave
     PERSONAS = (j && j.status === 'ok' && Array.isArray(j.usuarios)) ? j.usuarios : [];
     PERSONAS_ESTADO = 'ok';
+    // El servidor dice que ya no pide nada (se sacaron la clave y la lista de personas): no
+    // tiene sentido dejar a nadie parado en esta pantalla.
+    if (j && j.status === 'ok' && !PERSONAS.length && j.pideClave === false) {
+      try { localStorage.removeItem('pideClave'); } catch (e) {}
+      document.getElementById('pantallaClave').style.display = 'none';
+      loadFromSheets();
+      return;
+    }
   } catch (e) {
     console.error('No se pudo traer la lista de personas:', e);
     PERSONAS = [];
@@ -1337,15 +1356,17 @@ async function entrarConClave() {
   const clave = pideClave ? String(inp.value || '').trim() : '';
   if (pideClave && !clave) { err.textContent = 'Escribí la clave.'; return; }
 
-  btn.disabled = true; btn.textContent = 'Comprobando…'; err.textContent = '';
+  btn.disabled = true; btn.textContent = 'Entrando…'; err.textContent = '';
   try {
-    const res = await fetch(SCRIPT_URL + '?action=probarClave' +
-      (usuario ? '&usuario=' + encodeURIComponent(usuario) : '') +
-      (clave   ? '&clave='   + encodeURIComponent(clave)   : ''));
-    const j = await res.json();
-    if (j && j.codigo === 'CLAVE') { err.textContent = 'Esa clave no es la correcta.'; return; }
-    if (!j || j.status !== 'ok') throw new Error((j && j.message) || 'sin respuesta');
+    // Una sola ida y vuelta: en vez de preguntar primero si la clave es buena y después
+    // pedir los datos, se piden los datos con esa clave. Si el servidor los entrega, era buena.
     USUARIO = usuario; CLAVE = clave;
+    const r = await _loadFromSheets(true, { ingreso: true });
+    if (r !== 'ok') {
+      USUARIO = ''; CLAVE = '';
+      if (r === 'clave') { err.textContent = 'Esa clave no es la correcta.'; return; }
+      throw new Error('sin respuesta');
+    }
     try {
       if (CLAVE)   localStorage.setItem('claveAcceso', CLAVE);     else localStorage.removeItem('claveAcceso');
       if (USUARIO) localStorage.setItem('usuarioApp', USUARIO);    else localStorage.removeItem('usuarioApp');
@@ -1355,7 +1376,6 @@ async function entrarConClave() {
     document.getElementById('pantallaClave').style.display = 'none';
     inp.value = '';
     checkConfig();
-    loadFromSheets();
   } catch (e) {
     console.error('Error comprobando el ingreso:', e);
     err.textContent = 'No se pudo comprobar. Revisá la conexión y probá de nuevo.';
@@ -1414,23 +1434,49 @@ function labelTalle(t, corto) {
   return corto ? 'ÚNICO' : 'Talle único';
 }
 
+// Con memoria: se le pasan una y otra vez los mismos textos (los encabezados de la planilla,
+// los nombres de las prendas) y normalizar cada vez era buena parte del tiempo de dibujado.
+const _normCache = new Map();
 function normalizeKey(str) {
-  return String(str || '')
+  const s = String(str || '');
+  let r = _normCache.get(s);
+  if (r !== undefined) return r;
+  r = s
     .normalize('NFD')
     .replace(/\u00f1/gi, 'n')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^A-Z0-9]/gi, '')
     .toUpperCase();
+  if (_normCache.size > 5000) _normCache.clear();
+  _normCache.set(s, r);
+  return r;
 }
 
+// La prenda de un pedido no cambia (no se edita), así que se calcula una vez por pedido y se
+// recuerda. Lo único que puede cambiar la respuesta es que se agregue o saque una prenda de la
+// lista de tipos: por eso lo recordado vale sólo mientras esa lista siga igual.
+let _keyMapRaw = null, _keyMap = null;
+let _tipoDePedido = new WeakMap();
 function getTipo(p) {
+  const raw = localStorage.getItem('customPrendaTypes') || '[]';
+  if (raw !== _keyMapRaw || !_keyMap) {
+    // Mapa de keys normalizados a key real
+    _keyMap = {};
+    getPrendaTypes().forEach(t => { _keyMap[normalizeKey(t.key)] = t.key.toLowerCase(); });
+    _keyMapRaw = raw;
+    _tipoDePedido = new WeakMap();
+  }
+  const recordable = p && typeof p === 'object';
+  if (recordable) {
+    const ya = _tipoDePedido.get(p);
+    if (ya !== undefined) return ya;
+  }
+  const tipo = _getTipoCalc(p, _keyMap);
+  if (recordable) _tipoDePedido.set(p, tipo);
+  return tipo;
+}
+function _getTipoCalc(p, keyMap) {
   // Buscar la PRIMERA columna de tipo que tenga valor 1, normalizando keys
-  const tipos = getPrendaTypes();
-  // Construir un mapa de keys normalizados a key real
-  const keyMap = {};
-  tipos.forEach(t => {
-    keyMap[normalizeKey(t.key)] = t.key.toLowerCase();
-  });
   for (const k in p) {
     if (typeof p[k] === 'undefined') continue;
     const norm = normalizeKey(k);
@@ -1828,23 +1874,34 @@ function loadFromSheets(opts) {
     _recargaPendiente = true;
     return _cargaEnCurso;
   }
-  _cargaEnCurso = _loadFromSheets(!!(opts && opts.silent)).finally(() => {
+  marcarCargando(true);
+  _cargaEnCurso = _loadFromSheets(!!(opts && opts.silent), opts).finally(() => {
     _cargaEnCurso = null;
+    marcarCargando(false);
     if (_recargaPendiente) { _recargaPendiente = false; loadFromSheets({ silent: true }); }
   });
   return _cargaEnCurso;
 }
 
-async function _loadFromSheets(silent) {
+function marcarCargando(si) {
+  const b = document.querySelector('.refresh-btn');
+  if (b) b.classList.toggle('cargando', !!si);
+}
+
+// Devuelve cómo terminó: 'ok' · 'clave' (el servidor no dejó pasar) · 'error' · 'viejo'
+// (respuesta de un pedido que salió con otra persona u otra clave: se descarta).
+// opts.ingreso: la pantalla de ingreso está probando un nombre y una clave; un rechazo no
+// tiene que reiniciar esa pantalla, se le devuelve a ella para que lo diga.
+// opts.avisarError: aunque sea de fondo, si falla se avisa (apertura con datos guardados).
+async function _loadFromSheets(silent, opts) {
+  opts = opts || {};
   try {
     if (!silent) showLoading(true);
     const credUsada = credencial();
     const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams() + claveQuery());
     const data = await res.json();
-    // Respuesta de un pedido que salió con otra persona u otra clave (se cambió mientras
-    // viajaba): no se usa, ni para bloquear ni para mostrar datos.
-    if (credUsada !== credencial()) return;
-    if (data && data.codigo === 'CLAVE') { pedirClave(); return; }
+    if (credUsada !== credencial()) return 'viejo';
+    if (data && data.codigo === 'CLAVE') { if (!opts.ingreso) pedirClave(); return 'clave'; }
     
     
     if (data.status === 'ok') {
@@ -1926,18 +1983,22 @@ async function _loadFromSheets(silent) {
 
       localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
       localStorage.setItem('pedidos_anulados_backup', JSON.stringify(PEDIDOS_ANULADOS));
-      renderAll();
+      // conservarAbiertas: este dibujado llega cuando llega, no cuando la persona lo pidió
+      renderAll({ conservarAbiertas: true });
       if (!silent) showToast('Datos actualizados (' + PEDIDOS.length + ' pedidos)');
+      return 'ok';
     } else {
       throw new Error(data.message || 'Error desconocido');
     }
   } catch (e) {
     console.error('Error loading:', e);
     ESTADO_CONEXION = 'error'; checkConfig();
+    if (opts.ingreso) return 'error';
+    if (silent && opts.avisarError) showToast('Sin conexión. Estás viendo los últimos datos guardados.');
     // En un refresco de fondo no pisamos lo que ya está en pantalla con el backup de
     // localStorage: el pedido recién cargado vive sólo en memoria hasta que llega este
     // getAll, y restaurar el backup lo haría desaparecer. Se reintenta en el próximo.
-    if (silent) return;
+    if (silent) return 'error';
     showToast('Error: ' + e.message);
     const backup = localStorage.getItem('pedidos_backup');
     if (backup) {
@@ -1954,6 +2015,7 @@ async function _loadFromSheets(silent) {
     } else {
       showToast('No hay datos guardados. Verificá la conexión.');
     }
+    return 'error';
   } finally {
     if (!silent) showLoading(false);
   }
@@ -2353,11 +2415,13 @@ function unidadesSinCosto() {
   return COMPRAS.reduce((s, c) => s + ((Number(c.costo) || 0) <= 0 ? (Number(c.cant) || 0) : 0), 0);
 }
 
-function hasStockForPedido(p) {
+// `remaining` es optativo: la lista lo calcula una vez y se lo pasa a todas las tarjetas. Sin
+// eso se recalculaba el stock entero (recorriendo todos los pedidos) por cada tarjeta dibujada.
+function hasStockForPedido(p, remainingYa) {
   const tipo = getTipo(p);
   const typeObj = getPrendaTypes().find(t => t.key.toLowerCase() === tipo);
   if (!typeObj || !typeObj.hasStock) return true;
-  const { remaining } = calcStock();
+  const remaining = remainingYa || calcStock().remaining;
   const t = String(p['Talle'] || '').toUpperCase();
   return ((remaining[tipo] || {})[t] || 0) > 0;
 }
@@ -3350,6 +3414,7 @@ function confirmarDesbloqueo() {
     showToast('Pedido desbloqueado');
     setTimeout(() => {
       const card = document.getElementById('card-' + pendingUnlockId);
+      asegurarCuerpoTarjeta(pendingUnlockId);
       if (card && !card.classList.contains('expanded')) card.classList.add('expanded');
       closeModal();
     }, 100);
@@ -3389,8 +3454,8 @@ function getFiltered() {
   });
 }
 
-function renderAll() {
-  renderList();          // adentro llama a renderStock() y renderKpisPedidos()
+function renderAll(opts) {
+  renderList(opts);      // adentro llama a renderStock() y renderKpisPedidos()
   updateKPIs();          // KPIs y tabla por tanda de Resumen
   updateMovKPIs();
   if (currentSection === 'resumen') renderResumen();
@@ -3778,7 +3843,59 @@ function generarPedidoProveedor() {
   switchSection('pedidoproveedor');
 }
 
-function renderList() {
+// Cuerpo de cada tarjeta, pendiente de dibujar: id del pedido -> función que devuelve su HTML
+let CUERPOS_TARJETA = new Map();
+
+function asegurarCuerpoTarjeta(id) {
+  const cuerpo = document.getElementById('cuerpo-' + id);
+  const armar  = CUERPOS_TARJETA.get(id);
+  if (cuerpo && armar && !cuerpo.dataset.listo) {
+    cuerpo.innerHTML = armar();
+    cuerpo.dataset.listo = '1';
+  }
+}
+
+// Un refresco de fondo vuelve a dibujar la lista. Si justo hay una tarjeta desplegada (alguien
+// está por cobrar o entregar), no se le puede cerrar en la cara ni borrarle lo que escribió:
+// se anota qué estaba abierto y con qué valores, y se repone después de dibujar. Se identifica
+// por el ID real del pedido, porque el número de tarjeta puede correrse entre una carga y otra.
+function capturarTarjetasAbiertas() {
+  const out = [];
+  document.querySelectorAll('#listContainer .card.expanded').forEach(card => {
+    const pid = card.dataset.pid, viejoId = card.id.slice(5);
+    if (!pid) return;
+    const valores = {};
+    card.querySelectorAll('input, select, textarea').forEach(el => {
+      if (el.id && el.id.endsWith('-' + viejoId)) valores[el.id.slice(0, -(viejoId.length + 1))] = el.value;
+    });
+    const act = document.activeElement;
+    const foco = (act && card.contains(act) && act.id && act.id.endsWith('-' + viejoId))
+      ? act.id.slice(0, -(viejoId.length + 1)) : '';
+    out.push({ pid, valores, foco });
+  });
+  return out;
+}
+function restaurarTarjetasAbiertas(abiertas) {
+  (abiertas || []).forEach(a => {
+    const card = [...document.querySelectorAll('#listContainer .card')].find(c => c.dataset.pid === a.pid);
+    if (!card) return;
+    const id = card.id.slice(5);
+    asegurarCuerpoTarjeta(Number(id));
+    card.classList.add('expanded');
+    Object.keys(a.valores).forEach(k => {
+      const el = document.getElementById(k + '-' + id);
+      if (!el) return;
+      // En un desplegable sólo se repone si esa opción sigue existiendo
+      if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === a.valores[k])) return;
+      el.value = a.valores[k];
+    });
+    if (a.foco) { const el = document.getElementById(a.foco + '-' + id); if (el) { try { el.focus({ preventScroll: true }); } catch (e) {} } }
+  });
+}
+
+function renderList(opts) {
+  const abiertas = (opts && opts.conservarAbiertas) ? capturarTarjetasAbiertas() : null;
+  CUERPOS_TARJETA = new Map();
   const items = getFiltered();
   // Ordenar: pendientes primero, retirados al final.
   // Dentro de cada grupo, los pedidos más recientes arriba.
@@ -3803,12 +3920,13 @@ function renderList() {
   }
 
   const cards = [];
+  const stockLista = calcStock().remaining;   // una sola vez para toda la lista
   items.forEach(p => {
     try {
       const id = p._id;
       const ret = isRetirado(p);
     const tipo = getTipo(p);
-    const sinStock = !ret && !hasStockForPedido(p);
+    const sinStock = !ret && !hasStockForPedido(p, stockLista);
     const tanda = tandaDe(p);
     const bloqueado = isBloqueado(p);
     const tallePedido = p['Talle'] || '—';
@@ -3829,7 +3947,7 @@ function renderList() {
     const deuda = tieneDeuda(p);
     const regalo = isRegalo(p);
     const html = `
-      <div class="card ${ret ? 'retirado' : ''} ${deuda ? 'deuda-pendiente' : ''} ${regalo ? 'regalo' : ''} ${sinStock ? 'sin-stock' : ''} ${bloqueado ? 'bloqueado' : ''}" id="card-${id}">
+      <div class="card ${ret ? 'retirado' : ''} ${deuda ? 'deuda-pendiente' : ''} ${regalo ? 'regalo' : ''} ${sinStock ? 'sin-stock' : ''} ${bloqueado ? 'bloqueado' : ''}" id="card-${id}" data-pid="${escapeHtml(p._pid || '')}">
         <!-- Cabecera en columnas alineadas: antes era nombre + un hueco enorme + una hilera de
              badges pegada a la derecha, y la plata vivía en una segunda línea aparte. -->
         <div class="card-header gridh" onclick="toggleCard(${id})">
@@ -3864,7 +3982,13 @@ function renderList() {
         <!-- Cuerpo desplegado: dos acciones bien separadas, cada una con su propio botón.
              Antes eran cuatro campos arriba (que sólo aplicaban al retiro) más otro monto y otro
              medio abajo, sin decir cuál era cuál: se prestaba a cobrar en el campo equivocado. -->
-        <div class="card-body">
+        <div class="card-body" id="cuerpo-${id}"></div>
+      </div>
+    `;
+    // El cuerpo (formularios de entrega y de cobro) se arma recién cuando se despliega la
+    // tarjeta. Dibujarlo para todos los pedidos de entrada era el grueso del HTML de la lista,
+    // y casi nunca se abre más de uno o dos.
+    CUERPOS_TARJETA.set(id, () => `
           ${!ret ? `
           <div class="acc acc-entregar">
             <div class="acc-t">📦 Entregar la prenda</div>
@@ -3930,9 +4054,7 @@ function renderList() {
           <div class="acc-foot">
             <button class="btn btn-dark btn-sm" onclick="openModalEditar(${id})">✏️ Corregir el pedido</button>
           </div>`}
-        </div>
-      </div>
-    `;
+    `);
     cards.push(html);
     } catch(err) {
       console.error('Error renderizando pedido', p._id, err);
@@ -3940,6 +4062,7 @@ function renderList() {
   });
 
   container.innerHTML = cards.join('');
+  if (abiertas) restaurarTarjetasAbiertas(abiertas);
 
   updateKPIs();
 }
@@ -3950,6 +4073,7 @@ function toggleCard(id) {
     openModalDesbloqueo(id);
     return;
   }
+  asegurarCuerpoTarjeta(id);
   document.getElementById('card-' + id).classList.toggle('expanded');
 }
 
@@ -4526,14 +4650,24 @@ const backup = localStorage.getItem('pedidos_backup');
 if (backup) { try { invalidarCachePedidoDeMov(); PEDIDOS = JSON.parse(backup).map(sanearPedido); renderAll(); } catch(e) {} }
 if (!CLAVE && !USUARIO && servidorPideClave()) pedirClave();
 if (SCRIPT_URL) {
+  // Si ya hay pedidos guardados de la vez anterior, están en pantalla desde la línea de
+  // arriba: se actualizan de fondo (gira la flecha) en vez de tapar todo con "Sincronizando"
+  // hasta que conteste el servidor. Sólo la primera vez, sin nada que mostrar, se espera.
+  // Con la pantalla de ingreso a la vista no se pide nada: se va a pedir al entrar.
+  const esperandoIngreso = document.getElementById('pantallaClave').style.display !== 'none';
+  const carga = esperandoIngreso ? Promise.resolve()
+    : loadFromSheets(PEDIDOS.length ? { silent: true, avisarError: true } : undefined);
   // Se prueba una vez si el navegador puede leer las respuestas del backend. Si puede, cada
   // escritura verifica que el servidor la haya aceptado; si no, se sigue escribiendo a ciegas
-  // como antes, pero al menos queda avisado en la consola.
-  probarLecturaRespuesta().then(ok => {
-    if (!ok) console.warn('Las escrituras van a ciegas: el navegador no puede leer la respuesta ' +
-      'del Apps Script. Revisá que el deploy tenga acceso "Cualquier persona".');
+  // como antes, pero al menos queda avisado en la consola. Va DESPUÉS de la carga para no
+  // competir con ella; si alguien guarda antes, postApp lo prueba por su cuenta.
+  Promise.resolve(carga).finally(() => {
+    if (PUEDE_LEER_RESPUESTA !== null) return;
+    probarLecturaRespuesta().then(ok => {
+      if (!ok) console.warn('Las escrituras van a ciegas: el navegador no puede leer la respuesta ' +
+        'del Apps Script. Revisá que el deploy tenga acceso "Cualquier persona".');
+    });
   });
-  loadFromSheets();
 }
 </script>
 </body>
