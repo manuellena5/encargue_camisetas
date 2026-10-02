@@ -724,10 +724,8 @@
       <textarea id="np_nota" placeholder="Observaciones..."></textarea>
     </div>
     <!-- El selector de tanda salió del formulario: todo lo que se carga ahora va a la tanda
-         que fija TANDA_NUEVO_PEDIDO. Queda el cartel para que no sea magia invisible; para
-         moverlo a otra tanda está el lápiz de corrección en la lista de pedidos. -->
-    <p id="np_tandaNota" style="font-size:0.78rem;color:#55606d;background:#f7f9fb;
-      border:1px solid #e6eaee;border-radius:8px;padding:8px 10px;margin-bottom:14px;"></p>
+         que fija TANDA_NUEVO_PEDIDO. Para moverlo a otra tanda está el lápiz de corrección en
+         la lista de pedidos. -->
     <div class="regalo-checkbox-row">
       <input type="checkbox" id="np_regalo">
       <label for="np_regalo">🎁 Es regalo del club (gasto del club, no se cobra)</label>
@@ -1459,9 +1457,6 @@ function limpiarFiltrosPedidos() {
 }
 
 function initNuevoPedidoTipos() {
-  const nota = document.getElementById('np_tandaNota');
-  if (nota) nota.innerHTML = 'Se registra en la <b>' + escapeHtml(labelTanda(TANDA_NUEVO_PEDIDO)) +
-    '</b>. Para moverlo a otra, se corrige el pedido desde la lista.';
   const sel = document.getElementById('np_tipo');
   sel.innerHTML = '<option value="">Seleccionar...</option>' +
     getPrendaTypes().map(t => `<option value="${t.label}">${t.label}</option>`).join('');
