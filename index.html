@@ -236,6 +236,18 @@
     .config-panel.connected { background: #d5f5e3; border-bottom-color: #27ae60; }
     .config-panel .status-line { font-size: 0.75rem; margin-top: 6px; color: #27ae60; }
     .config-panel .status-line.disconnected { color: #e74c3c; }
+    /* Pantalla de clave: tapa todo, incluidos los modales y los avisos */
+    .pantalla-clave { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #1a1a2e; z-index: 2000;
+      display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .pantalla-clave .caja { background: #fff; border-radius: 16px; padding: 26px 22px 22px; max-width: 360px; width: 100%;
+      text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+    .pantalla-clave .candado { font-size: 2rem; line-height: 1; }
+    .pantalla-clave h3 { font-size: 1.1rem; color: #1a1a2e; margin: 10px 0 6px; }
+    .pantalla-clave p { font-size: 0.86rem; color: #55606d; margin-bottom: 14px; }
+    .pantalla-clave input { width: 100%; padding: 11px 12px; border: 1px solid #ccd3da; border-radius: 8px;
+      font-size: 0.9rem; font-family: inherit; }
+    .pantalla-clave .aviso { min-height: 1.1rem; font-size: 0.78rem; color: #c0392b; margin: 8px 0 10px; }
+    .pantalla-clave .btn { width: 100%; padding: 12px; font-size: 0.95rem; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1300; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
     .toast.show { opacity: 1; }
     .empty-state { text-align: center; padding: 40px 20px; color: #999; }
@@ -634,13 +646,14 @@
   <div class="main-tab" data-sec="movimientos">Movim.</div>
 </div>
 
+<!-- El panel ya no deja pegar la dirección del servidor: sale siempre del código. Un campo así,
+     a mano de cualquiera, sirve para romper la app sin querer o para apuntarla a otro lado. -->
 <div id="configPanel" class="config-panel" style="display:none;">
-  <p><strong>Configuración:</strong> Pegá la URL de tu Google Apps Script Web App</p>
-  <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/...../exec">
-  <br>
-  <button class="btn btn-primary btn-sm" onclick="saveConfig()" style="margin-top:8px;">Guardar y Conectar</button>
-  <button class="btn btn-dark btn-sm" onclick="usarUrlDelCodigo()" style="margin-top:8px;">Restablecer</button>
   <div id="configStatus"></div>
+  <button class="btn btn-primary btn-sm" onclick="recargarDesdeConfig()" style="margin-top:8px;">Recargar datos</button>
+  <button class="btn btn-dark btn-sm" id="btnCopiarAcceso" onclick="copiarLinkAcceso()" style="margin-top:8px;display:none;">Copiar link de acceso</button>
+  <p id="configAccesoNota" style="display:none;font-size:0.72rem;color:#55606d;margin:8px 0 0;">
+    Ese link deja entrar a la app. Pasalo solo a quien la tenga que usar.</p>
 </div>
 
 <!-- ========== SECTION: PEDIDOS Y RETIROS ========== -->
@@ -1095,6 +1108,20 @@
   </div>
 </div>
 
+<!-- ========== PANTALLA: CLAVE DE ACCESO ========== -->
+<div class="pantalla-clave" id="pantallaClave" style="display:none;">
+  <div class="caja">
+    <div class="candado">🔒</div>
+    <h3>Esta app pide una clave</h3>
+    <p id="claveTexto"></p>
+    <input type="text" id="claveInput" placeholder="Pegá acá el link o la clave" autocomplete="off"
+      autocapitalize="off" autocorrect="off" spellcheck="false"
+      onkeydown="if (event.key === 'Enter') entrarConClave()">
+    <div class="aviso" id="claveError"></div>
+    <button class="btn btn-primary" id="btnEntrarClave" onclick="entrarConClave()">Entrar</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="loading-overlay" id="loading" style="display:none;">
   <div class="spinner">Sincronizando<span class="dots"></span></div>
@@ -1161,21 +1188,115 @@ let currentMovFilter = 'todos';
 let MOV_RANGO_DIAS = Number(localStorage.getItem('movRangoDias') ?? 30);
 const MOV_LIMITE = 500;
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwS9y-drmhJvXVjtJssBtsYgsrxaYQjbj0R1gxymyUaHbVi8un5rurOXYf7ZtcQ_UTRug/exec';
-// La URL del código MANDA sobre la guardada en el navegador. Antes era al revés: si alguna vez
-// pegaste una URL a mano quedaba en localStorage y le ganaba a la del código, así que después de
-// re-deployar el Apps Script la app seguía pegándole al deploy viejo hasta que borrabas los datos
-// del sitio a mano. Se respeta la pegada a mano sólo si se hizo sobre ESTA misma versión del
-// código; si el DEFAULT cambió, gana el DEFAULT y el override se descarta.
-let SCRIPT_URL = DEFAULT_SCRIPT_URL;
-(function elegirScriptUrl() {
-  const guardada = localStorage.getItem('gasUrl') || '';
-  const base     = localStorage.getItem('gasUrlBase') || '';
-  if (guardada && base === DEFAULT_SCRIPT_URL) { SCRIPT_URL = guardada; return; }
-  if (guardada) {  // override viejo: el código ya trae otra URL
-    localStorage.removeItem('gasUrl');
-    localStorage.removeItem('gasUrlBase');
+// La dirección del servidor sale SIEMPRE del código. Antes se podía pegar otra desde el panel y
+// quedaba guardada en el navegador; se limpia lo que haya quedado de esa época.
+const SCRIPT_URL = DEFAULT_SCRIPT_URL;
+try { localStorage.removeItem('gasUrl'); localStorage.removeItem('gasUrlBase'); } catch (e) {}
+
+// ============ CLAVE DE ACCESO ============
+// El servidor puede pedir una clave para leer y para escribir. La clave llega una sola vez,
+// adentro del link que se le pasa a cada persona (…/#clave=XXXX), queda guardada en este
+// navegador y viaja en cada pedido al servidor. Va después del # a propósito: esa parte de
+// una dirección no se manda a ningún servidor al abrir la página.
+// Si el servidor no tiene clave configurada, nada de esto se nota.
+let CLAVE = '';
+let ESTADO_CONEXION = '';   // '' todavía no se sabe · 'ok' · 'error'
+
+// Acepta el link completo o la clave suelta, que es lo que la gente termina pegando.
+function claveDeTexto(t) {
+  const s = String(t || '').trim();
+  const m = /[#&?]clave=([^&#\s]+)/.exec(s);
+  if (m) { try { return decodeURIComponent(m[1]).trim(); } catch (e) { return m[1].trim(); } }
+  if (/^https?:\/\//i.test(s) || /\s/.test(s)) return '';   // un link sin clave, o texto con espacios
+  return s;
+}
+
+(function leerClaveInicial() {
+  try { CLAVE = localStorage.getItem('claveAcceso') || ''; } catch (e) {}
+  if (!/clave=/.test(location.hash || '')) return;
+  const delLink = claveDeTexto(location.hash);
+  if (delLink) {
+    CLAVE = delLink;
+    try { localStorage.setItem('claveAcceso', CLAVE); } catch (e) {}
   }
+  // Se saca de la barra de direcciones: que no quede a la vista ni en el historial
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
 })();
+
+function claveQuery() { return CLAVE ? '&clave=' + encodeURIComponent(CLAVE) : ''; }
+function conClave(payload) { return CLAVE ? Object.assign({}, payload, { clave: CLAVE }) : payload; }
+
+// El servidor rechazó la clave (o no había ninguna). Además de pedirla, se borra lo que este
+// navegador tenía guardado: quien ya no tiene que entrar tampoco tiene que seguir viendo la
+// última copia de los pedidos.
+function pedirClave() {
+  const habia = !!CLAVE;
+  CLAVE = '';
+  try {
+    ['claveAcceso', 'pedidos_backup', 'pedidos_anulados_backup', 'movimientos_backup', 'compras_backup']
+      .forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  PEDIDOS = []; PEDIDOS_ANULADOS = []; MOVIMIENTOS = []; COMPRAS = [];
+  try { invalidarCachePedidoDeMov(); recalcularTandas(); renderAll(); } catch (e) { console.error(e); }
+  // Lo que hubiera abierto se cierra: quedó apuntando a pedidos que ya no están en pantalla
+  document.querySelectorAll('.modal-overlay').forEach(m => { m.style.display = 'none'; });
+
+  const pant = document.getElementById('pantallaClave');
+  if (pant.style.display === 'none') {
+    document.getElementById('claveTexto').textContent = habia
+      ? 'La clave que tenías guardada ya no sirve. Abrí el link nuevo que te pasaron, o pegalo acá.'
+      : 'Abrí el link que te pasaron, o pegalo acá.';
+    document.getElementById('claveError').textContent = '';
+    document.getElementById('claveInput').value = '';
+    pant.style.display = 'flex';
+  }
+  checkConfig();
+}
+
+async function entrarConClave() {
+  const inp = document.getElementById('claveInput');
+  const err = document.getElementById('claveError');
+  const btn = document.getElementById('btnEntrarClave');
+  if (btn.disabled) return;
+  const clave = claveDeTexto(inp.value);
+  if (!clave) { err.textContent = 'Pegá el link completo o la clave que te pasaron.'; return; }
+  btn.disabled = true; btn.textContent = 'Comprobando…'; err.textContent = '';
+  try {
+    const res = await fetch(SCRIPT_URL + '?action=probarClave&clave=' + encodeURIComponent(clave));
+    const j = await res.json();
+    if (j && j.codigo === 'CLAVE') { err.textContent = 'Esa clave no es la correcta. Fijate de copiar el link completo.'; return; }
+    if (!j || j.status !== 'ok') throw new Error((j && j.message) || 'sin respuesta');
+    CLAVE = clave;
+    try { localStorage.setItem('claveAcceso', CLAVE); } catch (e) {}
+    document.getElementById('pantallaClave').style.display = 'none';
+    inp.value = '';
+    checkConfig();
+    loadFromSheets();
+  } catch (e) {
+    console.error('Error comprobando la clave:', e);
+    err.textContent = 'No se pudo comprobar. Revisá la conexión y probá de nuevo.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+}
+
+// Arma el link para pasarle a otra persona. Sólo aparece si este navegador tiene una clave.
+async function copiarLinkAcceso() {
+  if (!CLAVE) return;
+  const link = location.origin + location.pathname + '#clave=' + encodeURIComponent(CLAVE);
+  let ok = false;
+  try { await navigator.clipboard.writeText(link); ok = true; } catch (e) {}
+  if (!ok) {
+    // Navegadores que no dejan usar el portapapeles directo
+    const ta = document.createElement('textarea');
+    ta.value = link; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+  }
+  showToast(ok ? 'Link copiado. Pegalo en WhatsApp.' : 'No se pudo copiar el link');
+}
+
 let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}');
 let pendingUnlockId = null;
 
@@ -1475,55 +1596,28 @@ function initNuevoPedidoTipos() {
 // ============ CONFIG ============
 function checkConfig() {
   const panel = document.getElementById('configPanel');
-  const urlInput = document.getElementById('scriptUrl');
   const statusDiv = document.getElementById('configStatus');
-  if (SCRIPT_URL) {
-    urlInput.value = SCRIPT_URL;
-    panel.classList.add('connected');
-    statusDiv.innerHTML = '<div class="status-line">Conectado a Google Sheets</div>';
-  } else {
-    panel.style.display = 'block';
-    panel.classList.remove('connected');
-    statusDiv.innerHTML = '<div class="status-line disconnected">No conectado. Pegá la URL del Apps Script.</div>';
-  }
+  if (!panel || !statusDiv) return;
+  const ok = ESTADO_CONEXION !== 'error';
+  panel.classList.toggle('connected', ok);
+  statusDiv.innerHTML = ok
+    ? '<div class="status-line">Conectado</div>'
+    : '<div class="status-line disconnected">Sin conexión. Estás viendo los últimos datos guardados.</div>';
+  const conClaveGuardada = !!CLAVE;
+  document.getElementById('btnCopiarAcceso').style.display  = conClaveGuardada ? '' : 'none';
+  document.getElementById('configAccesoNota').style.display = conClaveGuardada ? '' : 'none';
 }
 
 function toggleConfig() {
   const panel = document.getElementById('configPanel');
   const isVisible = panel.style.display === 'block';
+  if (!isVisible) checkConfig();
   panel.style.display = isVisible ? 'none' : 'block';
-  if (!isVisible) document.getElementById('scriptUrl').value = SCRIPT_URL || '';
 }
 
-function saveConfig() {
-  const url = document.getElementById('scriptUrl').value.trim();
-  if (!url) return;
-  SCRIPT_URL = url;
-  if (url === DEFAULT_SCRIPT_URL) {
-    // Volver a la del código: se limpia el override en vez de guardarlo
-    localStorage.removeItem('gasUrl');
-    localStorage.removeItem('gasUrlBase');
-  } else {
-    localStorage.setItem('gasUrl', url);
-    // Se anota contra qué URL del código se hizo este override, para poder descartarlo cuando
-    // el código traiga una nueva (ver elegirScriptUrl arriba).
-    localStorage.setItem('gasUrlBase', DEFAULT_SCRIPT_URL);
-  }
-  checkConfig();
+function recargarDesdeConfig() {
   document.getElementById('configPanel').style.display = 'none';
   loadFromSheets();
-  showToast('Conectado correctamente');
-}
-
-// Vuelve a la URL que viene en el código, descartando cualquier override manual.
-function usarUrlDelCodigo() {
-  localStorage.removeItem('gasUrl');
-  localStorage.removeItem('gasUrlBase');
-  SCRIPT_URL = DEFAULT_SCRIPT_URL;
-  document.getElementById('scriptUrl').value = SCRIPT_URL;
-  checkConfig();
-  loadFromSheets();
-  showToast('Usando la URL que viene en la app');
 }
 
 // ============ ESTADO "GUARDANDO" EN LOS MODALES ============
@@ -1574,7 +1668,7 @@ async function probarLecturaRespuesta() {
   try {
     const r = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
-      body: JSON.stringify({ action: 'ping' })
+      body: JSON.stringify(conClave({ action: 'ping' }))
     });
     const j = await r.json();
     PUEDE_LEER_RESPUESTA = !!(j && j.pong);
@@ -1593,6 +1687,8 @@ async function probarLecturaRespuesta() {
 async function postApp(payload) {
   if (!SCRIPT_URL) throw new Error('Configurá la URL del Apps Script primero');
   if (PUEDE_LEER_RESPUESTA === null) await probarLecturaRespuesta();
+  const claveUsada = CLAVE;
+  payload = conClave(payload);
 
   if (!PUEDE_LEER_RESPUESTA) {
     // Escritura a ciegas: mode 'no-cors' deja salir la petición pero la respuesta es opaca,
@@ -1629,6 +1725,14 @@ async function postApp(payload) {
     return { status: 'ok', _ciego: true };
   }
 
+  // El servidor pide una clave que esta app no tiene, o la que tiene ya no sirve. Se compara
+  // contra la clave con la que salió el pedido: si mientras tanto se cargó una nueva, esta
+  // respuesta es vieja y no tiene que volver a bloquear la pantalla.
+  if (j && j.codigo === 'CLAVE') {
+    if (claveUsada === CLAVE) pedirClave();
+    throw new Error('hace falta la clave de acceso');
+  }
+
   if (j && j.status === 'error') throw new Error(j.message || 'El servidor rechazó la operación');
   return j || { status: 'ok' };
 }
@@ -1662,11 +1766,17 @@ function loadFromSheets(opts) {
 async function _loadFromSheets(silent) {
   try {
     if (!silent) showLoading(true);
-    const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams());
+    const claveUsada = CLAVE;
+    const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams() + claveQuery());
     const data = await res.json();
+    if (data && data.codigo === 'CLAVE') {
+      if (claveUsada === CLAVE) pedirClave();   // misma comparación que en postApp
+      return;
+    }
     
     
     if (data.status === 'ok') {
+      ESTADO_CONEXION = 'ok'; checkConfig();
       invalidarCachePedidoDeMov();   // cambió PEDIDOS: los vínculos mov→pedido se recalculan
       const _todos = (data.pedidos || []).map((p, i) => {
         sanearPedido(p);
@@ -1747,6 +1857,7 @@ async function _loadFromSheets(silent) {
     }
   } catch (e) {
     console.error('Error loading:', e);
+    ESTADO_CONEXION = 'error'; checkConfig();
     // En un refresco de fondo no pisamos lo que ya está en pantalla con el backup de
     // localStorage: el pedido recién cargado vive sólo en memoria hasta que llega este
     // getAll, y restaurar el backup lo haría desaparecer. Se reintenta en el próximo.

@@ -17,9 +17,10 @@ Webapp para controlar pedidos, retiros y stock de prendas del club. Los datos se
 
 El Sheet tiene estas hojas:
 - **Pedidos**: todos los pedidos con columnas Nombre, BLANCA, AZUL, SHORT, CHOMBA, Talle, Seña, Total, Resta, Notas, Total Transferencia, Total Efectivo, Tanda, Retirado, Regalo, Fecha Alta
-- **Retiros**: log de cada retiro realizado
-- **Stock**: stock por tipo y talle (`Tipo | Talle | Stock | Última Actualización`)
+- **Compras**: una fila por compra de mercadería (prenda, talle, tanda, cantidad y costo). De acá sale el stock: lo comprado menos lo entregado.
 - **Movimientos**: historial de actividad, una fila por acción (`Fecha | Tipo | Pedido ID | Nombre | Prenda | Talle | Monto | Medio | Detalle`). Se crea sola la primera vez que se registra algo.
+
+Las hojas **Retiros** y **Stock** ya no se usan: el retiro vive en las columnas del propio pedido y el stock se calcula desde Compras. El Apps Script no las lee ni las vuelve a crear.
 
 ## Registro de movimientos
 
@@ -73,4 +74,16 @@ Activar GitHub Pages en **Settings > Pages > Source: main branch**.
 
 ### 3. Configurar la webapp
 
-Al abrir la webapp por primera vez, pegar la URL del Apps Script en el panel de configuración.
+La dirección del Apps Script va en `index.html`, en la constante `DEFAULT_SCRIPT_URL`. No se configura desde la app.
+
+### 4. Clave de acceso
+
+La dirección del Apps Script es pública, así que sin clave cualquiera que la tenga puede leer y escribir.
+
+1. En el editor de Apps Script, ejecutar una vez `generarClaveAcceso`. La clave aparece en el registro de ejecución y queda guardada en la propiedad `CLAVE_ACCESO` (no va en el código).
+2. Abrir la app: va a pedir la clave. Pegarla.
+3. En el engranaje, **Copiar link de acceso** y pasarle ese link a cada persona. Lo abren una vez y la clave queda guardada en su navegador.
+
+- Para cambiarla (se filtró, o alguien ya no tiene que entrar): volver a ejecutar `generarClaveAcceso` y repartir el link nuevo. La anterior deja de servir en el acto.
+- Para desactivarla: borrar la propiedad `CLAVE_ACCESO`.
+- Mientras la propiedad no exista, la app funciona abierta como antes.

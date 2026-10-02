@@ -10,11 +10,13 @@
 //      Valor:     el ID de tu Google Sheet (lo que va entre /d/ y /edit en su dirección)
 // 4. Ejecutá una vez la función probarConfiguracion desde el editor: tiene que mostrar el
 //    nombre de la planilla. Si da error, la propiedad falta o está mal copiada.
-// 5. Asegurate de tener dos hojas: "Pedidos" y "Retiros"
+// 5. La planilla tiene que tener la hoja "Pedidos". "Compras" y "Movimientos" se crean solas.
 // 6. Deploy > New deployment > Web app
 //    - Execute as: Me
 //    - Who has access: Anyone
 // 7. Copiá la URL del deployment y pegala en la webapp
+// 8. Clave de acceso (recomendado): ejecutá una vez generarClaveAcceso desde el editor. Desde
+//    ese momento sólo entra quien tenga la clave. Ver más abajo, "CLAVE DE ACCESO".
 // =====================================================
 
 // El ID de la planilla vive en las propiedades del script y no en este archivo, que está en un
@@ -41,13 +43,56 @@ function planilla_() {
 // y que la planilla abre. No escribe nada.
 function probarConfiguracion() {
   const ss = planilla_();
-  const msg = 'Configuración correcta. Planilla: "' + ss.getName() + '"';
+  const msg = 'Configuración correcta. Planilla: "' + ss.getName() + '". ' +
+    (claveRequerida_() ? 'Clave de acceso: activada.'
+                       : 'Clave de acceso: SIN activar (cualquiera que tenga la dirección puede entrar).');
+  console.log(msg);
+  return msg;
+}
+
+// ============ CLAVE DE ACCESO ============
+// La dirección de este Web App es pública (está en el index.html, en un repositorio público) y
+// se publica con acceso "Anyone", así que sin esto cualquiera que la tenga puede leer y
+// escribir. La clave es un secreto compartido: vive en la propiedad CLAVE_ACCESO del script
+// (nunca en el código) y la app la manda en cada lectura y en cada escritura.
+//
+// Es optativa a propósito: mientras la propiedad no exista, todo funciona abierto como antes.
+// Así se puede publicar este código primero y activar la clave después, sin dejar a nadie
+// afuera a mitad de camino.
+//
+// Para cambiarla (por ejemplo si se filtró o si alguien ya no tiene que entrar): volver a
+// ejecutar generarClaveAcceso. La anterior deja de servir en el acto y hay que repartir el
+// link nuevo. Para desactivarla: borrar la propiedad CLAVE_ACCESO.
+const PROP_CLAVE = 'CLAVE_ACCESO';
+
+function claveRequerida_() {
+  return String(PropertiesService.getScriptProperties().getProperty(PROP_CLAVE) || '').trim();
+}
+
+/** true si no hay clave configurada o si la recibida coincide. */
+function claveOk_(recibida) {
+  const c = claveRequerida_();
+  return !c || String(recibida == null ? '' : recibida).trim() === c;
+}
+
+// 'codigo' es lo que mira la app para mostrar la pantalla de clave en vez de un error común.
+function respuestaSinClave_(origen) {
+  return jsonResponse({ status: 'error', codigo: 'CLAVE', origen: origen,
+    message: 'Hace falta la clave de acceso.' });
+}
+
+// Para correr a mano desde el editor. Crea una clave nueva al azar, la guarda en la propiedad
+// y la muestra en el registro de ejecución: ese es el único lugar donde se ve.
+function generarClaveAcceso() {
+  const clave = Utilities.getUuid().replace(/-/g, '');
+  PropertiesService.getScriptProperties().setProperty(PROP_CLAVE, clave);
+  const msg = 'Clave de acceso nueva: ' + clave + '  — Abrí la app, pegala en la pantalla que ' +
+    'pide la clave y después usá "Copiar link de acceso" (en el engranaje) para pasársela a los demás.';
   console.log(msg);
   return msg;
 }
 const SHEET_PEDIDOS = 'Pedidos';
-const SHEET_RETIROS = 'Retiros';
-const SHEET_STOCK   = 'Stock';        // legacy: dos fotos de "stock inicial" por tanda
+const SHEET_STOCK   = 'Stock';        // legacy: ya no se usa. Sólo la mira la migración a Compras, una vez
 const SHEET_COMPRAS = 'Compras';      // reemplazo: una fila por compra, con costo
 const SHEET_MOVIMIENTOS = 'Movimientos';
 
@@ -324,11 +369,19 @@ function doGet(e) {
   try {
     const action = e.parameter.action;
 
+    // Sin clave no se lee nada. Va con origen 'doGet' igual que el resto de este método: un
+    // POST cuyo salto de redirección se perdió también cae acá (sin parámetros), y la app
+    // tiene que seguir reconociéndolo como tal y no como un rechazo de la clave.
+    if (!claveOk_(e.parameter.clave)) return respuestaSinClave_('doGet');
+
+    // La pantalla de clave de la app pregunta acá si la clave que se pegó es la buena, sin
+    // traer ningún dato.
+    if (action === 'probarClave') {
+      return jsonResponse({ status: 'ok' });
+    }
+
     if (action === 'getPedidos') {
       return getPedidos();
-    }
-    if (action === 'getRetiros') {
-      return getRetiros();
     }
     if (action === 'getMovimientos') {
       return jsonResponse({
@@ -352,21 +405,20 @@ function doGet(e) {
 
 function getAll(desde, hasta, limitMov) {
   const pedidosSheet = getOrCreateSheet(SHEET_PEDIDOS);
-  const retirosSheet = getOrCreateSheet(SHEET_RETIROS, [
-    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
-    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
-  ]);
+
+  // Las hojas Retiros y Stock ya no se leen: la app no usa ninguna de las dos (el retiro vive
+  // en las columnas del pedido y el stock sale de Compras), y leerlas en cada carga era tiempo
+  // perdido. Tampoco se crean si faltan. Lo único que todavía mira Stock es la migración de
+  // abajo, y sólo si Compras está vacía.
 
   // Se completan los IDs que falten antes de leer, así los pedidos salen siempre con el suyo
   const backfill = backfillIdsPedidos_();
   const pedidos = sheetToObjects(pedidosSheet);
-  const retiros = sheetToObjects(retirosSheet);   // se sigue devolviendo, pero la app ya no la lee
-  const stock = getStock();
   const migracion = migrarStockACompras_();
   const compras = getCompras();
   const movimientos = leerMovimientos(desde, hasta, limitMov);
 
-  return jsonResponse({ status: 'ok', pedidos, retiros, stock, compras, movimientos,
+  return jsonResponse({ status: 'ok', pedidos, compras, movimientos,
                         migracion: migracion, backfill: backfill,
                         hoyAR: ahoraAR().slice(0, 10) });
 }
@@ -505,55 +557,10 @@ function actualizarCostoCompra(data) {
   return jsonResponse({ status: 'error', message: 'No se encontró la compra ' + data.id });
 }
 
-// Leer stock desde la hoja Stock (formato: Tipo | Talle | Stock | Última Actualización)
-function getStock() {
-  const ss = planilla_();
-  const sheet = ss.getSheetByName(SHEET_STOCK);
-  if (!sheet) return { primera: {}, segunda: {} };
-  
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return { primera: {}, segunda: {} };
-  
-  const stockPrimera = {};
-  const stockSegunda = {};
-  
-  // Formato: fila 0 = headers, resto = datos
-  // Columnas esperadas: Tipo | Talle | Stock | Última Actualización
-  for (let i = 1; i < data.length; i++) {
-    const tipoRaw = String(data[i][0] || '').trim().toUpperCase();
-    const talle = String(data[i][1] || '').trim().toUpperCase();
-    const cantidad = Number(data[i][2]) || 0;
-    
-    if (!tipoRaw || !talle) continue;
-    
-    const esSegunda = tipoRaw.endsWith('_2DA');
-    const tipoClean = tipoRaw.replace('_2DA', '').toLowerCase();
-    
-    if (esSegunda) {
-      if (!stockSegunda[tipoClean]) stockSegunda[tipoClean] = {};
-      stockSegunda[tipoClean][talle] = cantidad;
-    } else {
-      if (!stockPrimera[tipoClean]) stockPrimera[tipoClean] = {};
-      stockPrimera[tipoClean][talle] = cantidad;
-    }
-  }
-  
-  return { primera: stockPrimera, segunda: stockSegunda };
-}
-
 function getPedidos() {
   const sheet = getOrCreateSheet(SHEET_PEDIDOS);
   const pedidos = sheetToObjects(sheet);
   return jsonResponse({ status: 'ok', pedidos });
-}
-
-function getRetiros() {
-  const sheet = getOrCreateSheet(SHEET_RETIROS, [
-    'ID', 'Nombre', 'Tipo', 'Talle Pedido', 'Talle Retiro', 'Seña', 'Total', 'Resta',
-    'Retirado', 'Pago al Retirar', 'Medio de Pago', 'Observación', 'Fecha Retiro'
-  ]);
-  const retiros = sheetToObjects(sheet);
-  return jsonResponse({ status: 'ok', retiros });
 }
 
 // ============ POST: Write data ============
@@ -563,6 +570,13 @@ function getRetiros() {
 // que ya no es la que creía, y pisa el pedido equivocado. Con multiusuario no es hipotético.
 // Las lecturas (doGet) NO toman el lock, para que un getAll largo no trabe un guardado.
 function doPost(e) {
+  // La clave se revisa ANTES de tomar el lock: un pedido sin clave no tiene que poder hacer
+  // esperar a los guardados de verdad. Se lee del cuerpo tal cual llegó. El 'ping' pasa
+  // siempre: no toca datos y la app lo necesita para saber si puede leer las respuestas.
+  let cruda = null;
+  try { cruda = JSON.parse(e.postData.contents); } catch (err) { cruda = null; }
+  if (cruda && cruda.action !== 'ping' && !claveOk_(cruda.clave)) return respuestaSinClave_('doPost');
+
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
@@ -579,7 +593,8 @@ function doPost(e) {
 
 function rutearPost_(e) {
   try {
-    const data = entradaSegura_(JSON.parse(e.postData.contents));
+    const cruda = JSON.parse(e.postData.contents);
+    const data = entradaSegura_(cruda);
     const action = data.action;
 
     // Nunca contestar 'Unknown action: undefined' desde acá: ese texto exacto es la firma de
@@ -592,7 +607,8 @@ function rutearPost_(e) {
 
     // Sirve para que la app pruebe si el navegador puede leer las respuestas de un POST
     if (action === 'ping') {
-      return jsonResponse({ status: 'ok', pong: true, hoyAR: ahoraAR() });
+      return jsonResponse({ status: 'ok', pong: true, hoyAR: ahoraAR(),
+                            claveOk: claveOk_(cruda && cruda.clave) });
     }
     if (action === 'nuevoPedido') {
       return nuevoPedido(data);
@@ -602,9 +618,6 @@ function rutearPost_(e) {
     }
     if (action === 'updateRetiro') {
       return updateRetiro(data);
-    }
-    if (action === 'guardarStock') {
-      return guardarStock(data);
     }
     if (action === 'registrarSeña') {
       return registrarSeña(data);
@@ -1170,9 +1183,6 @@ function registrarSeña(data) {
   return jsonResponse({ status: 'ok', message: 'Pago registrado' });
 }
 
-// ============ Stock: guardar en hoja Stock ============
-// Formato: Tipo | Talle | Stock | Última Actualización (una fila por cada tipo+talle)
-// data: { tipo: 'BLANCA', stock: { XS: 2, S: 6, M: 10, L: 8, XL: 4, XXL: 2 }, tanda: 'PRIMERA' o 'SEGUNDA' }
 // --- Eliminar (anular) un pedido ---
 // No borra la fila: escribe 1 en la columna 'Anulado'. El pedido desaparece de la app pero
 // queda en la planilla y en el historial de movimientos, con el motivo y lo que se había
@@ -1240,70 +1250,6 @@ function eliminarPedido(data) {
   });
 
   return jsonResponse({ status: 'ok', message: 'Pedido eliminado', cobrado: cobrado });
-}
-
-function guardarStock(data) {
-  const ss = planilla_();
-  let sheet = ss.getSheetByName(SHEET_STOCK);
-  
-  if (!sheet) {
-    // Crear hoja nueva con estructura de filas
-    sheet = ss.insertSheet(SHEET_STOCK);
-    sheet.appendRow(['Tipo', 'Talle', 'Stock', 'Última Actualización']);
-    sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-
-  const tanda = data.tanda || 'PRIMERA';
-  const tipo = (data.tipo || '').toUpperCase() + (tanda === 'SEGUNDA' ? '_2DA' : '');
-  const stock = data.stock || {};
-  const timestamp = new Date();
-  
-  // Obtener todos los datos existentes
-  const allData = sheet.getDataRange().getValues();
-  const existingRows = {}; // Map de "TIPO_TALLE" -> rowIndex
-  const valoresPrevios = {}; // Map de "TIPO_TALLE" -> cantidad anterior
-
-  for (let i = 1; i < allData.length; i++) {
-    const rowTipo = String(allData[i][0] || '').trim().toUpperCase();
-    const rowTalle = String(allData[i][1] || '').trim().toUpperCase();
-    const key = `${rowTipo}_${rowTalle}`;
-    existingRows[key] = i + 1; // 1-indexed
-    valoresPrevios[key] = Number(allData[i][2]) || 0;
-  }
-
-  const cambios = []; // para el log: solo los talles que efectivamente cambiaron
-
-  // Actualizar o crear filas para cada talle
-  Object.keys(stock).forEach(talle => {
-    const key = `${tipo}_${talle.toUpperCase()}`;
-    const cantidad = Number(stock[talle]) || 0;
-    const rowValues = [tipo, talle.toUpperCase(), cantidad, timestamp];
-    const previo = existingRows[key] ? valoresPrevios[key] : 0;
-
-    if (cantidad !== previo) {
-      cambios.push(`${talle.toUpperCase()}: ${previo} → ${cantidad}`);
-    }
-
-    if (existingRows[key]) {
-      // Actualizar fila existente
-      sheet.getRange(existingRows[key], 1, 1, 4).setValues([rowValues]);
-    } else {
-      // Agregar nueva fila
-      sheet.appendRow(rowValues);
-    }
-  });
-
-  if (cambios.length) {
-    logMovimiento({
-      tipo:    'STOCK',
-      prenda:  data.tipo || tipo,
-      detalle: tanda === 'SEGUNDA' ? '2da tanda · ' + cambios.join(' · ')
-                                   : '1era tanda · ' + cambios.join(' · ')
-    });
-  }
-
-  return jsonResponse({ status: 'ok', message: `Stock de ${tipo} guardado` });
 }
 
 // ============ JSON Response ============
