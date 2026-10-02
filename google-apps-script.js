@@ -15,8 +15,11 @@
 //    - Execute as: Me
 //    - Who has access: Anyone
 // 7. Copiá la URL del deployment y pegala en la webapp
-// 8. Clave de acceso (recomendado): ejecutá una vez generarClaveAcceso desde el editor. Desde
-//    ese momento sólo entra quien tenga la clave. Ver más abajo, "CLAVE DE ACCESO".
+// 8. Clave de acceso (recomendado): agregá la propiedad CLAVE_ACCESO con la clave que quieras,
+//    o ejecutá una vez generarClaveAcceso para que arme una. Desde ese momento sólo entra
+//    quien la sepa. Ver más abajo, "CLAVE DE ACCESO".
+// 9. Usuarios (optativo): ejecutá una vez crearHojaUsuarios y cargá ahí a las personas. Cada
+//    una elige su nombre al entrar y sus movimientos quedan firmados. Ver "USUARIOS".
 // =====================================================
 
 // El ID de la planilla vive en las propiedades del script y no en este archivo, que está en un
@@ -44,8 +47,9 @@ function planilla_() {
 function probarConfiguracion() {
   const ss = planilla_();
   const msg = 'Configuración correcta. Planilla: "' + ss.getName() + '". ' +
-    (claveRequerida_() ? 'Clave de acceso: activada.'
-                       : 'Clave de acceso: SIN activar (cualquiera que tenga la dirección puede entrar).');
+    (!claveRequerida_() ? 'Clave de acceso: SIN activar (cualquiera que tenga la dirección puede entrar).'
+       : claveRequerida_().length < 8 ? 'Clave de acceso: activada, pero es corta. Conviene que tenga 8 caracteres o más.'
+       : 'Clave de acceso: activada.') + ' ' + resumenUsuarios_();
   console.log(msg);
   return msg;
 }
@@ -60,19 +64,28 @@ function probarConfiguracion() {
 // Así se puede publicar este código primero y activar la clave después, sin dejar a nadie
 // afuera a mitad de camino.
 //
-// Para cambiarla (por ejemplo si se filtró o si alguien ya no tiene que entrar): volver a
-// ejecutar generarClaveAcceso. La anterior deja de servir en el acto y hay que repartir el
-// link nuevo. Para desactivarla: borrar la propiedad CLAVE_ACCESO.
+// La persona la escribe una sola vez en la app y queda guardada en su teléfono. No distingue
+// mayúsculas de minúsculas ni cuenta espacios o guiones, para que escribirla en el celular
+// no sea una trampa: "K7M2-QX9P", "k7m2qx9p" y "K7M2 QX9P" son la misma clave.
+//
+// Para cambiarla (se filtró, o alguien ya no tiene que entrar): cambiar el valor de la
+// propiedad, o volver a ejecutar generarClaveAcceso. La anterior deja de servir en el acto,
+// para todos, y hay que avisarles la nueva a los que siguen. Para desactivarla: borrar la
+// propiedad CLAVE_ACCESO.
 const PROP_CLAVE = 'CLAVE_ACCESO';
 
+function normalizarClave_(v) {
+  return String(v == null ? '' : v).toLowerCase().replace(/[\s\-]/g, '');
+}
+
 function claveRequerida_() {
-  return String(PropertiesService.getScriptProperties().getProperty(PROP_CLAVE) || '').trim();
+  return normalizarClave_(PropertiesService.getScriptProperties().getProperty(PROP_CLAVE));
 }
 
 /** true si no hay clave configurada o si la recibida coincide. */
 function claveOk_(recibida) {
   const c = claveRequerida_();
-  return !c || String(recibida == null ? '' : recibida).trim() === c;
+  return !c || normalizarClave_(recibida) === c;
 }
 
 // 'codigo' es lo que mira la app para mostrar la pantalla de clave en vez de un error común.
@@ -81,16 +94,125 @@ function respuestaSinClave_(origen) {
     message: 'Hace falta la clave de acceso.' });
 }
 
-// Para correr a mano desde el editor. Crea una clave nueva al azar, la guarda en la propiedad
-// y la muestra en el registro de ejecución: ese es el único lugar donde se ve.
-function generarClaveAcceso() {
-  const clave = Utilities.getUuid().replace(/-/g, '');
-  PropertiesService.getScriptProperties().setProperty(PROP_CLAVE, clave);
-  const msg = 'Clave de acceso nueva: ' + clave + '  — Abrí la app, pegala en la pantalla que ' +
-    'pide la clave y después usá "Copiar link de acceso" (en el engranaje) para pasársela a los demás.';
+// ============ USUARIOS ============
+// Hoja "Usuarios", que carga M a mano: una fila por persona.
+//   Nombre | Clave | Activo
+// - Nombre: como va a aparecer en la app y en los movimientos.
+// - Clave: optativa. Si la persona tiene una, entra con ESA y la clave general no le sirve.
+//   Si está vacía, entra con la clave general (propiedad CLAVE_ACCESO).
+// - Activo: optativa. "no" (o 0, o una casilla sin tildar) la deja afuera sin borrar la fila.
+//
+// Mientras la hoja no exista o esté vacía, la app funciona sin nombres, como antes. Apenas
+// tiene una persona, TODO pedido al servidor tiene que venir con un nombre de la lista y su
+// clave; el nombre validado es el que firma los movimientos (no el que diga la app).
+//
+// Para sacarle el acceso a alguien: borrar su fila o ponerle "no" en Activo. Si entraba con
+// la clave general, además hay que cambiarla, porque la sigue sabiendo y podría entrar
+// eligiendo el nombre de otro. Con clave propia por persona eso no pasa.
+const SHEET_USUARIOS = 'Usuarios';
+const USU_HEADERS = ['Nombre', 'Clave', 'Activo'];
+
+// Quién está haciendo este pedido. Lo deja autenticar_ y lo usa logMovimiento. Las variables
+// globales de Apps Script viven lo que dura una ejecución, así que no se cruza entre personas.
+let USUARIO_ACTUAL = '';
+
+function normalizarNombre_(v) {
+  return String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+let _usuariosCache = null;
+function usuariosActivos_() {
+  if (_usuariosCache) return _usuariosCache;
+  const out = [];
+  const sheet = planilla_().getSheetByName(SHEET_USUARIOS);
+  const data = sheet ? sheet.getDataRange().getValues() : [];
+  if (data.length >= 2) {
+    const h = data[0].map(function (x) { return String(x).trim().toLowerCase(); });
+    let cNom = h.indexOf('nombre'); if (cNom < 0) cNom = 0;
+    const cCla = h.indexOf('clave'), cAct = h.indexOf('activo');
+    const vistos = {};
+    for (let i = 1; i < data.length; i++) {
+      const nombre = String(data[i][cNom] == null ? '' : data[i][cNom]).trim();
+      if (!nombre) continue;
+      if (cAct >= 0) {
+        const a = String(data[i][cAct] == null ? '' : data[i][cAct]).trim().toLowerCase();
+        if (a === 'no' || a === 'n' || a === '0' || a === 'false') continue;
+      }
+      const k = normalizarNombre_(nombre);
+      if (vistos[k]) continue;          // nombre repetido: vale la primera fila
+      vistos[k] = true;
+      out.push({ nombre: nombre, clave: cCla >= 0 ? normalizarClave_(data[i][cCla]) : '' });
+    }
+  }
+  _usuariosCache = out;
+  return out;
+}
+
+/**
+ * Decide si un pedido puede pasar. Devuelve { ok, usuario } con el nombre tal como está en la
+ * hoja. Sin hoja de usuarios vale sólo la clave general, como antes.
+ */
+function autenticar_(usuario, clave) {
+  const lista = usuariosActivos_();
+  if (!lista.length) return { ok: claveOk_(clave), usuario: '' };
+  const buscado = normalizarNombre_(usuario);
+  let u = null;
+  for (let i = 0; i < lista.length; i++) {
+    if (normalizarNombre_(lista[i].nombre) === buscado) { u = lista[i]; break; }
+  }
+  if (!buscado || !u) return { ok: false, usuario: '' };
+  const esperada = u.clave || claveRequerida_();
+  return { ok: !esperada || normalizarClave_(clave) === esperada, usuario: u.nombre };
+}
+
+function resumenUsuarios_() {
+  const lista = usuariosActivos_();
+  if (!lista.length) return 'Usuarios: sin cargar (la app no pide nombre).';
+  const general = claveRequerida_();
+  const sinClave = lista.filter(function (u) { return !u.clave && !general; }).map(function (u) { return u.nombre; });
+  return 'Usuarios: ' + lista.map(function (u) { return u.nombre + (u.clave ? ' (clave propia)' : ''); }).join(', ') + '.' +
+    (sinClave.length ? ' OJO: ' + sinClave.join(', ') + ' no tiene clave y no hay clave general: entra cualquiera eligiendo ese nombre.' : '');
+}
+
+// Para correr a mano desde el editor, una vez. Crea la hoja Usuarios con sus encabezados.
+function crearHojaUsuarios() {
+  const ss = planilla_();
+  let sheet = ss.getSheetByName(SHEET_USUARIOS);
+  let msg;
+  if (sheet) {
+    msg = 'La hoja Usuarios ya existe. ' + resumenUsuarios_();
+  } else {
+    sheet = ss.insertSheet(SHEET_USUARIOS);
+    sheet.appendRow(USU_HEADERS);
+    sheet.getRange(1, 1, 1, USU_HEADERS.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    // Clave como texto: si no, una clave como 0123 quedaría guardada como el número 123
+    sheet.getRange(2, 2, Math.max(1, sheet.getMaxRows() - 1), 1).setNumberFormat('@');
+    msg = 'Hoja Usuarios creada. Cargá un nombre por fila. Clave y Activo son optativas.';
+  }
   console.log(msg);
   return msg;
 }
+
+// Para correr a mano desde el editor. Arma una clave al azar corta, pensada para escribirla
+// en un celular (sin 0/O ni 1/I/L, que se confunden), la guarda en la propiedad y la muestra
+// en el registro de ejecución. Si preferís elegir la tuya, no hace falta correr esto: alcanza
+// con escribirla en la propiedad CLAVE_ACCESO.
+function generarClaveAcceso() {
+  const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const hex = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+  let clave = '';
+  for (let i = 0; i < 8; i++) {
+    clave += abc.charAt(parseInt(hex.substr(i * 4, 4), 16) % abc.length);
+    if (i === 3) clave += '-';
+  }
+  PropertiesService.getScriptProperties().setProperty(PROP_CLAVE, clave);
+  const msg = 'Clave de acceso nueva: ' + clave + '  — Desde ahora la app la pide. Pasásela a ' +
+    'cada persona; la escriben una sola vez.';
+  console.log(msg);
+  return msg;
+}
+
 const SHEET_PEDIDOS = 'Pedidos';
 const SHEET_STOCK   = 'Stock';        // legacy: ya no se usa. Sólo la mira la migración a Compras, una vez
 const SHEET_COMPRAS = 'Compras';      // reemplazo: una fila por compra, con costo
@@ -98,7 +220,9 @@ const SHEET_MOVIMIENTOS = 'Movimientos';
 
 // Huso horario de Argentina: todas las fechas del log se guardan en esta zona
 const TZ_AR = 'America/Argentina/Buenos_Aires';
-const MOV_HEADERS = ['Fecha', 'Tipo', 'Pedido ID', 'Nombre', 'Prenda', 'Talle', 'Monto', 'Medio', 'Detalle'];
+const MOV_HEADERS = ['Fecha', 'Tipo', 'Pedido ID', 'Nombre', 'Prenda', 'Talle', 'Monto', 'Medio', 'Detalle', 'Usuario'];
+const MOV_COLS_BASE = 9;          // las nueve primeras van por posición, como siempre
+const MOV_COL_USUARIO = 'Usuario'; // esta se busca por nombre: en hojas viejas se agrega al final
 const COM_HEADERS = ['ID', 'Fecha', 'Tanda', 'Prenda', 'Talle', 'Cantidad', 'Costo Unitario', 'Notas'];
 
 // ============ IDENTIDAD DE UN PEDIDO ============
@@ -288,12 +412,26 @@ function fechaMovToStr(val) {
 
 // Registra un movimiento. Nunca debe romper la operación principal.
 // m: { tipo, pedidoId, nombre, prenda, talle, monto, medio, detalle }
+// Índice (0-based) de la columna Usuario en Movimientos, o -1 si no está. Con `crear`, la agrega
+// al final cuando falta: las hojas que ya existían tienen sólo las nueve columnas originales.
+function colUsuarioMov_(sheet, crear) {
+  const n = sheet.getLastColumn();
+  let headers = n ? sheet.getRange(1, 1, 1, n).getValues()[0] : [];
+  let ix = headers.map(function (h) { return String(h).trim(); }).indexOf(MOV_COL_USUARIO);
+  if (ix < 0 && crear) {
+    headers = asegurarColumna_(sheet, headers, MOV_COL_USUARIO);
+    ix = headers.map(function (h) { return String(h).trim(); }).indexOf(MOV_COL_USUARIO);
+  }
+  return ix;
+}
+
 function logMovimiento(m) {
   try {
     const sheet = getOrCreateSheet(SHEET_MOVIMIENTOS, MOV_HEADERS);
+    const cUsu = colUsuarioMov_(sheet, true);
     // textoSeguro_ también acá: nombre y talle a veces se releen de la planilla (donde un
     // texto viejo puede empezar con =) y volver a escribirlos tal cual los haría fórmula.
-    sheet.appendRow([
+    const fila = [
       ahoraAR(),
       m.tipo     || '',
       m.pedidoId || '',
@@ -303,7 +441,13 @@ function logMovimiento(m) {
       Number(m.monto) || 0,
       m.medio    || '',
       textoSeguro_(String(m.detalle || ''))
-    ]);
+    ];
+    // Quién lo hizo: el nombre que validó el servidor para este pedido, no uno que mande la app
+    if (cUsu >= 0) {
+      while (fila.length <= cUsu) fila.push('');
+      fila[cUsu] = textoSeguro_(String(USUARIO_ACTUAL || ''));
+    }
+    sheet.appendRow(fila);
   } catch (err) {
     // Silencioso a propósito: si falla el log, el pedido/pago/retiro igual se guarda
     console.error('logMovimiento falló: ' + err);
@@ -326,6 +470,9 @@ function leerMovimientos(desde, hasta, limit) {
   const desdeD = desde ? String(desde).slice(0, 10) : '';
   const hastaD = hasta ? String(hasta).slice(0, 10) : '';
 
+  const cUsuMov  = colUsuarioMov_(sheet, false);
+  const nColsMov = Math.max(MOV_COLS_BASE, cUsuMov + 1);
+
   const CHUNK = 300;
   const out = [];
   let end = lastRow;
@@ -333,7 +480,7 @@ function leerMovimientos(desde, hasta, limit) {
 
   while (end >= 2 && out.length < max && !cortar) {
     const start = Math.max(2, end - CHUNK + 1);
-    const values = sheet.getRange(start, 1, end - start + 1, MOV_HEADERS.length).getValues();
+    const values = sheet.getRange(start, 1, end - start + 1, nColsMov).getValues();
 
     for (let i = values.length - 1; i >= 0; i--) {
       const fecha = fechaMovToStr(values[i][0]);
@@ -352,7 +499,8 @@ function leerMovimientos(desde, hasta, limit) {
         talle:    String(values[i][5] || ''),
         monto:    Number(values[i][6]) || 0,
         medio:    String(values[i][7] || ''),
-        detalle:  String(values[i][8] || '')
+        detalle:  String(values[i][8] || ''),
+        usuario:  cUsuMov >= 0 ? String(values[i][cUsuMov] || '') : ''
       });
 
       if (out.length >= max) break;
@@ -372,7 +520,17 @@ function doGet(e) {
     // Sin clave no se lee nada. Va con origen 'doGet' igual que el resto de este método: un
     // POST cuyo salto de redirección se perdió también cae acá (sin parámetros), y la app
     // tiene que seguir reconociéndolo como tal y no como un rechazo de la clave.
-    if (!claveOk_(e.parameter.clave)) return respuestaSinClave_('doGet');
+    // La lista de nombres para la pantalla de ingreso se entrega sin clave: hace falta antes
+    // de poder entrar. Sólo nombres, y si a esa persona le corresponde escribir una clave.
+    if (action === 'usuarios') {
+      const general = claveRequerida_();
+      return jsonResponse({ status: 'ok', pideClave: !!general,
+        usuarios: usuariosActivos_().map(function (u) {
+          return { nombre: u.nombre, pideClave: !!(u.clave || general) };
+        }) });
+    }
+
+    if (!autenticar_(e.parameter.usuario, e.parameter.clave).ok) return respuestaSinClave_('doGet');
 
     // La pantalla de clave de la app pregunta acá si la clave que se pegó es la buena, sin
     // traer ningún dato.
@@ -575,7 +733,16 @@ function doPost(e) {
   // siempre: no toca datos y la app lo necesita para saber si puede leer las respuestas.
   let cruda = null;
   try { cruda = JSON.parse(e.postData.contents); } catch (err) { cruda = null; }
-  if (cruda && cruda.action !== 'ping' && !claveOk_(cruda.clave)) return respuestaSinClave_('doPost');
+  if (cruda && cruda.action !== 'ping') {
+    let acceso;
+    try {
+      acceso = autenticar_(cruda.usuario, cruda.clave);
+    } catch (err) {
+      return jsonResponse({ status: 'error', origen: 'doPost', message: (err && err.message) || String(err) });
+    }
+    if (!acceso.ok) return respuestaSinClave_('doPost');
+    USUARIO_ACTUAL = acceso.usuario;   // firma los movimientos de esta ejecución
+  }
 
   const lock = LockService.getScriptLock();
   try {
@@ -608,7 +775,7 @@ function rutearPost_(e) {
     // Sirve para que la app pruebe si el navegador puede leer las respuestas de un POST
     if (action === 'ping') {
       return jsonResponse({ status: 'ok', pong: true, hoyAR: ahoraAR(),
-                            claveOk: claveOk_(cruda && cruda.clave) });
+                            claveOk: autenticar_(cruda && cruda.usuario, cruda && cruda.clave).ok });
     }
     if (action === 'nuevoPedido') {
       return nuevoPedido(data);

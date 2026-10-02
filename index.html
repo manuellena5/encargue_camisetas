@@ -244,8 +244,10 @@
     .pantalla-clave .candado { font-size: 2rem; line-height: 1; }
     .pantalla-clave h3 { font-size: 1.1rem; color: #1a1a2e; margin: 10px 0 6px; }
     .pantalla-clave p { font-size: 0.86rem; color: #55606d; margin-bottom: 14px; }
-    .pantalla-clave input { width: 100%; padding: 11px 12px; border: 1px solid #ccd3da; border-radius: 8px;
-      font-size: 0.9rem; font-family: inherit; }
+    .pantalla-clave input, .pantalla-clave select { width: 100%; padding: 11px 12px; border: 1px solid #ccd3da;
+      border-radius: 8px; font-size: 0.9rem; font-family: inherit; background: #fff; color: #1a1a2e; }
+    .pantalla-clave select { margin-bottom: 8px; }
+    .config-panel .quien { font-size: 0.8rem; color: #1a1a2e; margin-top: 4px; }
     .pantalla-clave .aviso { min-height: 1.1rem; font-size: 0.78rem; color: #c0392b; margin: 8px 0 10px; }
     .pantalla-clave .btn { width: 100%; padding: 12px; font-size: 0.95rem; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 1300; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; text-align: center; }
@@ -651,9 +653,7 @@
 <div id="configPanel" class="config-panel" style="display:none;">
   <div id="configStatus"></div>
   <button class="btn btn-primary btn-sm" onclick="recargarDesdeConfig()" style="margin-top:8px;">Recargar datos</button>
-  <button class="btn btn-dark btn-sm" id="btnCopiarAcceso" onclick="copiarLinkAcceso()" style="margin-top:8px;display:none;">Copiar link de acceso</button>
-  <p id="configAccesoNota" style="display:none;font-size:0.72rem;color:#55606d;margin:8px 0 0;">
-    Ese link deja entrar a la app. Pasalo solo a quien la tenga que usar.</p>
+  <button class="btn btn-dark btn-sm" id="btnCambiarPersona" onclick="cambiarPersona()" style="margin-top:8px;display:none;">Cambiar de persona</button>
 </div>
 
 <!-- ========== SECTION: PEDIDOS Y RETIROS ========== -->
@@ -1108,13 +1108,14 @@
   </div>
 </div>
 
-<!-- ========== PANTALLA: CLAVE DE ACCESO ========== -->
+<!-- ========== PANTALLA: INGRESO (quién usa la app + clave) ========== -->
 <div class="pantalla-clave" id="pantallaClave" style="display:none;">
   <div class="caja">
     <div class="candado">🔒</div>
-    <h3>Esta app pide una clave</h3>
+    <h3 id="claveTitulo">Esta app pide una clave</h3>
     <p id="claveTexto"></p>
-    <input type="text" id="claveInput" placeholder="Pegá acá el link o la clave" autocomplete="off"
+    <select id="usuarioSelect" style="display:none;" onchange="pintarPantallaIngreso()"></select>
+    <input type="text" id="claveInput" placeholder="Clave" autocomplete="off"
       autocapitalize="off" autocorrect="off" spellcheck="false"
       onkeydown="if (event.key === 'Enter') entrarConClave()">
     <div class="aviso" id="claveError"></div>
@@ -1193,108 +1194,180 @@ const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwS9y-drmhJv
 const SCRIPT_URL = DEFAULT_SCRIPT_URL;
 try { localStorage.removeItem('gasUrl'); localStorage.removeItem('gasUrlBase'); } catch (e) {}
 
-// ============ CLAVE DE ACCESO ============
-// El servidor puede pedir una clave para leer y para escribir. La clave llega una sola vez,
-// adentro del link que se le pasa a cada persona (…/#clave=XXXX), queda guardada en este
-// navegador y viaja en cada pedido al servidor. Va después del # a propósito: esa parte de
-// una dirección no se manda a ningún servidor al abrir la página.
-// Si el servidor no tiene clave configurada, nada de esto se nota.
+// ============ ACCESO: QUIÉN USA LA APP Y CON QUÉ CLAVE ============
+// El servidor puede pedir un nombre de la lista de personas y una clave, para leer y para
+// escribir. La persona elige su nombre y escribe la clave una sola vez; las dos cosas quedan
+// guardadas en este navegador y viajan en cada pedido al servidor, que las valida siempre y
+// firma cada movimiento con ese nombre. Si el servidor las rechaza (se cambió la clave, o se
+// sacó a la persona de la lista), se vuelven a pedir.
+// Sin lista de personas se pide sólo la clave; sin clave ni lista, nada de esto se nota.
 let CLAVE = '';
+let USUARIO = '';
 let ESTADO_CONEXION = '';   // '' todavía no se sabe · 'ok' · 'error'
+try {
+  CLAVE   = localStorage.getItem('claveAcceso') || '';
+  USUARIO = localStorage.getItem('usuarioApp')  || '';
+} catch (e) {}
 
-// Acepta el link completo o la clave suelta, que es lo que la gente termina pegando.
-function claveDeTexto(t) {
-  const s = String(t || '').trim();
-  const m = /[#&?]clave=([^&#\s]+)/.exec(s);
-  if (m) { try { return decodeURIComponent(m[1]).trim(); } catch (e) { return m[1].trim(); } }
-  if (/^https?:\/\//i.test(s) || /\s/.test(s)) return '';   // un link sin clave, o texto con espacios
-  return s;
+// Se recuerda que este servidor pide ingreso, para mostrar la pantalla apenas abre la app si
+// todavía no hay nada guardado, sin esperar a que el servidor conteste.
+function servidorPideClave() {
+  try { return localStorage.getItem('pideClave') === '1'; } catch (e) { return false; }
+}
+function recordarQuePideClave() {
+  try { localStorage.setItem('pideClave', '1'); } catch (e) {}
 }
 
-(function leerClaveInicial() {
-  try { CLAVE = localStorage.getItem('claveAcceso') || ''; } catch (e) {}
-  if (!/clave=/.test(location.hash || '')) return;
-  const delLink = claveDeTexto(location.hash);
-  if (delLink) {
-    CLAVE = delLink;
-    try { localStorage.setItem('claveAcceso', CLAVE); } catch (e) {}
-  }
-  // Se saca de la barra de direcciones: que no quede a la vista ni en el historial
-  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-})();
+// Con qué se firmó un pedido al servidor. Sirve para descartar respuestas que llegan tarde,
+// de antes de que cambiara la persona o la clave.
+function credencial() { return USUARIO + '\n' + CLAVE; }
+function claveQuery() {
+  return (USUARIO ? '&usuario=' + encodeURIComponent(USUARIO) : '') +
+         (CLAVE   ? '&clave='   + encodeURIComponent(CLAVE)   : '');
+}
+function conClave(payload) {
+  const extra = {};
+  if (USUARIO) extra.usuario = USUARIO;
+  if (CLAVE)   extra.clave   = CLAVE;
+  return Object.assign({}, payload, extra);
+}
 
-function claveQuery() { return CLAVE ? '&clave=' + encodeURIComponent(CLAVE) : ''; }
-function conClave(payload) { return CLAVE ? Object.assign({}, payload, { clave: CLAVE }) : payload; }
+// --- Pantalla de ingreso ---
+let PERSONAS = [];               // [{ nombre, pideClave }] que manda el servidor
+let PERSONAS_ESTADO = '';        // 'cargando' · 'ok' · 'error'
+let MOTIVO_INGRESO = 'primera';  // 'primera' · 'cambio' · 'voluntario'
 
-// El servidor rechazó la clave (o no había ninguna). Además de pedirla, se borra lo que este
-// navegador tenía guardado: quien ya no tiene que entrar tampoco tiene que seguir viendo la
-// última copia de los pedidos.
-function pedirClave() {
-  const habia = !!CLAVE;
-  CLAVE = '';
+async function cargarPersonas() {
+  PERSONAS_ESTADO = 'cargando';
+  pintarPantallaIngreso();
   try {
-    ['claveAcceso', 'pedidos_backup', 'pedidos_anulados_backup', 'movimientos_backup', 'compras_backup']
+    const res = await fetch(SCRIPT_URL + '?action=usuarios');
+    const j = await res.json();
+    // Un servidor que todavía no conoce la lista contesta error: se sigue sólo con la clave
+    PERSONAS = (j && j.status === 'ok' && Array.isArray(j.usuarios)) ? j.usuarios : [];
+    PERSONAS_ESTADO = 'ok';
+  } catch (e) {
+    console.error('No se pudo traer la lista de personas:', e);
+    PERSONAS = [];
+    PERSONAS_ESTADO = 'error';
+  }
+  pintarPantallaIngreso(true);
+}
+
+// rearmarLista: sólo cuando llega la lista. Al cambiar de nombre en el desplegable se vuelve
+// a pintar el resto sin tocar las opciones, para no perder lo elegido.
+function pintarPantallaIngreso(rearmarLista) {
+  const sel = document.getElementById('usuarioSelect');
+  const inp = document.getElementById('claveInput');
+  const btn = document.getElementById('btnEntrarClave');
+  const err = document.getElementById('claveError');
+  const hay = PERSONAS_ESTADO === 'ok' && PERSONAS.length > 0;
+
+  if (rearmarLista) {
+    let sugerido = '';
+    try { sugerido = localStorage.getItem('usuarioSugerido') || ''; } catch (e) {}
+    sel.innerHTML = '<option value="">Elegí tu nombre</option>' + PERSONAS.map(u =>
+      `<option value="${escapeHtml(u.nombre)}"${u.nombre === sugerido ? ' selected' : ''}>${escapeHtml(u.nombre)}</option>`).join('');
+  }
+  sel.style.display = hay ? '' : 'none';
+
+  const persona = hay ? PERSONAS.find(u => u.nombre === sel.value) : null;
+  const pideClave = hay ? (!persona || persona.pideClave !== false) : true;
+  inp.style.display = (PERSONAS_ESTADO === 'ok' && pideClave) ? '' : 'none';
+
+  document.getElementById('claveTitulo').textContent = hay ? '¿Quién usa la app?' : 'Esta app pide una clave';
+  let texto;
+  if (PERSONAS_ESTADO === 'cargando')      texto = 'Un momento…';
+  else if (PERSONAS_ESTADO === 'error')    texto = 'No se pudo conectar.';
+  else if (hay) {
+    texto = MOTIVO_INGRESO === 'cambio'     ? 'Tu acceso cambió. Elegí tu nombre y escribí la clave que te pasaron.'
+          : MOTIVO_INGRESO === 'voluntario' ? 'Elegí quién va a usar la app ahora.'
+          : 'Elegí tu nombre y escribí tu clave. Se pide una sola vez en este teléfono.';
+  } else {
+    texto = MOTIVO_INGRESO === 'cambio' ? 'La clave cambió. Pedile la nueva a quien administra la app y escribila acá.'
+                                        : 'Escribí la clave que te pasaron. Se pide una sola vez en este teléfono.';
+  }
+  document.getElementById('claveTexto').textContent = texto;
+  if (PERSONAS_ESTADO === 'error') err.textContent = 'Revisá la conexión y probá de nuevo.';
+  btn.disabled = PERSONAS_ESTADO === 'cargando';
+  btn.textContent = PERSONAS_ESTADO === 'error' ? 'Reintentar' : 'Entrar';
+}
+
+// El servidor rechazó el ingreso (o la persona pidió cambiar). Además de volver a pedirlo, se
+// borra lo que este navegador tenía guardado: quien ya no tiene que entrar tampoco tiene que
+// seguir viendo la última copia de los pedidos.
+function pedirClave(motivo) {
+  const habia = !!(CLAVE || USUARIO);
+  try {
+    if (USUARIO) localStorage.setItem('usuarioSugerido', USUARIO);
+    ['claveAcceso', 'usuarioApp', 'pedidos_backup', 'pedidos_anulados_backup', 'movimientos_backup', 'compras_backup']
       .forEach(k => localStorage.removeItem(k));
   } catch (e) {}
+  CLAVE = ''; USUARIO = '';
   PEDIDOS = []; PEDIDOS_ANULADOS = []; MOVIMIENTOS = []; COMPRAS = [];
   try { invalidarCachePedidoDeMov(); recalcularTandas(); renderAll(); } catch (e) { console.error(e); }
   // Lo que hubiera abierto se cierra: quedó apuntando a pedidos que ya no están en pantalla
   document.querySelectorAll('.modal-overlay').forEach(m => { m.style.display = 'none'; });
 
+  recordarQuePideClave();
   const pant = document.getElementById('pantallaClave');
   if (pant.style.display === 'none') {
-    document.getElementById('claveTexto').textContent = habia
-      ? 'La clave que tenías guardada ya no sirve. Abrí el link nuevo que te pasaron, o pegalo acá.'
-      : 'Abrí el link que te pasaron, o pegalo acá.';
+    MOTIVO_INGRESO = motivo || (habia ? 'cambio' : 'primera');
     document.getElementById('claveError').textContent = '';
     document.getElementById('claveInput').value = '';
     pant.style.display = 'flex';
+    cargarPersonas();
   }
   checkConfig();
 }
 
 async function entrarConClave() {
+  const sel = document.getElementById('usuarioSelect');
   const inp = document.getElementById('claveInput');
   const err = document.getElementById('claveError');
   const btn = document.getElementById('btnEntrarClave');
   if (btn.disabled) return;
-  const clave = claveDeTexto(inp.value);
-  if (!clave) { err.textContent = 'Pegá el link completo o la clave que te pasaron.'; return; }
+  if (PERSONAS_ESTADO !== 'ok') { err.textContent = ''; cargarPersonas(); return; }
+
+  const hay = PERSONAS.length > 0;
+  const usuario = hay ? sel.value : '';
+  if (hay && !usuario) { err.textContent = 'Elegí tu nombre.'; return; }
+  const persona = hay ? PERSONAS.find(u => u.nombre === usuario) : null;
+  const pideClave = hay ? (!persona || persona.pideClave !== false) : true;
+  const clave = pideClave ? String(inp.value || '').trim() : '';
+  if (pideClave && !clave) { err.textContent = 'Escribí la clave.'; return; }
+
   btn.disabled = true; btn.textContent = 'Comprobando…'; err.textContent = '';
   try {
-    const res = await fetch(SCRIPT_URL + '?action=probarClave&clave=' + encodeURIComponent(clave));
+    const res = await fetch(SCRIPT_URL + '?action=probarClave' +
+      (usuario ? '&usuario=' + encodeURIComponent(usuario) : '') +
+      (clave   ? '&clave='   + encodeURIComponent(clave)   : ''));
     const j = await res.json();
-    if (j && j.codigo === 'CLAVE') { err.textContent = 'Esa clave no es la correcta. Fijate de copiar el link completo.'; return; }
+    if (j && j.codigo === 'CLAVE') { err.textContent = 'Esa clave no es la correcta.'; return; }
     if (!j || j.status !== 'ok') throw new Error((j && j.message) || 'sin respuesta');
-    CLAVE = clave;
-    try { localStorage.setItem('claveAcceso', CLAVE); } catch (e) {}
+    USUARIO = usuario; CLAVE = clave;
+    try {
+      if (CLAVE)   localStorage.setItem('claveAcceso', CLAVE);     else localStorage.removeItem('claveAcceso');
+      if (USUARIO) localStorage.setItem('usuarioApp', USUARIO);    else localStorage.removeItem('usuarioApp');
+      if (USUARIO) localStorage.setItem('usuarioSugerido', USUARIO);
+    } catch (e) {}
+    recordarQuePideClave();
     document.getElementById('pantallaClave').style.display = 'none';
     inp.value = '';
     checkConfig();
     loadFromSheets();
   } catch (e) {
-    console.error('Error comprobando la clave:', e);
+    console.error('Error comprobando el ingreso:', e);
     err.textContent = 'No se pudo comprobar. Revisá la conexión y probá de nuevo.';
   } finally {
     btn.disabled = false; btn.textContent = 'Entrar';
   }
 }
 
-// Arma el link para pasarle a otra persona. Sólo aparece si este navegador tiene una clave.
-async function copiarLinkAcceso() {
-  if (!CLAVE) return;
-  const link = location.origin + location.pathname + '#clave=' + encodeURIComponent(CLAVE);
-  let ok = false;
-  try { await navigator.clipboard.writeText(link); ok = true; } catch (e) {}
-  if (!ok) {
-    // Navegadores que no dejan usar el portapapeles directo
-    const ta = document.createElement('textarea');
-    ta.value = link; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
-    document.body.appendChild(ta); ta.select();
-    try { ok = document.execCommand('copy'); } catch (e) {}
-    ta.remove();
-  }
-  showToast(ok ? 'Link copiado. Pegalo en WhatsApp.' : 'No se pudo copiar el link');
+// Desde el engranaje: para cuando el teléfono lo va a usar otra persona.
+function cambiarPersona() {
+  document.getElementById('configPanel').style.display = 'none';
+  pedirClave('voluntario');
 }
 
 let desbloqueados = JSON.parse(localStorage.getItem('desbloqueados') || '{}');
@@ -1603,9 +1676,8 @@ function checkConfig() {
   statusDiv.innerHTML = ok
     ? '<div class="status-line">Conectado</div>'
     : '<div class="status-line disconnected">Sin conexión. Estás viendo los últimos datos guardados.</div>';
-  const conClaveGuardada = !!CLAVE;
-  document.getElementById('btnCopiarAcceso').style.display  = conClaveGuardada ? '' : 'none';
-  document.getElementById('configAccesoNota').style.display = conClaveGuardada ? '' : 'none';
+  if (USUARIO) statusDiv.innerHTML += '<div class="quien">Estás usando la app como <b>' + escapeHtml(USUARIO) + '</b></div>';
+  document.getElementById('btnCambiarPersona').style.display = USUARIO ? '' : 'none';
 }
 
 function toggleConfig() {
@@ -1687,7 +1759,7 @@ async function probarLecturaRespuesta() {
 async function postApp(payload) {
   if (!SCRIPT_URL) throw new Error('Configurá la URL del Apps Script primero');
   if (PUEDE_LEER_RESPUESTA === null) await probarLecturaRespuesta();
-  const claveUsada = CLAVE;
+  const credUsada = credencial();
   payload = conClave(payload);
 
   if (!PUEDE_LEER_RESPUESTA) {
@@ -1729,7 +1801,7 @@ async function postApp(payload) {
   // contra la clave con la que salió el pedido: si mientras tanto se cargó una nueva, esta
   // respuesta es vieja y no tiene que volver a bloquear la pantalla.
   if (j && j.codigo === 'CLAVE') {
-    if (claveUsada === CLAVE) pedirClave();
+    if (credUsada === credencial()) pedirClave();
     throw new Error('hace falta la clave de acceso');
   }
 
@@ -1766,17 +1838,21 @@ function loadFromSheets(opts) {
 async function _loadFromSheets(silent) {
   try {
     if (!silent) showLoading(true);
-    const claveUsada = CLAVE;
+    const credUsada = credencial();
     const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams() + claveQuery());
     const data = await res.json();
-    if (data && data.codigo === 'CLAVE') {
-      if (claveUsada === CLAVE) pedirClave();   // misma comparación que en postApp
-      return;
-    }
+    // Respuesta de un pedido que salió con otra persona u otra clave (se cambió mientras
+    // viajaba): no se usa, ni para bloquear ni para mostrar datos.
+    if (credUsada !== credencial()) return;
+    if (data && data.codigo === 'CLAVE') { pedirClave(); return; }
     
     
     if (data.status === 'ok') {
       ESTADO_CONEXION = 'ok'; checkConfig();
+      // El servidor dejó pasar: si la pantalla de clave estaba a la vista (por ejemplo porque
+      // se sacó la clave del servidor), ya no corresponde.
+      document.getElementById('pantallaClave').style.display = 'none';
+      if (!CLAVE && !USUARIO) { try { localStorage.removeItem('pideClave'); } catch (e) {} }
       invalidarCachePedidoDeMov();   // cambió PEDIDOS: los vínculos mov→pedido se recalculan
       const _todos = (data.pedidos || []).map((p, i) => {
         sanearPedido(p);
@@ -4290,7 +4366,8 @@ function getMovFiltrados() {
   return MOVIMIENTOS.filter(m => {
     if (currentMovFilter !== 'todos' && movMeta(m.tipo).grupo !== currentMovFilter) return false;
     if (!q) return true;
-    return sinTildes(m.nombre + ' ' + m.prenda + ' ' + m.detalle + ' ' + m.talle).includes(q);
+    // El buscador también encuentra por quién hizo el movimiento
+    return sinTildes(m.nombre + ' ' + m.prenda + ' ' + m.detalle + ' ' + m.talle + ' ' + (m.usuario || '')).includes(q);
   });
 }
 
@@ -4341,7 +4418,7 @@ function movCardHtml(m, opts) {
   const monto = Number(m.monto) || 0;
   const fechaCorta = o.conFecha ? String(m.fecha).slice(8, 10) + '/' + String(m.fecha).slice(5, 7) : '';
 
-  const metaLine = [fechaCorta, hora, m.prenda, m.talle ? 'T. ' + m.talle : '']
+  const metaLine = [fechaCorta, hora, m.prenda, m.talle ? 'T. ' + m.talle : '', m.usuario ? 'por ' + m.usuario : '']
     .filter(Boolean).map(escapeHtml).join(' · ');
 
   // En el alta se muestra en qué estado quedó ese pedido hoy: leyendo el historial no se
@@ -4426,7 +4503,7 @@ function renderMovimientos() {
 function pushMovLocal(m) {
   MOVIMIENTOS.unshift(Object.assign({
     fecha: ahoraAR(), tipo: '', pedidoId: '', nombre: '',
-    prenda: '', talle: '', monto: 0, medio: '', detalle: '', _pendiente: true
+    prenda: '', talle: '', monto: 0, medio: '', detalle: '', usuario: USUARIO, _pendiente: true
   }, m));
   if (MOVIMIENTOS.length > MOV_LIMITE) MOVIMIENTOS.length = MOV_LIMITE;
   localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
@@ -4447,6 +4524,7 @@ const anulBackupInit = localStorage.getItem('pedidos_anulados_backup');
 if (anulBackupInit) { try { PEDIDOS_ANULADOS = JSON.parse(anulBackupInit).map(sanearPedido); } catch(e) {} }
 const backup = localStorage.getItem('pedidos_backup');
 if (backup) { try { invalidarCachePedidoDeMov(); PEDIDOS = JSON.parse(backup).map(sanearPedido); renderAll(); } catch(e) {} }
+if (!CLAVE && !USUARIO && servidorPideClave()) pedirClave();
 if (SCRIPT_URL) {
   // Se prueba una vez si el navegador puede leer las respuestas del backend. Si puede, cada
   // escritura verifica que el servidor la haya aceptado; si no, se sigue escribiendo a ciegas

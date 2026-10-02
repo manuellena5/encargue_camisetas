@@ -18,7 +18,8 @@ Webapp para controlar pedidos, retiros y stock de prendas del club. Los datos se
 El Sheet tiene estas hojas:
 - **Pedidos**: todos los pedidos con columnas Nombre, BLANCA, AZUL, SHORT, CHOMBA, Talle, Seña, Total, Resta, Notas, Total Transferencia, Total Efectivo, Tanda, Retirado, Regalo, Fecha Alta
 - **Compras**: una fila por compra de mercadería (prenda, talle, tanda, cantidad y costo). De acá sale el stock: lo comprado menos lo entregado.
-- **Movimientos**: historial de actividad, una fila por acción (`Fecha | Tipo | Pedido ID | Nombre | Prenda | Talle | Monto | Medio | Detalle`). Se crea sola la primera vez que se registra algo.
+- **Movimientos**: historial de actividad, una fila por acción (`Fecha | Tipo | Pedido ID | Nombre | Prenda | Talle | Monto | Medio | Detalle | Usuario`). Se crea sola la primera vez que se registra algo.
+- **Usuarios** (optativa): quién usa la app. `Nombre | Clave | Activo`. Ver "Usuarios" más abajo.
 
 Las hojas **Retiros** y **Stock** ya no se usan: el retiro vive en las columnas del propio pedido y el stock se calcula desde Compras. El Apps Script no las lee ni las vuelve a crear.
 
@@ -80,10 +81,24 @@ La dirección del Apps Script va en `index.html`, en la constante `DEFAULT_SCRIP
 
 La dirección del Apps Script es pública, así que sin clave cualquiera que la tenga puede leer y escribir.
 
-1. En el editor de Apps Script, ejecutar una vez `generarClaveAcceso`. La clave aparece en el registro de ejecución y queda guardada en la propiedad `CLAVE_ACCESO` (no va en el código).
-2. Abrir la app: va a pedir la clave. Pegarla.
-3. En el engranaje, **Copiar link de acceso** y pasarle ese link a cada persona. Lo abren una vez y la clave queda guardada en su navegador.
+1. En Apps Script, agregar la propiedad `CLAVE_ACCESO` con la clave elegida (8 caracteres o más), o ejecutar una vez `generarClaveAcceso` para que arme una (aparece en el registro de ejecución). La clave no va en el código.
+2. Pasarle la clave a cada persona. La app la pide la primera vez y queda guardada en ese teléfono; si se borran los datos del navegador, la vuelve a pedir.
 
-- Para cambiarla (se filtró, o alguien ya no tiene que entrar): volver a ejecutar `generarClaveAcceso` y repartir el link nuevo. La anterior deja de servir en el acto.
-- Para desactivarla: borrar la propiedad `CLAVE_ACCESO`.
-- Mientras la propiedad no exista, la app funciona abierta como antes.
+- No distingue mayúsculas de minúsculas ni cuenta espacios o guiones.
+- El servidor la valida en cada lectura y en cada escritura.
+- Para cambiarla (se filtró, o alguien ya no tiene que entrar): cambiar el valor de la propiedad. La anterior deja de servir en el acto para todos, y hay que avisarles la nueva a los que siguen.
+- Para desactivarla: borrar la propiedad `CLAVE_ACCESO`. Mientras no exista, la app funciona abierta.
+
+### 5. Usuarios
+
+Para que cada persona entre con su nombre y sus movimientos queden firmados.
+
+1. En el editor de Apps Script, ejecutar una vez `crearHojaUsuarios`. Crea la hoja **Usuarios** con las columnas `Nombre | Clave | Activo`.
+2. Cargar una fila por persona.
+   - **Clave** (optativa): si la persona tiene una, entra con esa. Si está vacía, entra con la clave general (`CLAVE_ACCESO`).
+   - **Activo** (optativa): `no` la deja afuera sin borrar la fila.
+3. Cada persona abre la app, elige su nombre y escribe su clave. Queda guardado en ese teléfono. Desde el engranaje se puede **Cambiar de persona**.
+
+- Cada movimiento queda con el nombre en la columna **Usuario** de la hoja Movimientos (se agrega sola) y se ve en la pantalla Movim. El nombre lo pone el servidor después de validar la clave.
+- Para sacarle el acceso a alguien: borrar su fila o ponerle `no`. Si entraba con la clave general, además hay que cambiarla, porque la sigue sabiendo y podría entrar con el nombre de otro. Con clave propia por persona eso no pasa.
+- Mientras la hoja no exista o esté vacía, la app no pide nombre.
