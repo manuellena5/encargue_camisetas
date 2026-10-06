@@ -43,6 +43,21 @@
     .stock-cell.empty .stock-pend { color: #95a5a6; }
 
     /* MAIN TABS */
+    /* Barra de progreso: pegada arriba de todo y por encima de los carteles y modales, para que
+       se vea siempre que la app está hablando con el servidor */
+    .barra-progreso { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 1500; pointer-events: none;
+      opacity: 0; transition: opacity 0.3s; background: rgba(255,255,255,0.18); }
+    .barra-progreso.activa { opacity: 1; }
+    .barra-progreso > div { height: 100%; width: 0; background: #f39c12; border-radius: 0 3px 3px 0;
+      box-shadow: 0 0 6px rgba(243,156,18,0.7); transition: width 0.25s linear; }
+    .barra-progreso.guardando > div { background: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.7); }
+    /* Renglón de estado bajo el título: qué está haciendo y cuánto falta, o de cuándo son los datos */
+    .estado-datos { font-size: 0.72rem; font-weight: 500; color: rgba(255,255,255,0.72); margin-top: 3px; min-height: 1em;
+      font-variant-numeric: tabular-nums; }
+    .estado-datos.trabajando { color: #f8c471; }
+    .estado-datos.sin-conexion { color: #f5b7b1; }
+    .loading-overlay .falta { font-size: 0.78rem; font-weight: 500; color: #6b7785; margin-top: 6px; min-height: 1em;
+      font-variant-numeric: tabular-nums; }
     .main-tabs { display: flex; background: #1a1a2e; }
     .main-tab { flex: 1; padding: 10px 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: rgba(255,255,255,0.5); transition: all 0.2s; border-bottom: 3px solid transparent; }
     .main-tab:hover { color: rgba(255,255,255,0.8); }
@@ -638,8 +653,10 @@
 </head>
 <body>
 
+<div class="barra-progreso" id="barraProgreso"><div id="barraProgresoFill"></div></div>
 <div class="header">
   <h1>Gestión Prendas del Club</h1>
+  <div class="estado-datos" id="estadoDatos"></div>
 </div>
 
 <!-- Retiros ya no es una pestaña: es la misma entidad que Pedidos, filtrada por estado -->
@@ -1130,7 +1147,7 @@
 
 <div class="toast" id="toast"></div>
 <div class="loading-overlay" id="loading" style="display:none;">
-  <div class="spinner">Sincronizando<span class="dots"></span></div>
+  <div class="spinner">Sincronizando<span class="dots"></span><div class="falta" id="loadingFalta"></div></div>
 </div>
 
 <script>
@@ -1322,11 +1339,13 @@ function pedirClave(motivo) {
   const habia = !!(CLAVE || USUARIO);
   try {
     if (USUARIO) localStorage.setItem('usuarioSugerido', USUARIO);
-    ['claveAcceso', 'usuarioApp', 'pedidos_backup', 'pedidos_anulados_backup', 'movimientos_backup', 'compras_backup']
+    ['claveAcceso', 'usuarioApp', 'pedidos_backup', 'pedidos_anulados_backup', 'movimientos_backup', 'compras_backup',
+     'pedidos_fecha', 'movimientos_fecha']
       .forEach(k => localStorage.removeItem(k));
   } catch (e) {}
   CLAVE = ''; USUARIO = '';
   PEDIDOS = []; PEDIDOS_ANULADOS = []; MOVIMIENTOS = []; COMPRAS = [];
+  FECHA_PEDIDOS = 0; FECHA_MOV = 0; MOV_AL_DIA = false;
   try { invalidarCachePedidoDeMov(); recalcularTandas(); renderAll(); } catch (e) { console.error(e); }
   // Lo que hubiera abierto se cierra: quedó apuntando a pedidos que ya no están en pantalla
   document.querySelectorAll('.modal-overlay').forEach(m => { m.style.display = 'none'; });
@@ -1653,6 +1672,7 @@ function switchSection(section) {
     renderMovimientos();              // y mientras tanto, lo que haya en memoria
   }
   if (section === 'pedidoproveedor') renderPedidoProveedor();
+  pintarEstadoDatos();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.main-tab').forEach(t =>
@@ -1735,6 +1755,7 @@ function checkConfig() {
   if (USUARIO) statusDiv.innerHTML += '<div class="quien">Estás usando la app como <b>' + escapeHtml(USUARIO) + '</b></div>';
   document.getElementById('btnCambiarPersona').style.display = USUARIO ? '' : 'none';
   pintarTiempos();
+  pintarEstadoDatos();
 }
 
 function pintarTiempos() {
@@ -1842,6 +1863,18 @@ async function probarLecturaRespuesta() {
  * Si no se puede leer la respuesta, devuelve { status:'ok', _ciego:true }.
  */
 async function postApp(payload) {
+  const op = progresoInicio('guardar');
+  let salioBien = false;
+  try {
+    const r = await _postApp(payload);
+    salioBien = true;
+    return r;
+  } finally {
+    progresoFin(op, salioBien);
+  }
+}
+
+async function _postApp(payload) {
   if (!SCRIPT_URL) throw new Error('Configurá la URL del Apps Script primero');
   if (PUEDE_LEER_RESPUESTA === null) await probarLecturaRespuesta();
   const credUsada = credencial();
@@ -1924,6 +1957,127 @@ function loadFromSheets(opts) {
   return _cargaEnCurso;
 }
 
+// ============ PROGRESO Y FECHA DE LOS DATOS ============
+// El servidor no avisa cuánto lleva hecho: contesta todo junto al final. Así que la barra no
+// mide avance real sino tiempo: la app recuerda cuánto vienen tardando las cargas y los
+// guardados en este teléfono y con eso estima cuánto falta. Si tarda más de lo estimado, la
+// barra no se queda clavada en el final ni miente un "listo": avanza cada vez más despacio y el
+// texto pasa a "ya casi". Cada operación que termina bien corrige la estimación siguiente.
+let ESTIM = { cargar: 4000, guardar: 5000 };
+try { Object.assign(ESTIM, JSON.parse(localStorage.getItem('estimaciones') || '{}')); } catch (e) {}
+
+// De cuándo son los datos que se están viendo. Se guarda junto con ellos: al abrir la app se
+// muestran los de la vez anterior, y hay que poder ver que son de ayer y no de recién.
+let FECHA_PEDIDOS = 0, FECHA_MOV = 0;
+try {
+  FECHA_PEDIDOS = Number(localStorage.getItem('pedidos_fecha')) || 0;
+  FECHA_MOV     = Number(localStorage.getItem('movimientos_fecha')) || 0;
+} catch (e) {}
+
+const _ops = new Map();
+let _opSeq = 0, _opReloj = null, _opCierre = null;
+
+function progresoInicio(tipo) {
+  const id = ++_opSeq;
+  _ops.set(id, { tipo, t0: performance.now(), est: Math.max(800, Number(ESTIM[tipo]) || 4000) });
+  if (_opCierre) { clearTimeout(_opCierre); _opCierre = null; }
+  if (!_opReloj) _opReloj = setInterval(pintarProgreso, 150);
+  pintarProgreso();
+  return id;
+}
+
+function progresoFin(id, salioBien) {
+  const op = _ops.get(id);
+  if (!op) return;
+  _ops.delete(id);
+  if (salioBien) {
+    // Promedio que le da más peso a lo último: se adapta si el servidor anda más lento o más rápido
+    const real = performance.now() - op.t0;
+    ESTIM[op.tipo] = Math.round((Number(ESTIM[op.tipo]) || real) * 0.6 + real * 0.4);
+    try { localStorage.setItem('estimaciones', JSON.stringify(ESTIM)); } catch (e) {}
+  }
+  if (_ops.size) { pintarProgreso(); return; }
+  clearInterval(_opReloj); _opReloj = null;
+  // Se completa la barra y recién después se esconde, para que se vea que terminó
+  const barra = document.getElementById('barraProgreso');
+  document.getElementById('barraProgresoFill').style.width = '100%';
+  _opCierre = setTimeout(() => {
+    barra.classList.remove('activa');
+    _opCierre = setTimeout(() => { document.getElementById('barraProgresoFill').style.width = '0'; _opCierre = null; }, 320);
+  }, 280);
+  pintarEstadoDatos();
+}
+
+// La operación que se muestra: un guardado tiene prioridad sobre un refresco de fondo.
+function opVisible() {
+  let elegida = null;
+  _ops.forEach(op => { if (!elegida || (op.tipo === 'guardar' && elegida.tipo !== 'guardar')) elegida = op; });
+  return elegida;
+}
+
+function textoProgreso(op) {
+  const pasado = performance.now() - op.t0;
+  const falta  = op.est - pasado;
+  const verbo  = op.tipo === 'guardar' ? 'Guardando' : 'Actualizando';
+  const seg = Math.ceil(falta / 1000);
+  if (falta > 700)           return verbo + (seg === 1 ? '… falta 1 s' : '… faltan unos ' + seg + ' s');
+  if (pasado < op.est * 2.5) return verbo + '… ya casi';
+  return verbo + '… está tardando más de lo normal';
+}
+
+function pintarProgreso() {
+  const op = opVisible();
+  if (!op) return;
+  const f = (performance.now() - op.t0) / op.est;
+  // Hasta el 90% avanza parejo con el tiempo estimado; pasado eso se acerca al final sin llegar
+  const avance = f < 0.9 ? f : 0.9 + 0.09 * (1 - Math.exp(-(f - 0.9) * 2));
+  const barra = document.getElementById('barraProgreso');
+  barra.classList.add('activa');
+  barra.classList.toggle('guardando', op.tipo === 'guardar');
+  document.getElementById('barraProgresoFill').style.width = (Math.max(0.04, avance) * 100).toFixed(1) + '%';
+  pintarEstadoDatos();
+}
+
+// 'hoy 11:20' · 'ayer 18:05' · '03/10 18:05', siempre en hora de Argentina
+function fmtCuando(ms) {
+  if (!ms) return '';
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_AR, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(new Date(ms)).reduce((a, x) => (a[x.type] = x.value, a), {});
+  const dia = p.year + '-' + p.month + '-' + p.day;
+  const hm  = (p.hour === '24' ? '00' : p.hour) + ':' + p.minute;
+  const hoy = hoyAR();
+  if (dia === hoy) return 'hoy ' + hm;
+  if (dia === restarDias(hoy, 1)) return 'ayer ' + hm;
+  return p.day + '/' + p.month + ' ' + hm;
+}
+
+// El renglón bajo el título. Mientras hay algo en curso dice qué y cuánto falta; si no, de
+// cuándo son los datos de la pantalla que se está mirando (Movimientos se trae aparte, así
+// que tiene su propia fecha).
+function pintarEstadoDatos() {
+  const el = document.getElementById('estadoDatos');
+  if (!el) return;
+  const op = opVisible();
+  const falta = document.getElementById('loadingFalta');
+  if (op) {
+    const txt = textoProgreso(op);
+    el.textContent = txt;
+    el.className = 'estado-datos trabajando';
+    if (falta) falta.textContent = txt.replace(/^[^…]*…\s*/, '').replace(/^./, c => c.toUpperCase());
+    return;
+  }
+  if (falta) falta.textContent = '';
+  const enMov  = currentSection === 'movimientos';
+  const cuando = fmtCuando(enMov ? FECHA_MOV : FECHA_PEDIDOS);
+  const sinConexion = ESTADO_CONEXION === 'error';
+  el.className = 'estado-datos' + (sinConexion ? ' sin-conexion' : '');
+  if (!cuando) { el.textContent = sinConexion ? 'Sin conexión' : ''; return; }
+  el.textContent = sinConexion ? 'Sin conexión · datos de ' + cuando
+                               : (enMov ? 'Movimientos actualizados: ' : 'Actualizado: ') + cuando;
+}
+
 // Últimos tiempos de respuesta del servidor, para poder ver dónde se va la espera cuando algo
 // tarda. No se muestra en pantalla: queda en la consola del navegador y en TIEMPOS.
 const TIEMPOS = [];
@@ -1951,6 +2105,8 @@ function marcarCargando(si) {
 // opts.avisarError: aunque sea de fondo, si falla se avisa (apertura con datos guardados).
 async function _loadFromSheets(silent, opts) {
   opts = opts || {};
+  const op = progresoInicio('cargar');
+  let salioBien = false;
   try {
     if (!silent) showLoading(true);
     const credUsada = credencial();
@@ -2037,9 +2193,13 @@ async function _loadFromSheets(silent, opts) {
 
       // Movimientos: el backend ya los devuelve del más reciente al más antiguo. Si esta carga
       // no los pidió (vienen en null) se conservan los que había, con lo anotado localmente.
+      FECHA_PEDIDOS = Date.now();
+      localStorage.setItem('pedidos_fecha', String(FECHA_PEDIDOS));
       if (Array.isArray(data.movimientos)) {
         MOVIMIENTOS = data.movimientos;
         MOV_AL_DIA = true;
+        FECHA_MOV = FECHA_PEDIDOS;
+        localStorage.setItem('movimientos_fecha', String(FECHA_MOV));
         localStorage.setItem('movimientos_backup', JSON.stringify(MOVIMIENTOS.slice(0, 200)));
       } else {
         MOV_AL_DIA = false;
@@ -2050,6 +2210,7 @@ async function _loadFromSheets(silent, opts) {
       // conservarAbiertas: este dibujado llega cuando llega, no cuando la persona lo pidió
       renderAll({ conservarAbiertas: true });
       if (!silent) showToast('Datos actualizados (' + PEDIDOS.length + ' pedidos)');
+      salioBien = true;
       return 'ok';
     } else {
       throw new Error(data.message || 'Error desconocido');
@@ -2082,6 +2243,7 @@ async function _loadFromSheets(silent, opts) {
     return 'error';
   } finally {
     if (!silent) showLoading(false);
+    progresoFin(op, salioBien);
   }
 }
 
