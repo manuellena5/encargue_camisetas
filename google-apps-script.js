@@ -706,6 +706,13 @@ function doGet_(e) {
       return jsonResponse({ status: 'ok' });
     }
 
+    // Qué pasó con un guardado (ver "CADA GUARDADO, UNA SOLA VEZ")
+    if (action === 'resultado') {
+      const opId = opIdValido_(e.parameter.opId);
+      const r = opId ? leerResultadoOp_(opId) : null;
+      return jsonResponse({ status: 'ok', encontrado: !!r, respuesta: r });
+    }
+
     if (action === 'getPedidos') {
       return getPedidos();
     }
@@ -745,8 +752,24 @@ function getAll(desde, hasta, limitMov, conMov) {
   let datos = pedidosSheet.getDataRange().getValues();
   let backfill = null;
   if (faltanIdsPedidos_(datos)) {
-    backfill = backfillIdsPedidos_();
-    datos = pedidosSheet.getDataRange().getValues();
+    // Con el lock tomado y releyendo: si dos cargas llegan juntas, que no le pongan cada una
+    // un ID distinto a la misma fila. Si no se consigue el turno, se deja para la próxima.
+    const lock = LockService.getScriptLock();
+    let tengo = false;
+    try { lock.waitLock(10000); tengo = true; } catch (err) { tengo = false; }
+    try {
+      if (tengo) {
+        pedidosSheet.d = null;
+        datos = pedidosSheet.getDataRange().getValues();
+        if (faltanIdsPedidos_(datos)) {
+          backfill = backfillIdsPedidos_();
+          datos = pedidosSheet.getDataRange().getValues();
+          try { SpreadsheetApp.flush(); } catch (err) {}
+        }
+      }
+    } finally {
+      if (tengo) lock.releaseLock();
+    }
   }
   const pedidos = objetosDeValores_(datos);
 
@@ -912,6 +935,41 @@ function getPedidos() {
 // leer los mismos índices de fila antes de escribir: la segunda termina operando sobre una fila
 // que ya no es la que creía, y pisa el pedido equivocado. Con multiusuario no es hipotético.
 // Las lecturas (doGet) NO toman el lock, para que un getAll largo no trabe un guardado.
+// ============ CADA GUARDADO, UNA SOLA VEZ ============
+// La respuesta de Apps Script viaja por un salto de redirección que Google a veces pierde o
+// demora muchísimo (devuelve una página 404, o tarda 20–30 segundos) aunque el guardado ya se
+// haya hecho en uno o dos. Desde la app eso se veía como "falló" o como una espera eterna, y
+// repetirlo cobraba dos veces.
+//
+// Por eso cada guardado viene con un número de operación (opId) que genera la app:
+//  - al terminar, la respuesta se guarda unos minutos bajo ese número;
+//  - si llega otra vez el mismo número, NO se vuelve a ejecutar: se devuelve lo guardado;
+//  - la app puede preguntar por GET (action=resultado) qué pasó con un número, que es una
+//    consulta que sí se puede repetir sin riesgo.
+// Así la app puede confirmar un guardado sin depender de que llegue la respuesta original, y
+// reintentar sin miedo a duplicar.
+const OP_MINUTOS = 15;
+function opIdValido_(v) {
+  const s = String(v == null ? '' : v);
+  return /^[A-Za-z0-9_-]{8,64}$/.test(s) ? s : '';
+}
+function leerResultadoOp_(opId) {
+  try {
+    const txt = CacheService.getScriptCache().get('op_' + opId);
+    return txt ? JSON.parse(txt) : null;
+  } catch (err) {
+    console.error('leerResultadoOp_ falló: ' + err);
+    return null;
+  }
+}
+function guardarResultadoOp_(opId, obj) {
+  try {
+    CacheService.getScriptCache().put('op_' + opId, JSON.stringify(obj), OP_MINUTOS * 60);
+  } catch (err) {
+    console.error('guardarResultadoOp_ falló: ' + err);
+  }
+}
+
 function doPost(e) { return emitir_(doPost_(e)); }
 
 function doPost_(e) {
@@ -940,10 +998,19 @@ function doPost_(e) {
       message: 'El servidor está ocupado con otra operación. Probá de nuevo en unos segundos.' });
   }
   marca_('turno');
+  const opId = (cruda && cruda.action !== 'ping') ? opIdValido_(cruda.opId) : '';
+  let hecho = null;
   try {
+    // ¿Ya se hizo esta misma operación? Se mira con el lock tomado: si el envío anterior
+    // todavía se estaba ejecutando, recién acá terminó y su resultado ya está guardado.
+    if (opId) {
+      const previa = leerResultadoOp_(opId);
+      if (previa) { previa.repetido = true; marca_('repetido'); return jsonResponse(previa); }
+    }
     if (cruda && cruda.action !== 'ping') hojaMov_();
     const salida = rutearPost_(e);
     marca_('accion');
+    hecho = salida;
     return salida;
   } finally {
     // Lo escrito se aplica ANTES de soltar el lock. Si no, el siguiente guardado podía empezar
@@ -951,6 +1018,8 @@ function doPost_(e) {
     // cuánto tarda la planilla en aplicar y recalcular, que es parte de la espera.
     try { SpreadsheetApp.flush(); } catch (err) { console.error('flush falló: ' + err); }
     marca_('aplicar');
+    // El resultado queda anotado antes de soltar el lock, ya con lo escrito aplicado
+    if (opId && hecho && hecho.__json) guardarResultadoOp_(opId, hecho.__json);
     lock.releaseLock();
   }
 }
@@ -1627,6 +1696,7 @@ function emitir_(r) {
   const obj = (r && r.__json) ? r.__json : (r || {});
   obj.ms = Date.now() - _T0;
   obj.t  = _marcas;
+  obj.ini = _T0;      // hora del servidor al empezar: para ver si la espera fue antes o después
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }

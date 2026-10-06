@@ -1272,8 +1272,7 @@ async function cargarPersonas() {
   PERSONAS_ESTADO = 'cargando';
   pintarPantallaIngreso();
   try {
-    const res = await fetch(SCRIPT_URL + '?action=usuarios');
-    const j = await res.json();
+    const j = await pedirGet('?action=usuarios', { relevo: 5000, plazo: 25000 });
     // Un servidor que todavía no conoce la lista contesta error: se sigue sólo con la clave
     PERSONAS = (j && j.status === 'ok' && Array.isArray(j.usuarios)) ? j.usuarios : [];
     PERSONAS_ESTADO = 'ok';
@@ -1832,35 +1831,136 @@ function modalOcupado(modalId) {
   return !!ov && ov.classList.contains('guardando');
 }
 
-// ============ ESCRITURAS AL BACKEND ============
-// Hasta acá TODAS las escrituras iban con mode:'no-cors', que impide leer la respuesta: si el
-// backend rechazaba algo (validación, cuota, lock ocupado) la app igual decía "guardado".
-// Ahora se lee el status. Como en algún navegador o deploy la lectura puede fallar por CORS, al
-// arrancar se hace un ping y se decide el modo. NO se reintenta con no-cors cuando falla una
-// escritura normal: la petición ya salió y el servidor pudo haberla procesado, así que
-// reintentar duplicaría el dato.
-let PUEDE_LEER_RESPUESTA = null;   // null = todavía no se probó
+// ============ HABLAR CON EL SERVIDOR ============
+// La respuesta de Apps Script llega por un salto de redirección de Google que falla seguido:
+// a veces devuelve una página de error 404 en vez de los datos, a veces "rebota", y a veces
+// se queda 20 o 30 segundos colgado aunque el servidor haya terminado en uno. Medido en
+// producción: el servidor tarda menos de 1 s en contestar la lista de personas y la respuesta
+// llegó a demorar 36. Como eso no depende de este código, lo que se hace es no depender de
+// que UNA respuesta llegue bien:
+//  - Lecturas (pedirGet): si una falla se pide de nuevo; si una se demora, sale otra en
+//    paralelo sin cancelar la primera y se usa la que llegue antes. Leer dos veces no hace daño.
+//  - Guardados (enviarGuardado): cada uno lleva un número de operación. Si la respuesta no
+//    llega o llega rota, se le pregunta al servidor qué pasó con ese número, y recién con esa
+//    respuesta se decide. El servidor no ejecuta dos veces el mismo número, así que tampoco hay
+//    riesgo en mandarlo de nuevo.
+const dormir = ms => new Promise(ok => setTimeout(ok, ms));
 
-async function probarLecturaRespuesta() {
-  if (!SCRIPT_URL) return false;
-  try {
-    const r = await fetch(SCRIPT_URL, {
+function pedirGet(query, opts) {
+  const o = Object.assign({ intentos: 3, relevo: 8000, plazo: 40000 }, opts || {});
+  return new Promise((resolve, reject) => {
+    let lanzados = 0, vivos = 0, listo = false, ultimo = null;
+    const ctrls = [], timers = new Set();
+    const programar = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
+    const cerrar = (fn, v) => {
+      if (listo) return;
+      listo = true;
+      timers.forEach(clearTimeout);
+      ctrls.forEach(c => { try { c.abort(); } catch (e) {} });
+      fn(v);
+    };
+    const lanzar = () => {
+      if (listo || lanzados >= o.intentos) return;
+      lanzados++; vivos++;
+      if (lanzados > 1) console.warn('[servidor] se vuelve a pedir (intento ' + lanzados + ')');
+      const c = new AbortController(); ctrls.push(c);
+      const relevo = programar(lanzar, o.relevo);          // demorado: sale otro, sin cancelar éste
+      fetch(SCRIPT_URL + query, { signal: c.signal })
+        .then(r => r.text()).then(t => JSON.parse(t))
+        .then(j => cerrar(resolve, j))
+        .catch(e => {
+          if (listo) return;
+          clearTimeout(relevo); timers.delete(relevo);
+          vivos--; ultimo = e;
+          if (lanzados < o.intentos) programar(lanzar, 500);  // falló enseguida: se prueba de nuevo ya
+          else if (vivos === 0) cerrar(reject, ultimo);
+        });
+    };
+    programar(() => cerrar(reject, new Error('el servidor no contestó')), o.plazo);
+    lanzar();
+  });
+}
+
+function nuevoOpId() {
+  const azar = () => Math.random().toString(36).slice(2, 10);
+  return 'op' + Date.now().toString(36) + azar() + azar();
+}
+
+// Un envío. Nunca rechaza: devuelve { ok:true, j } si llegó una respuesta de verdad, o
+// { ok:false } si no llegó o llegó rota (la página 404, o el "rebote" que termina contestando
+// doGet). En ese segundo caso el servidor puede haberlo hecho igual: lo dice consultarResultado.
+function lanzarPost(payload) {
+  return fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
-      body: JSON.stringify(conClave({ action: 'ping' }))
-    });
-    const j = await r.json();
-    PUEDE_LEER_RESPUESTA = !!(j && j.pong);
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.text()).then(t => JSON.parse(t))
+    .then(j => {
+      const rebote = j && j.status === 'error' &&
+        (j.origen === 'doGet' || /Unknown action: undefined/.test(String(j.message || '')));
+      return rebote ? { ok: false } : { ok: true, j };
+    })
+    .catch(() => ({ ok: false }));
+}
+
+// Qué pasó con un guardado. 'encontrado' (con su respuesta) · 'noEsta' (el servidor no lo hizo)
+// · 'clave' · 'sinSoporte' (servidor anterior, que no conoce esta consulta) · 'sinRespuesta'.
+async function consultarResultado(opId) {
+  try {
+    const j = await pedirGet('?action=resultado&opId=' + encodeURIComponent(opId) + claveQuery(),
+                             { intentos: 2, relevo: 4000, plazo: 9000 });
+    if (j && j.codigo === 'CLAVE') return { estado: 'clave' };
+    if (j && j.status === 'ok' && 'encontrado' in j) {
+      return j.encontrado ? { estado: 'encontrado', respuesta: j.respuesta } : { estado: 'noEsta' };
+    }
+    if (j && /Unknown action/.test(String(j.message || ''))) return { estado: 'sinSoporte' };
+    return { estado: 'sinRespuesta' };
   } catch (e) {
-    console.warn('No se pueden leer las respuestas del backend, se escribe a ciegas:', e.message);
-    PUEDE_LEER_RESPUESTA = false;
+    return { estado: 'sinRespuesta' };
   }
-  return PUEDE_LEER_RESPUESTA;
+}
+
+async function enviarGuardado(payload) {
+  const limite = performance.now() + 75000;
+  let envios = 1, post = lanzarPost(payload), postTermino = false;
+  let espera = 7000;                      // lo normal es que conteste antes; si no, se pregunta
+  for (;;) {
+    let r;
+    if (postTermino) { await dormir(espera); r = { de: 'tiempo' }; }
+    else r = await Promise.race([post.then(x => Object.assign({ de: 'post' }, x)), dormir(espera).then(() => ({ de: 'tiempo' }))]);
+    if (r.de === 'post') {
+      if (r.ok) return r.j;
+      postTermino = true;                 // terminó sin una respuesta que sirva
+    } else {
+      console.warn('[servidor] el guardado no contesta: se consulta qué pasó');
+    }
+
+    const c = await consultarResultado(payload.opId);
+    if (c.estado === 'encontrado') return c.respuesta;
+    if (c.estado === 'clave')      return { status: 'error', codigo: 'CLAVE' };
+    if (c.estado === 'sinSoporte') {
+      // Servidor anterior: no hay a quién preguntarle. Se hace lo de antes: si el envío no trajo
+      // respuesta se da por hecho, porque Apps Script contesta recién después de ejecutar.
+      if (!postTermino) { const x = await post; if (x.ok) return x.j; }
+      return { status: 'ok', _ciego: true };
+    }
+    if (postTermino && c.estado === 'noEsta') {
+      // El envío terminó sin respuesta y el servidor dice que no lo hizo: no le llegó.
+      // Mandarlo de nuevo es seguro, lleva el mismo número.
+      if (envios < 2) { envios++; post = lanzarPost(payload); postTermino = false; espera = 7000; continue; }
+      throw new Error('no llegó al servidor. Revisá la conexión y probá de nuevo.');
+    }
+    if (performance.now() > limite) {
+      throw new Error('no se pudo confirmar si quedó guardado. Actualizá los datos y fijate antes de repetirlo.');
+    }
+    espera = Math.min(espera === 7000 ? 4000 : espera + 2000, 10000);
+  }
 }
 
 /**
  * Manda una escritura y devuelve la respuesta del backend.
- * Lanza Error con el mensaje real si el backend contestó status:'error'.
- * Si no se puede leer la respuesta, devuelve { status:'ok', _ciego:true }.
+ * Lanza Error con el mensaje real si el backend contestó status:'error', o si no se pudo
+ * confirmar que quedó guardada.
  */
 async function postApp(payload) {
   const op = progresoInicio('guardar');
@@ -1876,46 +1976,11 @@ async function postApp(payload) {
 
 async function _postApp(payload) {
   if (!SCRIPT_URL) throw new Error('Configurá la URL del Apps Script primero');
-  if (PUEDE_LEER_RESPUESTA === null) await probarLecturaRespuesta();
   const credUsada = credencial();
-  payload = conClave(payload);
-
-  if (!PUEDE_LEER_RESPUESTA) {
-    // Escritura a ciegas: mode 'no-cors' deja salir la petición pero la respuesta es opaca,
-    // así que no hay forma de saber si el backend la aceptó. OJO: no llamar a postApp() acá
-    // (era una recursión infinita -> "Maximum call stack size exceeded").
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors', redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload)
-    });
-    return { status: 'ok', _ciego: true };
-  }
-
+  payload = conClave(Object.assign({}, payload, { opId: nuevoOpId() }));
   const t0 = performance.now();
-  const r = await fetch(SCRIPT_URL, {
-    method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
-    body: JSON.stringify(payload)
-  });
-  const j = await r.json();
+  const j = await enviarGuardado(payload);
   anotarTiempo('guardar ' + payload.action, t0, j);
-
-  // Apps Script no contesta el POST directo: responde un 302 a una URL de un solo uso en
-  // script.googleusercontent.com. Ese salto es frágil — a veces devuelve 404 y a veces rebota
-  // de vuelta a /exec, y entonces lo que el navegador termina leyendo es la respuesta de
-  // doGet, que sin ?action= contesta 'Unknown action: undefined'.
-  // Eso NO es un rechazo del backend: doPost ya corrió con el cuerpo (por eso los datos se
-  // guardan igual). Tratarlo como error hacía fallar operaciones que sí se habían hecho. Se
-  // degrada a escritura a ciegas y se sigue. NO se reintenta: la petición ya salió y
-  // reintentarla duplicaría el dato.
-  const perdioElSalto = j && j.status === 'error' &&
-    (j.origen === 'doGet' || /Unknown action: undefined/.test(String(j.message || '')));
-  if (perdioElSalto) {
-    PUEDE_LEER_RESPUESTA = false;
-    console.warn('Se perdió la redirección del Apps Script: la escritura salió pero no se puede ' +
-                 'confirmar. A partir de acá se escribe a ciegas.');
-    return { status: 'ok', _ciego: true };
-  }
 
   // El servidor pide una clave que esta app no tiene, o la que tiene ya no sirve. Se compara
   // contra la clave con la que salió el pedido: si mientras tanto se cargó una nueva, esta
@@ -2111,8 +2176,7 @@ async function _loadFromSheets(silent, opts) {
     if (!silent) showLoading(true);
     const credUsada = credencial();
     const t0 = performance.now();
-    const res = await fetch(SCRIPT_URL + '?action=getAll' + movQueryParams() + claveQuery());
-    const data = await res.json();
+    const data = await pedirGet('?action=getAll' + movQueryParams() + claveQuery());
     anotarTiempo('cargar', t0, data);
     if (credUsada !== credencial()) return 'viejo';
     if (data && data.codigo === 'CLAVE') { if (!opts.ingreso) pedirClave(); return 'clave'; }
@@ -4854,9 +4918,8 @@ function renderMovimientos() {
   container.innerHTML = html.join('');
 }
 
-// Registro optimista: los POST usan mode 'no-cors' y no devuelven respuesta,
-// así que el movimiento se agrega localmente para que se vea al instante.
-// En el próximo loadFromSheets() se reemplaza por la versión real del Sheet.
+// Registro optimista: el movimiento se agrega localmente para que se vea al instante, sin
+// esperar a traerlo. En la próxima carga con movimientos se reemplaza por el del servidor.
 function pushMovLocal(m) {
   MOV_AL_DIA = false;   // hay algo anotado acá que todavía no se trajo del servidor
   MOVIMIENTOS.unshift(Object.assign({
@@ -4889,19 +4952,7 @@ if (SCRIPT_URL) {
   // hasta que conteste el servidor. Sólo la primera vez, sin nada que mostrar, se espera.
   // Con la pantalla de ingreso a la vista no se pide nada: se va a pedir al entrar.
   const esperandoIngreso = document.getElementById('pantallaClave').style.display !== 'none';
-  const carga = esperandoIngreso ? Promise.resolve()
-    : loadFromSheets(PEDIDOS.length ? { silent: true, avisarError: true } : undefined);
-  // Se prueba una vez si el navegador puede leer las respuestas del backend. Si puede, cada
-  // escritura verifica que el servidor la haya aceptado; si no, se sigue escribiendo a ciegas
-  // como antes, pero al menos queda avisado en la consola. Va DESPUÉS de la carga para no
-  // competir con ella; si alguien guarda antes, postApp lo prueba por su cuenta.
-  Promise.resolve(carga).finally(() => {
-    if (PUEDE_LEER_RESPUESTA !== null) return;
-    probarLecturaRespuesta().then(ok => {
-      if (!ok) console.warn('Las escrituras van a ciegas: el navegador no puede leer la respuesta ' +
-        'del Apps Script. Revisá que el deploy tenga acceso "Cualquier persona".');
-    });
-  });
+  if (!esperandoIngreso) loadFromSheets(PEDIDOS.length ? { silent: true, avisarError: true } : undefined);
 }
 </script>
 </body>
