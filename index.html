@@ -511,6 +511,25 @@
            white-space: nowrap; display: block; margin-top: 2px; }
     .flg.f1 { background: #fdecea; color: #c0392b; border: 1px solid #f5b7b1; }
     .flg.f2 { background: #fef5e7; color: #9c640c; border: 1px solid #f8d7a3; }
+    /* Stock: una tarjeta por prenda, que se pliega. La cabecera resume lo que hay adentro para
+       que plegada siga sirviendo; cada tarjeta trae su propia fila de títulos de columna. */
+    .stk-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+                margin-bottom: 10px; overflow: hidden; border-left: 4px solid #d5dbe1; }
+    .stk-card.warn { border-left-color: #f39c12; }
+    .stk-card.bad  { border-left-color: #e74c3c; }
+    .stk-head { display: flex; align-items: center; gap: 8px; padding: 11px 12px; cursor: pointer;
+                user-select: none; flex-wrap: wrap; }
+    .stk-head:hover { background: #fafbfc; }
+    .stk-nom { font-weight: 700; font-size: 0.92rem; color: #1a1a2e; }
+    .stk-res { font-size: 0.76rem; color: #55606d; margin-left: auto; text-align: right;
+               font-variant-numeric: tabular-nums; }
+    .stk-res b { color: #1a1a2e; }
+    .stk-head .flg { display: inline-block; margin-top: 0; }
+    .stk-head .arrow { color: #8d97a3; font-size: 0.7rem; transition: transform 0.2s; transform: rotate(180deg); }
+    .stk-card.cerrada .stk-head .arrow { transform: rotate(0deg); }
+    .stk-card.cerrada .stk-body { display: none; }
+    .stk-body { border-top: 1px solid #f0f3f6; }
+    table.dt th.ord::after { content: ' ▾'; color: #1a1a2e; }
     .totline { display: flex; gap: 14px; flex-wrap: wrap; background: #fff; border-radius: 8px;
                padding: 8px 12px; margin: 10px 0; font-size: 0.78rem; }
     .avisobox { background: #fffbea; border: 1px dashed #e8c86a; border-radius: 8px;
@@ -578,7 +597,18 @@
       .tl { min-width: 0; padding: 1px 4px; font-size: 0.66rem; }
       .hlong { display: none; }
       .hshort { display: inline; }
-      #tblStock .flg { font-size: 0.56rem; padding: 0 3px; }
+      .stk-body .flg { font-size: 0.56rem; padding: 0 3px; }
+      /* En las tarjetas de Stock los títulos van con la palabra entera también en el celular:
+         en minúscula y un poco más chicos entran, y "Por retirar" baja a dos renglones. */
+      .stk-body table.dt th .hlong { display: inline; }
+      .stk-body table.dt th .hshort { display: none; }
+      .stk-body table.dt th { text-transform: none; font-size: 0.6rem; line-height: 1.15; vertical-align: bottom;
+        padding-left: 1px; padding-right: 2px; }
+      .stk-body table.dt th:first-child, .stk-body table.dt td:first-child { width: 11%; }
+      .stk-body table.dt th { font-size: 0.57rem; letter-spacing: 0; }
+      .stk-body table.dt th:last-child, .stk-body table.dt td:last-child { padding-right: 9px; }
+      .stk-res { flex-basis: 100%; margin-left: 17px; text-align: left; order: 5; }
+      .stk-head .arrow { margin-left: auto; }
       /* Por Tanda tiene 7 columnas de números: se deja scrollear dentro de su recuadro. */
       #tblTandas { white-space: nowrap; display: block; overflow-x: auto; }
       #tblTandas th, #tblTandas td { padding: 6px 9px; font-size: 0.76rem; }
@@ -801,7 +831,8 @@
     <h3 style="font-size:0.8rem;text-transform:uppercase;color:#8d97a3;letter-spacing:.5px;margin:8px 0;">Por tanda</h3>
     <table class="dt" id="tblTandas" style="border-radius:8px;overflow:hidden;">
       <thead><tr><th>Tanda</th><th>Pedidos</th><th>Retirados</th><th>Pendientes</th>
-        <th>Recaudado</th><th>Por cobrar</th><th>Costo compras</th></tr></thead>
+        <th>Recaudado</th><th>Por cobrar</th><th>Costo compras</th>
+        <th title="Recaudado menos costo de las compras de esa tanda">Ganancia</th></tr></thead>
       <tbody></tbody>
     </table>
 
@@ -836,18 +867,8 @@
     <div class="avisobox" id="avisoStkTanda" style="display:none;"></div>
     <div class="totline" id="totStock"></div>
 
-    <table class="dt" id="tblStock" style="border-radius:8px;overflow:hidden;">
-      <!-- En el celular se muestran las versiones cortas de cada encabezado (ver .hshort) -->
-      <thead><tr>
-        <th data-m=""><span class="hlong">Prenda / Talle</span><span class="hshort">Prenda</span></th>
-        <th data-m="ped"><span class="hlong">Pedidas</span><span class="hshort">Ped.</span></th>
-        <th data-m="ret"><span class="hlong">Retiradas</span><span class="hshort">Ret.</span></th>
-        <th data-m="pend"><span class="hlong">Por retirar</span><span class="hshort">Pend.</span></th>
-        <th data-m="comp"><span class="hlong">Compradas</span><span class="hshort">Compr.</span></th>
-        <th data-m="disp"><span class="hlong">Disponibles</span><span class="hshort">Disp.</span></th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
+    <!-- Una tarjeta plegable por prenda; las arma renderStockScreen() -->
+    <div id="stockCards"></div>
 
     <h2 style="margin:22px 0 6px;">Compras cargadas</h2>
     <p class="resumen-subtitle" style="margin-bottom:8px;">Clic en un costo para corregirlo &nbsp;·&nbsp;
@@ -2779,15 +2800,29 @@ function initFiltrosStock() {
       renderStockScreen();
     });
   });
-  document.querySelectorAll('#tblStock thead th').forEach(th => {
-    if (!th.dataset.m) return;
-    th.onclick = () => { stkOrden = stkOrden === th.dataset.m ? '' : th.dataset.m; renderStockScreen(); };
-  });
+}
+
+// Tocar el título de una columna ordena los talles de cada tarjeta por ese número, de mayor a
+// menor; tocarlo de nuevo vuelve al orden de talles.
+function ordenarStock(m) {
+  stkOrden = stkOrden === m ? '' : m;
+  renderStockScreen();
+}
+
+// Qué tarjetas dejó plegadas la persona. Se guarda en el teléfono: la pantalla se vuelve a
+// dibujar con cada actualización y no tienen que abrirse solas.
+let stkCerradas = new Set();
+try { stkCerradas = new Set(JSON.parse(localStorage.getItem('stockCerradas') || '[]')); } catch (e) {}
+function toggleStockCard(key) {
+  if (stkCerradas.has(key)) stkCerradas.delete(key); else stkCerradas.add(key);
+  try { localStorage.setItem('stockCerradas', JSON.stringify([...stkCerradas])); } catch (e) {}
+  const card = [...document.querySelectorAll('#stockCards .stk-card')].find(c => c.dataset.key === key);
+  if (card) card.classList.toggle('cerrada', stkCerradas.has(key));
 }
 
 function renderStockScreen() {
-  const tbody = document.querySelector('#tblStock tbody');
-  if (!tbody) return;
+  const cont = document.getElementById('stockCards');
+  if (!cont) return;
   const { remaining, pendientes, retirados, comprado } = calcStock(stkTanda);
   const stockTypes = getPrendaTypes().filter(t => t.hasStock);
 
@@ -2814,40 +2849,50 @@ function renderStockScreen() {
     `${conAviso === false ? '' : flag(c)}</td>`;
 
   const T = { ped:0, ret:0, pend:0, comp:0, disp:0 };
+  // Títulos de columna, repetidos en cada tarjeta: largos en escritorio, cortos en el celular
+  const COLS = [['ped', 'Pedidas', 'Ped.'], ['ret', 'Retiradas', 'Ret.'], ['pend', 'Por retirar', 'Pend.'],
+                ['comp', 'Compradas', 'Compr.'], ['disp', 'Disponibles', 'Disp.']];
+  const thead = '<thead><tr><th><span class="hlong">Talle</span><span class="hshort">Talle</span></th>' +
+    COLS.map(([m, largo, corto]) => `<th class="${stkOrden === m ? 'ord' : ''}" onclick="ordenarStock('${m}')" ` +
+      `title="Ordenar por ${largo.toLowerCase()}"><span class="hlong">${largo}</span><span class="hshort">${corto}</span></th>`).join('') +
+    '</tr></thead>';
+
   let html = '';
+  stockTypes.forEach(t => {
+    const tipo = t.key.toLowerCase();
+    const filas = TALLES_ORDER.map(talle => [talle, celda(tipo, talle)]).filter(([, c]) => pasa(c));
+    if (!filas.length) return;
+    if (stkOrden) filas.sort((a, b) => b[1][stkOrden] - a[1][stkOrden]);
+    const S = { ped:0, ret:0, pend:0, comp:0, disp:0 };
+    filas.forEach(([, c]) => { for (const m in S) S[m] += c[m]; });
+    for (const m in T) T[m] += S[m];
 
-  if (stkOrden) {
-    // Vista ordenada: se pierde el agrupado por prenda a cambio de ver el ranking completo
-    const plano = [];
-    stockTypes.forEach(t => TALLES_ORDER.forEach(talle => {
-      const c = celda(t.key.toLowerCase(), talle);
-      if (pasa(c)) plano.push({ t, talle, c });
-    }));
-    plano.sort((a, b) => b.c[stkOrden] - a.c[stkOrden]);
-    plano.forEach(r => { for (const m in T) T[m] += r.c[m]; });
-    html = plano.map(r => `<tr class="${clsF(r.c)}"><td>` +
-      `<span class="cdot" style="background:${r.t.color}"></span>` +
-      `${escapeHtml(r.t.label.replace('Camiseta ', ''))} <span class="tl">${labelTalle(r.talle, true)}</span></td>` +
-      cols(r.c) + `</tr>`).join('');
-  } else {
-    stockTypes.forEach(t => {
-      const tipo = t.key.toLowerCase();
-      const filas = TALLES_ORDER.map(talle => [talle, celda(tipo, talle)]).filter(([, c]) => pasa(c));
-      if (!filas.length) return;
-      const S = { ped:0, ret:0, pend:0, comp:0, disp:0 };
-      filas.forEach(([, c]) => { for (const m in S) S[m] += c[m]; });
-      for (const m in T) T[m] += S[m];
-      html += `<tr class="grp"><td colspan="6"><span class="cdot" style="background:${t.color}"></span>` +
-        `${escapeHtml(t.label)}</td></tr>`;
-      html += filas.map(([talle, c]) => `<tr class="${clsF(c)}">` +
-        `<td style="padding-left:26px"><span class="tl">${labelTalle(talle, true)}</span></td>` +
-        cols(c) + `</tr>`).join('');
-      html += `<tr class="sub"><td style="padding-left:26px">Subtotal</td>` + cols(S, false) + `</tr>`;
-    });
-  }
+    // Lo que hay que saber con la tarjeta plegada: cuánto falta entregar, cuánto queda, y si
+    // algún talle tiene un problema
+    const deMas    = filas.filter(([, c]) => c.disp < 0).length;
+    const sinStock = filas.filter(([, c]) => c.disp >= 0 && c.pend > 0 && c.disp <= 0).length;
+    const avisos =
+      (deMas    ? `<span class="flg f1">${deMas} ${plural(deMas, 'talle', 'talles')} con entregas de más</span>` : '') +
+      (sinStock ? `<span class="flg f2">${sinStock} ${plural(sinStock, 'talle', 'talles')} sin stock</span>` : '');
+    const estado = deMas ? 'bad' : sinStock ? 'warn' : '';
 
-  tbody.innerHTML = html ||
-    '<tr><td colspan="6" style="text-align:center;color:#8d97a3;padding:22px">Nada para mostrar con este filtro.</td></tr>';
+    html += `<div class="stk-card ${estado} ${stkCerradas.has(t.key) ? 'cerrada' : ''}" data-key="${escapeHtml(t.key)}">` +
+      `<div class="stk-head" onclick="toggleStockCard(this.parentNode.dataset.key)">` +
+        `<span class="cdot" style="background:${escapeHtml(t.color)}"></span>` +
+        `<span class="stk-nom">${escapeHtml(t.label)}</span>${avisos}` +
+        `<span class="stk-res">Por retirar <b class="${S.pend ? 'pnd' : ''}">${S.pend}</b> · ` +
+          `Disponibles <b class="${S.disp < 0 ? 'ngv' : ''}">${S.disp}</b></span>` +
+        `<span class="arrow">▼</span>` +
+      `</div>` +
+      `<div class="stk-body"><table class="dt">${thead}<tbody>` +
+        filas.map(([talle, c]) => `<tr class="${clsF(c)}">` +
+          `<td><span class="tl">${escapeHtml(labelTalle(talle, true))}</span></td>` + cols(c) + `</tr>`).join('') +
+        `<tr class="sub"><td>Total</td>` + cols(S, false) + `</tr>` +
+      `</tbody></table></div></div>`;
+  });
+
+  cont.innerHTML = html ||
+    '<div class="avisobox" style="text-align:center;">Nada para mostrar con este filtro.</div>';
 
   const tl = document.getElementById('totStock');
   if (tl) tl.innerHTML =
@@ -4492,14 +4537,23 @@ function updateKPIs() {
   const tb = document.querySelector('#tblTandas tbody');
   if (tb) tb.innerHTML = TANDAS.map(t => {
     const s = statsPedidos(PEDIDOS.filter(p => tandaDe(p) === t));
-    let costoTanda = 0;
-    COMPRAS.filter(c => String(c.tanda || '').toUpperCase() === t)
-      .forEach(c => costoTanda += (Number(c.cant) || 0) * (Number(c.costo) || 0));
+    let costoTanda = 0, sinCostoTanda = 0;
+    COMPRAS.filter(c => String(c.tanda || '').toUpperCase() === t).forEach(c => {
+      const n = Number(c.cant) || 0, cu = Number(c.costo) || 0;
+      costoTanda += n * cu;
+      if (cu <= 0) sinCostoTanda += n;       // compradas pero todavía sin costo cargado
+    });
     if (!s.n && !costoTanda) return '';
+    // Ganancia de la tanda: lo recaudado en sus pedidos menos lo que costaron sus compras.
+    // Si hay unidades sin costo cargado el número queda inflado, y se avisa al lado.
+    const ganancia = s.recaudado - costoTanda;
     return `<tr><td>${escapeHtml(labelTanda(t))}</td><td>${s.n}</td><td>${s.ret}</td>` +
       `<td class="${s.pend ? 'pnd' : 'zz'}">${s.pend}</td><td>${fmt(s.recaudado)}</td>` +
       `<td class="${s.porCobrar ? 'ngv' : 'zz'}">${fmt(s.porCobrar)}</td>` +
-      `<td>${costoTanda ? fmt(costoTanda) : '<span class="zz">—</span>'}</td></tr>`;
+      `<td>${costoTanda ? fmt(costoTanda) : '<span class="zz">—</span>'}</td>` +
+      `<td class="${ganancia < 0 ? 'ngv' : ''}" style="${ganancia > 0 ? 'color:#1e8449;font-weight:700;' : ''}">` +
+        `${ganancia < 0 ? '−' + fmt(-ganancia) : fmt(ganancia)}` +
+        `${sinCostoTanda ? `<span class="flg f2" title="Hay ${sinCostoTanda} unidades compradas en esta tanda sin costo cargado: la ganancia real es menor">faltan costos</span>` : ''}</td></tr>`;
   }).join('');
 
   renderGanancia();
@@ -4770,6 +4824,9 @@ function sanearCompra(c) {
   ['id', 'talle', 'tanda', 'prenda'].forEach(k => { if (k in c) c[k] = identSeguro(c[k]); });
   return c;
 }
+
+// "1 talle" / "3 talles"
+function plural(n, sing, plur) { return n === 1 ? sing : plur; }
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c =>
