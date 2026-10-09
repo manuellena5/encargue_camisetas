@@ -1447,9 +1447,9 @@ function editarPedido(data) {
 // necesaria: si cambia el medio de pago, hay que mover el 'Monto Retiro' de un acumulador al
 // otro ('Total Efectivo' <-> 'Total Transferencia'). Si no, corregir el medio sería cosmético
 // y los totales de efectivo/transferencia quedarían mal para siempre.
-// También puede cambiar el 'Total' del pedido (viene sólo si el cliente manda la clave): es
-// el caso de la prenda ya entregada que todavía se debe y a la que se le actualiza el precio.
-// Igual que en editarPedido, 'Resta' se recalcula contra lo ya cobrado y 'Seña' no se toca.
+// También puede cambiar el 'Total' del pedido (viene sólo si el cliente manda la clave), aunque
+// ya esté saldado, y corregir lo cobrado ('ajusteCobro' con signo, medio y motivo). 'Resta'
+// se recalcula siempre como Total − cobrado.
 function editarRetiro(data) {
   const sheet   = getOrCreateSheet(SHEET_PEDIDOS);
   const nCols   = sheet.getLastColumn();
@@ -1475,71 +1475,133 @@ function editarRetiro(data) {
   const medioNuevo = data.medioPago   != null ? String(data.medioPago).toLowerCase() : medioViejo;
   const notasNuevo = data.observacion != null ? String(data.observacion) : notasViejo;
 
-  // El total se valida ANTES de escribir nada: si es inválido no tiene que quedar el retiro
+  // Todo se valida ANTES de escribir nada: si algo es inválido no tiene que quedar el retiro
   // corregido a medias con un error en pantalla.
   const tocaTotal  = Object.prototype.hasOwnProperty.call(data, 'total') && idx('Total') >= 0;
   const viejoTotal = Number(get('Total')) || 0;
   const nuevoTotal = tocaTotal ? (Number(data.total) || 0) : viejoTotal;
   const pagado     = Number(get('Seña')) || 0;   // 'Seña' acumula todo lo cobrado
   const cambioTotal = tocaTotal && nuevoTotal !== viejoTotal;
-  if (cambioTotal && nuevoTotal < pagado) {
-    return jsonResponse({ status: 'error',
-      message: 'El total no puede quedar por debajo de lo ya cobrado (' + plata_(pagado) + ').' });
+
+  // Corrección de lo cobrado: llega con signo en 'ajusteCobro' (+ suma, − resta), con el medio
+  // y un motivo obligatorio. No se escribe 'Seña' a mano: se le suma el ajuste y se mueve el
+  // acumulador de ese medio, que es de donde salen Recaudado y los totales por medio de pago.
+  const tocaCobro = Object.prototype.hasOwnProperty.call(data, 'ajusteCobro');
+  const ajuste    = tocaCobro ? Math.round(Number(data.ajusteCobro) || 0) : 0;
+  const medioAj   = String(data.medioAjuste || '').toLowerCase();
+  const motivoAj  = String(data.motivoAjuste || '').trim();
+  const err = function (msg) { return jsonResponse({ status: 'error', message: msg }); };
+  if (tocaCobro) {
+    if (!ajuste) return err('El monto a corregir tiene que ser mayor a cero.');
+    if (medioAj !== 'efectivo' && medioAj !== 'transferencia')
+      return err('Elegí si la corrección es en efectivo o por transferencia.');
+    if (!motivoAj) return err('Escribí el motivo de la corrección.');
+    // Si entre que se abrió la ventana y se guardó alguien cobró desde otro teléfono, el
+    // ajuste se calculó sobre un monto viejo: se rechaza en vez de pisar ese cobro.
+    if (data.pagadoVisto != null && data.pagadoVisto !== '' && Number(data.pagadoVisto) !== pagado) {
+      return err('Mientras corregías se registró otro cobro en este pedido. Cerrá y volvé a abrirlo ' +
+                 'para ver lo cobrado actualizado. No se guardó nada.');
+    }
   }
+  const nuevoPagado = pagado + ajuste;
+  if (nuevoPagado < 0) return err('No se puede restar más de lo cobrado (' + plata_(pagado) + ').');
+  if ((cambioTotal || ajuste) && nuevoTotal < nuevoPagado) {
+    return err(ajuste > 0 && !cambioTotal
+      ? 'Lo cobrado no puede superar el total (' + plata_(nuevoTotal) + ').'
+      : 'El total no puede quedar por debajo de lo ' + (ajuste ? '' : 'ya ') + 'cobrado (' + plata_(nuevoPagado) + ').');
+  }
+
+  // Acumuladores por medio de pago, tal como van a quedar. Primero el cambio de medio del
+  // retiro (mueve el Monto Retiro de uno al otro) y después el ajuste.
+  const hayAcum = idx('Total Efectivo') >= 0 && idx('Total Transferencia') >= 0;
+  const acum = { efectivo: Number(get('Total Efectivo')) || 0, transferencia: Number(get('Total Transferencia')) || 0 };
+  const cambioMedio = medioNuevo !== medioViejo;
+  let movioRetiro = false, movido = 0;
+  if (cambioMedio && montoRet > 0 && medioViejo) {
+    const de = medioViejo === 'transferencia' ? 'transferencia' : 'efectivo';
+    const a  = medioNuevo === 'transferencia' ? 'transferencia' : 'efectivo';
+    // Se mueve como mucho lo que hay en ese medio: si antes se corrigió lo cobrado, el Monto
+    // Retiro puede ser mayor y la suma de los dos acumulados tiene que seguir igual a 'Seña'.
+    const mover = Math.min(montoRet, acum[de]);
+    if (de !== a) { acum[de] -= mover; acum[a] += mover; movioRetiro = true; movido = mover; }
+  }
+  if (ajuste < 0 && hayAcum && acum[medioAj] < -ajuste) {
+    return err('En este pedido figuran cobrados sólo ' + plata_(acum[medioAj]) + ' por ' + medioAj +
+               '. Elegí el otro medio o un monto menor.');
+  }
+  if (ajuste) acum[medioAj] += ajuste;
 
   const cambios = [];
   if (cambioTotal) {
     set('Total', nuevoTotal);
     cambios.push('total: ' + plata_(viejoTotal) + ' → ' + plata_(nuevoTotal));
-    if (idx('Resta') >= 0) {
-      const viejaResta = Number(get('Resta')) || 0;
-      const nuevaResta = nuevoTotal - pagado;   // nunca negativo: lo garantiza la validación
-      if (nuevaResta !== viejaResta) {
-        set('Resta', nuevaResta);
-        cambios.push('resta: ' + plata_(viejaResta) + ' → ' + plata_(nuevaResta));
-      }
-    }
   }
+  const viejaResta = Number(get('Resta')) || 0;
+  const nuevaResta = (cambioTotal || ajuste) ? nuevoTotal - nuevoPagado : viejaResta;   // nunca negativo
+  const cambioResta = idx('Resta') >= 0 && nuevaResta !== viejaResta;
+  if (cambioResta) set('Resta', nuevaResta);
+  const txtResta = 'resta: ' + plata_(viejaResta) + ' → ' + plata_(nuevaResta);
+  if (cambioResta && !ajuste) cambios.push(txtResta);
+
   if (talleNuevo !== talleViejo) { set('Talle Retiro', talleNuevo); cambios.push('talle retirado: ' + (talleViejo || '—') + ' → ' + talleNuevo); }
   if (notasNuevo !== notasViejo) { set('Notas Retiro', notasNuevo); cambios.push('observación actualizada'); }
 
-  if (medioNuevo !== medioViejo) {
+  if (cambioMedio) {
     set('Medio de Pago Retiro', medioNuevo);
     cambios.push('medio de pago: ' + (medioViejo || '—') + ' → ' + medioNuevo);
     // Sin medio anterior (filas viejas) no se sabe en qué acumulador se había cargado, así que
     // no se mueve nada: se avisa para que se revise a mano en vez de descuadrar los totales.
-    if (montoRet > 0 && medioViejo) {
-      const colDe = medioViejo === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
-      const colA  = medioNuevo === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
-      if (colDe !== colA) {
-        set(colDe, Math.max(0, (Number(get(colDe)) || 0) - montoRet));
-        set(colA,  (Number(get(colA)) || 0) + montoRet);
-        cambios.push('se movieron ' + montoRet + ' de ' + colDe + ' a ' + colA);
-      }
-    } else if (montoRet > 0) {
+    if (movioRetiro) {
+      cambios.push('se movieron ' + movido + ' de ' +
+        (medioViejo === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo') + ' a ' +
+        (medioNuevo === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo'));
+    } else if (montoRet > 0 && !medioViejo) {
       cambios.push('⚠ revisar totales: no había medio anterior registrado');
     }
   }
 
-  if (!cambios.length) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
+  if (ajuste) set('Seña', nuevoPagado);
+  if (hayAcum && (movioRetiro || ajuste)) {
+    set('Total Efectivo', acum.efectivo);
+    set('Total Transferencia', acum.transferencia);
+  }
+
+  if (!cambios.length && !ajuste) return jsonResponse({ status: 'ok', message: 'Sin cambios' });
 
   const pedidoId = idDeFila_(sheet, fila) || data.pedidoId || '';
 
   // Mismo criterio que en editarPedido: el cambio de total tiene su propio tipo de movimiento
   // y va con monto 0, porque no es plata cobrada.
-  logMovimiento({
-    tipo:     cambioTotal ? 'TOTAL_EDITADO' : 'RETIRO_EDITADO',
-    pedidoId: pedidoId,
-    nombre:   String(get('Nombre') || ''),
-    prenda:   data.tipo || '',
-    talle:    talleNuevo,
-    monto:    0,
-    medio:    cambioTotal ? '' : medioNuevo,
-    detalle:  cambios.join(' · ')
-  });
+  if (cambios.length) {
+    logMovimiento({
+      tipo:     cambioTotal ? 'TOTAL_EDITADO' : 'RETIRO_EDITADO',
+      pedidoId: pedidoId,
+      nombre:   String(get('Nombre') || ''),
+      prenda:   data.tipo || '',
+      talle:    talleNuevo,
+      monto:    0,
+      medio:    cambioTotal ? '' : medioNuevo,
+      detalle:  cambios.join(' · ')
+    });
+  }
+  // La corrección de lo cobrado va en un movimiento aparte y CON monto (negativo si resta):
+  // así "Cobrado" en Movimientos sigue cerrando contra la plata que hay en la caja.
+  if (ajuste) {
+    logMovimiento({
+      tipo:     'COBRO_CORREGIDO',
+      pedidoId: pedidoId,
+      nombre:   String(get('Nombre') || ''),
+      prenda:   data.tipo || '',
+      talle:    talleNuevo,
+      monto:    ajuste,
+      medio:    medioAj,
+      detalle:  'motivo: ' + motivoAj + ' · cobrado: ' + plata_(pagado) + ' → ' + plata_(nuevoPagado) +
+                (cambioResta ? ' · ' + txtResta : '')
+    });
+  }
 
   return jsonResponse({ status: 'ok', message: 'Retiro actualizado', cambios: cambios,
-                        totalActualizado: cambioTotal });
+                        totalActualizado: cambioTotal, cobroCorregido: !!ajuste });
 }
 
 // --- Registrar pago/seña adicional sin marcar como retirado ---

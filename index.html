@@ -89,6 +89,9 @@
     .mov-card.pedido  .mov-ico { background: #eaf2fa; color: #1b4f72; }
     .mov-card.pago    { border-left-color: #27ae60; }
     .mov-card.pago    .mov-ico { background: #eafaf1; color: #1e8449; }
+    .mov-card.ajuste  { border-left-color: #e67e22; }
+    .mov-card.ajuste  .mov-ico { background: #fef5e7; color: #b9770e; }
+    .mov-card .mov-monto.neg { color: #c0392b; }
     .mov-card.retiro  { border-left-color: #8e44ad; }
     .mov-card.retiro  .mov-ico { background: #f4ecf7; color: #6c3483; }
     .mov-card.revert  { border-left-color: #e74c3c; }
@@ -1058,19 +1061,43 @@
     </div>
     <div class="form-group">
       <label>Medio de pago</label>
-      <select id="er_medio">
+      <select id="er_medio" onchange="previewRestaRetiro()">
         <option value="efectivo">Efectivo</option>
         <option value="transferencia">Transferencia</option>
       </select>
     </div>
     <p id="erAvisoMonto" style="display:none;font-size:0.75rem;color:#9c640c;background:#fef5e7;border-radius:8px;padding:8px 10px;margin-bottom:12px;"></p>
-    <!-- Total: sólo aparece mientras la prenda entregada todavía se debe. Es el caso del que
-         tarda en pagar y al que se le actualiza el precio. Con el pedido saldado no se muestra:
-         subirlo ahí reabriría una deuda sobre algo que ya estaba cerrado. -->
+    <!-- Total y corrección de lo cobrado (no aparecen en los regalos). Lo cobrado no se escribe
+         a mano: se suma o se resta con medio y motivo, y queda como movimiento propio. -->
     <div id="erTotalWrap" style="display:none;">
       <div class="form-group">
         <label>Total</label>
         <input type="number" id="er_total" min="0" placeholder="0" oninput="previewRestaRetiro()">
+      </div>
+      <div class="form-group">
+        <label>Corregir lo cobrado</label>
+        <p id="erCobrado" style="font-size:0.75rem;color:#666;margin:0 0 6px 2px;"></p>
+        <div style="display:flex;gap:8px;">
+          <select id="er_ajTipo" style="flex:1;" onchange="previewRestaRetiro()">
+            <option value="">No corregir</option>
+            <option value="sumar">Sumar</option>
+            <option value="restar">Restar</option>
+          </select>
+          <input type="number" id="er_ajMonto" min="0" placeholder="Monto" style="flex:1;" oninput="previewRestaRetiro()">
+        </div>
+      </div>
+      <div id="erAjDetalle" style="display:none;">
+        <div class="form-group">
+          <label>Medio de la corrección</label>
+          <select id="er_ajMedio" onchange="previewRestaRetiro()">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <input type="text" id="er_ajMotivo" maxlength="120" placeholder="Ej.: se cargó un pago dos veces">
+        </div>
       </div>
       <p id="erResta" style="font-size:0.75rem;color:#666;margin:4px 0 10px 2px;"></p>
     </div>
@@ -1438,7 +1465,7 @@ let pendingUnlockId = null;
 // ============ HELPERS ============
 // Redondea siempre: los costos unitarios son promedios ponderados y si no se colaban
 // decimales en pantalla ($2.529.795,784).
-function fmt(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-AR'); }
+function fmt(n) { const v = Math.round(Number(n) || 0); return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('es-AR'); }
 
 // Devuelve la fecha de alta como 'yyyy-mm-dd HH:mm:ss' (hora de Argentina).
 // Contempla que Sheets pueda mandarla como texto o como fecha ISO en UTC.
@@ -3554,13 +3581,72 @@ async function confirmarEliminarPedido() {
 // que se actualiza cuando se demoran en pagar). La deuda se recalcula contra lo ya cobrado.
 let erPedidoId = null;
 
-// El total se puede tocar desde acá sólo mientras quede algo por cobrar.
+// Total y corrección de lo cobrado: en cualquier retirado que no sea regalo, esté saldado o no.
 function retiroPermiteTotal(p) {
-  return !!p && !isRegalo(p) && (Number(p['Resta']) || 0) > 0;
+  return !!p && !isRegalo(p);
 }
 
+// Lee la corrección de lo cobrado del modal: monto con signo (0 si no se corrige).
+function leerAjusteRetiro() {
+  const tipo  = document.getElementById('er_ajTipo').value;
+  const crudo = String(document.getElementById('er_ajMonto').value).trim();
+  const monto = Math.round(Math.abs(Number(crudo) || 0));
+  return {
+    tipo, crudo, monto,
+    ajuste: !tipo ? 0 : (tipo === 'restar' ? -monto : monto),
+    medio:  document.getElementById('er_ajMedio').value,
+    motivo: document.getElementById('er_ajMotivo').value.trim()
+  };
+}
+
+// Cuánto hay cobrado por cada medio, como van a quedar si además se cambia el medio del retiro.
+function acumRetiro(p, medioRetiroNuevo) {
+  const acum = { efectivo: Number(p['Total Efectivo']) || 0, transferencia: Number(p['Total Transferencia']) || 0 };
+  const monto = Number(p['_montoRetiro'] || p['Monto Retiro']) || 0;
+  const medioAnt = String(p['_medioPagoRetiro'] || p['Medio de Pago Retiro'] || '').toLowerCase();
+  if (monto > 0 && medioAnt && medioRetiroNuevo && medioAnt !== medioRetiroNuevo) {
+    const de = medioAnt === 'transferencia' ? 'transferencia' : 'efectivo';
+    const a  = medioRetiroNuevo === 'transferencia' ? 'transferencia' : 'efectivo';
+    const mover = Math.min(monto, acum[de]);   // igual que el servidor
+    if (de !== a) { acum[de] -= mover; acum[a] += mover; }
+  }
+  return acum;
+}
+
+// Valida total + corrección y muestra cómo quedaría. Devuelve el mensaje de error o ''.
 function previewRestaRetiro() {
-  pintarPreviewResta(PEDIDOS.find(x => x._id === erPedidoId), 'er_total', 'erResta', 'btnGuardarRetiroEdit');
+  const p = PEDIDOS.find(x => x._id === erPedidoId);
+  const el = document.getElementById('erResta');
+  const btn = document.getElementById('btnGuardarRetiroEdit');
+  if (!p || !el || !retiroPermiteTotal(p)) return '';
+  const pagado = Number(p['Seña']) || 0;
+  const crudoT = String(document.getElementById('er_total').value).trim();
+  const total  = Number(crudoT) || 0;
+  const aj = leerAjusteRetiro();
+  document.getElementById('erAjDetalle').style.display = aj.tipo ? '' : 'none';
+  const nuevoPagado = pagado + aj.ajuste;
+  const acum = acumRetiro(p, document.getElementById('er_medio').value);
+
+  let error = '';
+  if (crudoT === '') error = 'Poné el total.';
+  else if (aj.tipo && !aj.monto) error = 'Poné el monto a ' + aj.tipo + '.';
+  else if (nuevoPagado < 0) error = 'No se puede restar más de lo cobrado (' + fmt(pagado) + ').';
+  else if (aj.ajuste < 0 && acum[aj.medio] < aj.monto)
+    error = 'Por ' + aj.medio + ' figuran cobrados sólo ' + fmt(acum[aj.medio]) + '.';
+  else if (total < nuevoPagado)
+    error = aj.ajuste > 0 ? 'Lo cobrado no puede superar el total (' + fmt(total) + ').'
+                          : 'El total no puede ser menor a lo cobrado (' + fmt(nuevoPagado) + ').';
+
+  if (error) {
+    el.style.color = '#c0392b';
+    el.textContent = '⚠ ' + error;
+  } else {
+    el.style.color = '#666';
+    el.textContent = (aj.ajuste ? 'Cobrado quedaría en ' + fmt(nuevoPagado) : 'Cobrado ' + fmt(pagado)) +
+      ' · Resta quedaría en ' + fmt(total - nuevoPagado);
+  }
+  if (btn) { btn.disabled = !!error; btn.style.opacity = error ? 0.5 : ''; }
+  return error;
 }
 
 function openModalRetiro(id) {
@@ -3603,6 +3689,13 @@ function openModalRetiro(id) {
   const conTotal = retiroPermiteTotal(p);
   document.getElementById('erTotalWrap').style.display = conTotal ? '' : 'none';
   document.getElementById('er_total').value = Number(p['Total']) || 0;
+  document.getElementById('er_ajTipo').value = '';
+  document.getElementById('er_ajMonto').value = '';
+  document.getElementById('er_ajMedio').value = 'efectivo';
+  document.getElementById('er_ajMotivo').value = '';
+  document.getElementById('erCobrado').textContent =
+    'Cobrado hasta ahora ' + fmt(Number(p['Seña']) || 0) + ' (efectivo ' + fmt(Number(p['Total Efectivo']) || 0) +
+    ' · transferencia ' + fmt(Number(p['Total Transferencia']) || 0) + ')';
   if (conTotal) previewRestaRetiro();
 
   document.getElementById('modalRetiro').style.display = 'flex';
@@ -3637,30 +3730,33 @@ async function guardarEdicionRetiro() {
   const pagado   = Number(p['Seña'])  || 0;       // 'Seña' acumula todo lo cobrado
   const restaAnt = Number(p['Resta']) || 0;
   let total = totalAnt;
+  let aj = { ajuste: 0 };
   if (retiroPermiteTotal(p)) {
-    const crudo = String(document.getElementById('er_total').value).trim();
-    if (crudo === '') { showToast('Poné el total'); document.getElementById('er_total').focus(); return; }
-    total = Number(crudo) || 0;
+    // Mismas reglas que valida el servidor: total no menor a lo cobrado, no restar más de lo
+    // que hay por ese medio, etc. Por debajo de lo cobrado quedaría plata a favor de la persona
+    // y la app no tiene forma de devolverla.
+    const error = previewRestaRetiro();
+    if (error) { showToast(error); return; }
+    total = Number(String(document.getElementById('er_total').value).trim()) || 0;
+    aj = leerAjusteRetiro();
+    if (aj.ajuste && !aj.motivo) {
+      showToast('Escribí el motivo de la corrección');
+      document.getElementById('er_ajMotivo').focus();
+      return;
+    }
   }
   const cambiaTotal = total !== totalAnt;
-  // Mismo tope que al corregir un pedido: por debajo de lo cobrado quedaría plata a favor de
-  // la persona y la app no tiene forma de devolverla. El backend valida lo mismo.
-  if (cambiaTotal && total < pagado) {
-    showToast('El total no puede ser menor a lo ya cobrado (' + fmt(pagado) + ')');
-    document.getElementById('er_total').focus();
-    return;
-  }
-  const restaNueva = cambiaTotal ? Math.max(0, total - pagado) : restaAnt;
+  const ajuste = aj.ajuste || 0;
+  const pagadoNuevo = pagado + ajuste;
+  const restaNueva = (cambiaTotal || ajuste) ? Math.max(0, total - pagadoNuevo) : restaAnt;
 
   const cambios = [];
-  if (cambiaTotal) {
-    cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
-    if (restaNueva !== restaAnt) cambios.push('resta: ' + fmt(restaAnt) + ' → ' + fmt(restaNueva));
-  }
+  if (cambiaTotal) cambios.push('total: ' + fmt(totalAnt) + ' → ' + fmt(total));
+  if (restaNueva !== restaAnt && !ajuste) cambios.push('resta: ' + fmt(restaAnt) + ' → ' + fmt(restaNueva));
   if (talle !== talleAnt) cambios.push('talle retirado: ' + (labelTalle(talleAnt) || '—') + ' → ' + labelTalle(talle));
   if (medio !== medioAnt) cambios.push('medio de pago: ' + (medioAnt || '—') + ' → ' + medio);
   if (obs   !== obsAnt)   cambios.push('observación actualizada');
-  if (!cambios.length) { showToast('No cambiaste nada'); closeModalRetiro(); return; }
+  if (!cambios.length && !ajuste) { showToast('No cambiaste nada'); closeModalRetiro(); return; }
 
   modalGuardando('modalRetiro', 'btnGuardarRetiroEdit', true);
   try {
@@ -3671,7 +3767,8 @@ async function guardarEdicionRetiro() {
         action: 'editarRetiro', pedidoId: p._pid || '', sheetRow: p._sheetRow,
         talleRetiro: talle, medioPago: medio, observacion: obs,
         tipo: getTipoLabel(getTipo(p))
-      }, cambiaTotal ? { total } : {}));
+      }, cambiaTotal ? { total } : {},
+      ajuste ? { ajusteCobro: ajuste, medioAjuste: aj.medio, motivoAjuste: aj.motivo, pagadoVisto: pagado } : {}));
     // Si el servidor contesta sin decir qué pasó con el total es porque todavía corre la
     // versión anterior, que ignora ese dato. Mejor avisarlo que mostrar un total que al
     // próximo refresco vuelve atrás.
@@ -3679,33 +3776,43 @@ async function guardarEdicionRetiro() {
       loadFromSheets({ silent: true });
       throw new Error('el total no se cambió. Falta actualizar el servidor.');
     }
+    if (ajuste && r && !r._ciego && r.cobroCorregido === undefined) {
+      loadFromSheets({ silent: true });
+      throw new Error('lo cobrado no se corrigió. Falta actualizar el servidor.');
+    }
 
+    // Mismo movimiento de plata que hace el backend (primero el cambio de medio del retiro,
+    // después la corrección), para que la pantalla no muestre otra cosa que la planilla.
+    // Se calcula antes de pisar el medio del retiro, que es de donde sale el medio anterior.
+    const acum = acumRetiro(p, medio);
+    if (ajuste) { acum[aj.medio] += ajuste; p['Seña'] = pagadoNuevo; }
+    p['Total Efectivo'] = acum.efectivo;
+    p['Total Transferencia'] = acum.transferencia;
     p['Talle Retiro']         = talle;  p['_talleRetiro']     = talle;
     p['Medio de Pago Retiro'] = medio;  p['_medioPagoRetiro'] = medio;
     p['Notas Retiro']         = obs;    p['_notasRetiro']     = obs;
-    if (cambiaTotal) { p['Total'] = total; p['Resta'] = restaNueva; }
-    // Mismo movimiento de plata que hace el backend, para que la pantalla no muestre otra
-    // cosa que la planilla hasta el próximo refresco.
-    if (medio !== medioAnt && monto > 0 && medioAnt) {
-      const de = medioAnt === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
-      const a  = medio    === 'transferencia' ? 'Total Transferencia' : 'Total Efectivo';
-      if (de !== a) {
-        p[de] = Math.max(0, (Number(p[de]) || 0) - monto);
-        p[a]  = (Number(p[a]) || 0) + monto;
-      }
-    }
+    if (cambiaTotal) p['Total'] = total;
+    if (cambiaTotal || ajuste) p['Resta'] = restaNueva;
 
-    pushMovLocal({
+    if (cambios.length) pushMovLocal({
       tipo: cambiaTotal ? 'TOTAL_EDITADO' : 'RETIRO_EDITADO',
       pedidoId: p._id,
       nombre: p['Nombre'] || '', prenda: getTipoLabel(getTipo(p)), talle,
       medio: cambiaTotal ? '' : medio, detalle: cambios.join(' · ')
     });
+    if (ajuste) pushMovLocal({
+      tipo: 'COBRO_CORREGIDO',
+      pedidoId: p._id,
+      nombre: p['Nombre'] || '', prenda: getTipoLabel(getTipo(p)), talle,
+      monto: ajuste, medio: aj.medio,
+      detalle: 'motivo: ' + aj.motivo + ' · cobrado: ' + fmt(pagado) + ' → ' + fmt(pagadoNuevo) +
+               (restaNueva !== restaAnt ? ' · resta: ' + fmt(restaAnt) + ' → ' + fmt(restaNueva) : '')
+    });
     invalidarCachePedidoDeMov();
     localStorage.setItem('pedidos_backup', JSON.stringify(PEDIDOS));
     closeModalRetiro();
     renderAll();
-    showToast(cambiaTotal ? 'Total actualizado' : 'Retiro corregido');
+    showToast(ajuste ? 'Cobro corregido' : cambiaTotal ? 'Total actualizado' : 'Retiro corregido');
     loadFromSheets({ silent: true });
   } catch (e) {
     console.error('Error editando retiro:', e);
@@ -4302,7 +4409,7 @@ function renderList(opts) {
             ${sinStock ? '<span class="st sin">Sin stock</span>' : ''}
             ${chipMedioPago(p)}
           </div>
-          <button class="btn-editar" title="${ret ? (retiroPermiteTotal(p) ? 'Corregir el retiro o el total' : 'Corregir el retiro') : 'Corregir el pedido'}"
+          <button class="btn-editar" title="${ret ? (retiroPermiteTotal(p) ? 'Corregir el retiro, el total o lo cobrado' : 'Corregir el retiro') : 'Corregir el pedido'}"
             onclick="event.stopPropagation(); ${ret ? 'openModalRetiro' : 'openModalEditar'}(${id});">✏️</button>
           <span class="arrow">${bloqueado ? '🔒' : '▼'}</span>
         </div>
@@ -4707,6 +4814,7 @@ const MOV_META = {
   PEDIDO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Pedido corregido',  grupo: 'pedidos' },
   RETIRO_EDITADO:   { cls: 'editado', ico: '✏', label: 'Retiro corregido',  grupo: 'retiros' },
   TOTAL_EDITADO:    { cls: 'editado', ico: '✏', label: 'Total actualizado', grupo: 'pedidos' },
+  COBRO_CORREGIDO:  { cls: 'ajuste',  ico: '±', label: 'Cobro corregido',   grupo: 'pagos'   },
   PEDIDO_ELIMINADO: { cls: 'elim',    ico: '✕',  label: 'Pedido eliminado',  grupo: 'pedidos' }
 };
 function movMeta(tipo) {
@@ -4912,6 +5020,7 @@ function movCardHtml(m, opts) {
         ${chipEstado}
       </div>
       ${monto > 0 ? `<div class="mov-monto">+${fmt(monto)}</div>` : ''}
+      ${monto < 0 ? `<div class="mov-monto neg">−${fmt(-monto)}</div>` : ''}
       ${o.cuantosPrevios ? `<div class="mov-toggle">${o.abierto ? '▲' : '▼'} ${o.cuantosPrevios}</div>` : ''}
     </div>`;
 }
